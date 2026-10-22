@@ -1,0 +1,210 @@
+import { fractionGeometry, fractionPartBaselines, fractionPartScale, measureLabelText, richTextLinePitches, richTextMetrics, } from "@icm/derived";
+import { flattenRichText } from "@icm/model";
+function escapeXml(value) {
+    return value
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+}
+function styleAttribute(ctx) {
+    return `font-style:${ctx.italic ? "italic" : "normal"};font-weight:${ctx.bold ? ctx.profile.typography.mathWeight : ctx.profile.typography.plainWeight}`;
+}
+function number(value) {
+    return String(Number(value.toFixed(6)));
+}
+/** Render only canonical RichText AST runs. */
+export function renderRichTextDocument(document, profile, options = {}) {
+    const context = {
+        profile,
+        italic: options.defaultItalic ?? false,
+        bold: options.defaultBold ?? false,
+        lowercase: false,
+        uppercase: false,
+        lineOriginX: options.lineOriginX ?? 0,
+        fontSize: options.fontSize ?? profile.typography.annotationFontSize,
+        baselineOffset: 0,
+    };
+    const typography = profile.typography;
+    return renderRuns(document.runs, context, {
+        currentBaselineOffset: 0,
+        linePitches: richTextLinePitches(document, {
+            fontSize: context.fontSize,
+            lineHeight: typography.lineHeight,
+            subscriptScale: typography.subscriptScale,
+            subscriptBaselineShiftEm: typography.subscriptBaselineShiftEm,
+            subscriptHorizontalGapEm: typography.subscriptHorizontalGapEm,
+        }),
+        lineBreaks: 0,
+    });
+}
+function renderRuns(runs, ctx, state) {
+    let output = "";
+    let lineOpen = false;
+    for (let index = 0; index < runs.length; index += 1) {
+        const run = runs[index];
+        const next = runs[index + 1];
+        if (isScriptSpan(run) && isScriptSpan(next) && run.style !== next.style) {
+            output += renderScriptStack(run, next, ctx, state);
+            index += 1;
+            continue;
+        }
+        if (run.kind === "line-break") {
+            if (lineOpen)
+                output += "</tspan>";
+            const pitch = state.linePitches?.[state.lineBreaks ?? 0] ??
+                ctx.fontSize * ctx.profile.typography.lineHeight;
+            state.lineBreaks = (state.lineBreaks ?? 0) + 1;
+            const dy = pitch + ctx.baselineOffset - state.currentBaselineOffset;
+            state.currentBaselineOffset = ctx.baselineOffset;
+            output += `<tspan data-text-run="line-break" x="${ctx.lineOriginX}" dy="${number(dy)}">`;
+            lineOpen = true;
+            continue;
+        }
+        output += renderRun(run, ctx, state);
+    }
+    if (lineOpen)
+        output += "</tspan>";
+    return output;
+}
+function renderRun(node, ctx, state) {
+    switch (node.kind) {
+        case "text": {
+            const text = escapeXml(ctx.uppercase
+                ? node.value.toUpperCase()
+                : ctx.lowercase
+                    ? node.value.toLowerCase()
+                    : node.value);
+            const dy = ctx.baselineOffset - state.currentBaselineOffset;
+            if (Math.abs(dy) < 1e-9)
+                return text;
+            state.currentBaselineOffset = ctx.baselineOffset;
+            return `<tspan data-text-run="baseline-reset" dy="${number(dy)}">${text}</tspan>`;
+        }
+        case "line-break":
+            return "";
+        case "math":
+            throw new Error("Atomic formulas must render through the positioned formula boundary.");
+        case "span":
+            return renderSpan(node, ctx, state);
+        case "fraction":
+            return renderInlineFraction(node, ctx, state);
+    }
+}
+/**
+ * Inline stacked fraction for mixed rich text. The parts are centered on the
+ * block through deterministic dx compensation (0.6 em per code point, the
+ * same model as the shared layout). The fraction bar itself needs a line
+ * element, which a <text> cannot host; annotation-level fractions render
+ * through the structured bar path in annotation-render.ts instead.
+ */
+function renderInlineFraction(node, ctx, state) {
+    const typography = ctx.profile.typography;
+    const scale = fractionPartScale(typography.subscriptScale);
+    const partFontSize = ctx.fontSize * scale;
+    const partContext = { ...ctx, fontSize: partFontSize, baselineOffset: 0 };
+    const renderPart = (runs) => {
+        const partState = { currentBaselineOffset: 0 };
+        let rendered = renderRuns(runs, partContext, partState);
+        const reset = -partState.currentBaselineOffset;
+        if (Math.abs(reset) >= 1e-9) {
+            rendered += `<tspan data-text-run="baseline-reset" dy="${number(reset)}">&#8203;</tspan>`;
+        }
+        return rendered;
+    };
+    const numerator = renderPart(node.numerator.runs);
+    const denominator = renderPart(node.denominator.runs);
+    // Part widths are measured in base em (char count × 0.6 × part scale); the
+    // overhang is in em of the part font, so scale it back to base em too. The
+    // dx compensation then converts base-em offsets to the part tspans' own em.
+    const numeratorWidthEm = [...flattenRichText(node.numerator)].length * 0.6 * scale;
+    const denominatorWidthEm = [...flattenRichText(node.denominator)].length * 0.6 * scale;
+    const blockWidthEm = Math.max(numeratorWidthEm, denominatorWidthEm) +
+        fractionGeometry.barOverhangEm * scale * 2;
+    const numeratorDx = (blockWidthEm - numeratorWidthEm) / 2 / scale;
+    const denominatorDx = ((blockWidthEm - denominatorWidthEm) / 2 - numeratorWidthEm) / scale;
+    const resetDx = (blockWidthEm - denominatorWidthEm) / 2;
+    const baselineReset = ctx.baselineOffset - state.currentBaselineOffset;
+    state.currentBaselineOffset = ctx.baselineOffset;
+    const fractionDy = Math.abs(baselineReset) < 1e-9 ? "" : ` dy="${number(baselineReset)}"`;
+    const parts = fractionPartBaselines(node, typography);
+    return `<tspan data-text-run="fraction"${fractionDy}><tspan data-text-run="numerator" font-size="${number(partFontSize)}px" dx="${number(numeratorDx * partFontSize)}" dy="${number(-parts.numeratorRiseEm * partFontSize)}">${numerator}</tspan><tspan data-text-run="denominator" font-size="${number(partFontSize)}px" dx="${number(denominatorDx * partFontSize)}" dy="${number((parts.numeratorRiseEm + parts.denominatorDropEm) * partFontSize)}">${denominator}</tspan><tspan data-text-run="fraction-reset" dx="${number(resetDx * ctx.fontSize)}" dy="${number(-parts.denominatorDropEm * partFontSize)}">&#8203;</tspan></tspan>`;
+}
+function isScriptSpan(run) {
+    return (run?.kind === "span" &&
+        (run.style === "subscript" || run.style === "superscript"));
+}
+/**
+ * A subscript and a superscript side by side share one attachment column,
+ * as measurement lays them out: `V` with `in` below and `+` above, not `+`
+ * and then `in` further along. SVG text flows, so the narrower script is
+ * drawn first and the wider one starts back over it, by the narrower one's
+ * advance in the schematic font's own widths; the line then continues
+ * after the wider script.
+ */
+function renderScriptStack(first, second, ctx, state) {
+    const typography = ctx.profile.typography;
+    const scriptFontSize = ctx.fontSize * typography.subscriptScale;
+    const advance = (script) => {
+        const content = { runs: script.children };
+        if (ctx.uppercase || ctx.lowercase)
+            content.runs = [
+                {
+                    kind: "span",
+                    style: ctx.uppercase ? "uppercase" : "lowercase",
+                    children: content.runs,
+                },
+            ];
+        return measureLabelText(content, {
+            ...richTextMetrics(ctx.profile, "label"),
+            fontSize: scriptFontSize,
+            bold: ctx.bold,
+            // Scripts start upright; a nested span can explicitly slant them.
+            italic: false,
+        }).width;
+    };
+    const [narrow, wide] = advance(first) <= advance(second) ? [first, second] : [second, first];
+    const gap = scriptFontSize * typography.subscriptHorizontalGapEm;
+    return (renderSpan(narrow, ctx, state, gap) +
+        renderSpan(wide, ctx, state, -advance(narrow)));
+}
+function renderSpan(node, ctx, state, 
+/** Where a script starts, when a script stack places it. */
+scriptDx) {
+    if (node.style === "italic" ||
+        node.style === "bold" ||
+        node.style === "overbar" ||
+        node.style === "lowercase" ||
+        node.style === "uppercase") {
+        const childCtx = {
+            ...ctx,
+            italic: ctx.italic || node.style === "italic",
+            bold: ctx.bold || node.style === "bold",
+            lowercase: ctx.lowercase || node.style === "lowercase",
+            uppercase: ctx.uppercase || node.style === "uppercase",
+        };
+        const decoration = node.style === "overbar" ? ";text-decoration:overline" : "";
+        return `<tspan data-text-run="${node.style === "overbar" ? "overbar" : "span"}" style="${styleAttribute(childCtx)}${decoration}">${renderRuns(node.children, childCtx, state)}</tspan>`;
+    }
+    const typography = ctx.profile.typography;
+    const scriptFontSize = ctx.fontSize * typography.subscriptScale;
+    const targetOffset = ctx.baselineOffset +
+        (node.style === "subscript"
+            ? scriptFontSize * typography.subscriptBaselineShiftEm
+            : -scriptFontSize * typography.subscriptBaselineShiftEm);
+    const dy = targetOffset - state.currentBaselineOffset;
+    state.currentBaselineOffset = targetOffset;
+    const dx = scriptDx ??
+        (node.style === "subscript"
+            ? scriptFontSize * typography.subscriptHorizontalGapEm
+            : 0);
+    // Scripts in the Razavi profile are upright by default. They retain the
+    // surrounding weight so a bold math base has a bold upright subscript; an
+    // explicit nested italic span remains an intentional user override.
+    const scriptCtx = {
+        ...ctx,
+        italic: false,
+        fontSize: scriptFontSize,
+        baselineOffset: targetOffset,
+    };
+    return `<tspan data-text-run="${node.style}" dx="${number(dx)}" dy="${number(dy)}" font-size="${number(scriptFontSize)}px" style="${styleAttribute(scriptCtx)}">${renderRuns(node.children, scriptCtx, state)}</tspan>`;
+}

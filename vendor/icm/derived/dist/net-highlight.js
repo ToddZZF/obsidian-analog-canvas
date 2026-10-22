@@ -1,0 +1,177 @@
+import { endpointKey } from "./endpoint.js";
+import { findHierarchyPaths } from "./hierarchy-navigation.js";
+function hierarchyPathKey(path) {
+    return path
+        .map((frame) => `${frame.parentDocumentId}/${frame.instanceId}/${frame.childDocumentId}`)
+        .join(">");
+}
+function sameHierarchyPath(left, right) {
+    return hierarchyPathKey(left) === hierarchyPathKey(right);
+}
+export function computeNetHighlight(index, documentId, netId, origin, hierarchyPath = []) {
+    const documentIndex = index.documents.get(documentId);
+    const record = documentIndex?.logicalNets.get(netId) ??
+        documentIndex?.logicalNetByBaseNetId.get(netId);
+    if (!record)
+        return undefined;
+    const component = origin && record.baseNetIds.length === 1
+        ? record.routedComponents.find((candidate) => candidate.nodes.some((node) => node.key === endpointKey(origin)))
+        : undefined;
+    if (origin && record.baseNetIds.length === 1 && !component)
+        return undefined;
+    const visibleEndpoints = component
+        ? component.nodes.map((node) => node.endpoint)
+        : record.visibleEndpoints;
+    const visibleEndpointKeys = new Set(visibleEndpoints.map(endpointKey));
+    return {
+        documentId,
+        hierarchyPath,
+        netId,
+        visibleEndpoints,
+        routes: component?.routes ?? record.routes,
+        junctions: component
+            ? component.nodes.flatMap((node) => node.endpoint.kind === "junction" ? [node.endpoint.junctionId] : [])
+            : record.junctions,
+        virtualEdges: component
+            ? record.virtualEdges.filter((edge) => visibleEndpointKeys.has(endpointKey(edge.from)) &&
+                visibleEndpointKeys.has(endpointKey(edge.to)))
+            : record.virtualEdges,
+        routingGuidance: record.routingGuidance,
+    };
+}
+/**
+ * Traverse hierarchy connectivity in both directions. The visited key is the
+ * logical document/net pair, preventing cyclic hierarchy projects from looping;
+ * hops are retained independently so two parent instances of one child Cell
+ * remain distinguishable to a later hierarchy-aware UI.
+ */
+export function traceHierarchyNet(index, documentId, netId, origin, hierarchyPath = []) {
+    const primary = computeNetHighlight(index, documentId, netId, origin, hierarchyPath);
+    if (!primary)
+        return undefined;
+    const canonicalRef = (ref) => ({
+        documentId: ref.documentId,
+        hierarchyPath: ref.hierarchyPath,
+        netId: index.documents.get(ref.documentId)?.logicalNetByBaseNetId.get(ref.netId)
+            ?.netId ?? ref.netId,
+    });
+    const queue = [
+        canonicalRef({ documentId, netId, hierarchyPath }),
+    ];
+    const visited = new Set();
+    const highlights = [];
+    const hops = [];
+    while (queue.length > 0) {
+        const current = queue.shift();
+        const pathKey = hierarchyPathKey(current.hierarchyPath);
+        const key = `${pathKey}\u0000${current.documentId}\u0000${current.netId}`;
+        if (visited.has(key))
+            continue;
+        const highlight = current.documentId === documentId &&
+            current.netId === primary.netId &&
+            sameHierarchyPath(current.hierarchyPath, hierarchyPath)
+            ? computeNetHighlight(index, current.documentId, current.netId, origin, current.hierarchyPath)
+            : computeNetHighlight(index, current.documentId, current.netId, undefined, current.hierarchyPath);
+        if (!highlight)
+            continue;
+        visited.add(key);
+        highlights.push(highlight);
+        const currentDocumentIndex = index.documents.get(current.documentId);
+        const endpointToNet = currentDocumentIndex?.endpointToBaseNetId;
+        const currentRecord = currentDocumentIndex?.logicalNets.get(current.netId) ??
+            currentDocumentIndex?.logicalNetByBaseNetId.get(current.netId);
+        for (const edge of index.hierarchy.edges) {
+            if (edge.parentDocumentId === current.documentId) {
+                const parentNetId = endpointToNet?.get(endpointKey({
+                    kind: "terminal",
+                    instanceId: edge.instanceId,
+                    pinName: edge.parentPinName,
+                }));
+                if (!parentNetId || !currentRecord?.baseNetIds.includes(parentNetId)) {
+                    continue;
+                }
+                const frame = { ...edge };
+                const to = canonicalRef({
+                    documentId: edge.childDocumentId,
+                    netId: edge.childNetId,
+                    hierarchyPath: [
+                        ...current.hierarchyPath,
+                        {
+                            parentDocumentId: edge.parentDocumentId,
+                            instanceId: edge.instanceId,
+                            childDocumentId: edge.childDocumentId,
+                        },
+                    ],
+                });
+                hops.push({ direction: "down", from: current, to, frame });
+                queue.push(to);
+            }
+            if (edge.childDocumentId === current.documentId) {
+                const caller = current.hierarchyPath.at(-1);
+                if (!caller ||
+                    caller.parentDocumentId !== edge.parentDocumentId ||
+                    caller.instanceId !== edge.instanceId ||
+                    caller.childDocumentId !== edge.childDocumentId) {
+                    continue;
+                }
+                if (!currentRecord?.baseNetIds.includes(edge.childNetId))
+                    continue;
+                const parentNetId = index.documents
+                    .get(edge.parentDocumentId)
+                    ?.endpointToBaseNetId.get(endpointKey({
+                    kind: "terminal",
+                    instanceId: edge.instanceId,
+                    pinName: edge.parentPinName,
+                }));
+                if (!parentNetId)
+                    continue;
+                const frame = { ...edge };
+                const to = canonicalRef({
+                    documentId: edge.parentDocumentId,
+                    netId: parentNetId,
+                    hierarchyPath: current.hierarchyPath.slice(0, -1),
+                });
+                hops.push({ direction: "up", from: current, to, frame });
+                queue.push(to);
+            }
+        }
+        const globalRecord = currentRecord;
+        // The index record intentionally contains no persisted name. Resolve the
+        // group through the global map by matching the stable local Net reference.
+        const group = [...index.globalNets.values()].find((candidate) => candidate.nets.some((ref) => ref.documentId === current.documentId && ref.netId === current.netId));
+        if (globalRecord && group) {
+            for (const target of group.nets) {
+                const targetPaths = target.documentId === index.topDocumentId
+                    ? [[]]
+                    : (findHierarchyPaths(index, index.topDocumentId, target.documentId) ?? [[]]);
+                for (const targetPath of targetPaths) {
+                    const to = canonicalRef({ ...target, hierarchyPath: targetPath });
+                    const samePath = sameHierarchyPath(targetPath, current.hierarchyPath);
+                    if (to.documentId === current.documentId &&
+                        to.netId === current.netId &&
+                        samePath) {
+                        continue;
+                    }
+                    hops.push({
+                        direction: "global",
+                        from: current,
+                        to,
+                        foldedName: group.foldedName,
+                    });
+                    queue.push(to);
+                }
+            }
+        }
+    }
+    highlights.sort((left, right) => `${left.documentId}\u0000${left.hierarchyPath.map((frame) => frame.instanceId).join("/")}\u0000${left.netId}`.localeCompare(`${right.documentId}\u0000${right.hierarchyPath.map((frame) => frame.instanceId).join("/")}\u0000${right.netId}`, "en"));
+    hops.sort((left, right) => {
+        const leftSuffix = left.direction === "global"
+            ? left.foldedName
+            : `${left.frame.instanceId}\u0000${left.frame.parentPinName}`;
+        const rightSuffix = right.direction === "global"
+            ? right.foldedName
+            : `${right.frame.instanceId}\u0000${right.frame.parentPinName}`;
+        return `${left.direction}\u0000${left.from.hierarchyPath.map((frame) => frame.instanceId).join("/")}\u0000${left.from.documentId}\u0000${left.from.netId}\u0000${leftSuffix}`.localeCompare(`${right.direction}\u0000${right.from.hierarchyPath.map((frame) => frame.instanceId).join("/")}\u0000${right.from.documentId}\u0000${right.from.netId}\u0000${rightSuffix}`, "en");
+    });
+    return { primary, highlights, hops };
+}

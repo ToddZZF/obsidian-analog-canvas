@@ -1,0 +1,387 @@
+import { readSimulationData, } from "./result-data.js";
+const DROPPED_INPUT_PATTERNS = [
+    /is not a valid .* line, ignored/iu,
+    /could not find a valid modelname/iu,
+    /ignored\s*!?$/iu,
+];
+/**
+ * ngspice 46 reports a model card it only partly understood as one block:
+ *
+ *     Warning: Model issue on line 28 :
+ *       .model xdut.xq1:sky130_fd_pr__npn_05v5_w1p00l1p00__model npn level=1.0 t ...
+ *     unrecognized parameter (dcap) - ignored
+ *
+ * The second line echoes the card as ngspice holds it: lowercased, renamed
+ * `xpath:name` inside a subcircuit, cut at 72 characters and ended with "...".
+ */
+const MODEL_ISSUE_PATTERN = /^warning:\s*model issue on line \d+\s*:?$/iu;
+const MODEL_ECHO_PATTERN = /^\.model\s+(.*)$/iu;
+const MODEL_PARAMETER_NOTICE_PATTERN = /^unrecognized parameter \(.*\) - ignored$/iu;
+function readModelCardEcho(text) {
+    const body = MODEL_ECHO_PATTERN.exec(text)?.[1]?.replace(/\s*\.\.\.$/u, "");
+    const [name, ...rest] = body?.split(/[\s(]+/u) ?? [];
+    return name
+        ? { name: name.toLowerCase(), complete: rest.some(Boolean) }
+        : undefined;
+}
+/**
+ * The names of the `.model` cards the run's own sources define, lowercased as
+ * ngspice prints them. A `+` line continues the card above it, past any
+ * comment between them, so a name on a continuation line still counts.
+ */
+function definedModelNames(sources) {
+    const names = new Set();
+    for (const source of sources) {
+        const cards = [];
+        for (const line of source.split(/\r?\n/u)) {
+            const text = line.trim();
+            if (text.length === 0 || text.startsWith("*"))
+                continue;
+            if (text.startsWith("+") && cards.length > 0)
+                cards[cards.length - 1] += ` ${text.slice(1)}`;
+            else
+                cards.push(text);
+        }
+        for (const card of cards) {
+            const name = /^\.model\s+([^\s(]+)/iu.exec(card)?.[1];
+            if (name)
+                names.add(name.toLowerCase());
+        }
+    }
+    return names;
+}
+/**
+ * Whether the run's own sources define the card ngspice complained about.
+ * The `x…:` prefix ngspice adds inside a subcircuit is not part of the name.
+ * An echo cut inside the name leaves a prefix, which counts when a defined
+ * name starts with it; one cut inside the `xpath` names no card at all, so it
+ * stays the author's.
+ */
+function definesModelCard(echo, defined) {
+    const local = echo.name.replace(/^x[^:]*:/u, "");
+    if (echo.complete)
+        return defined.has(local);
+    if (local === echo.name && local.startsWith("x"))
+        return true;
+    for (const name of defined)
+        if (name.startsWith(local))
+            return true;
+    return false;
+}
+const ERROR_PATTERNS = [
+    /^\s*error[: ]/iu,
+    /simulation interrupted/iu,
+    /could not find a valid modelname/iu,
+    /singular matrix/iu,
+    /no convergence/iu,
+    /iteration limit reached/iu,
+    /fatal/iu,
+    /too (?:few|many) parameters for subcircuit/iu,
+    /unknown (?:subckt|model|device)/iu,
+    /can't find model/iu,
+    // An analysis that gave up part-way: "doAnalyses: TRAN:  Timestep too
+    // small; time = …" and then "tran simulation(s) aborted". Neither starts
+    // with "Error", and the rawfile may still hold the points before it.
+    /timestep too small/iu,
+    /simulation\(s\) aborted/iu,
+];
+const LOCATION_PATTERN = /^in line no\.\s*(\d+)\s+from file\s+(.+)$/iu;
+const GENERIC_FAILURE_PATTERN = /^(?:simulation interrupted|error:\s*incomplete or empty netlist)/iu;
+/**
+ * ngspice's batch-mode epilogue after any failure. It blames the netlist even
+ * when the netlist was complete, so it is dropped once a real cause is known.
+ */
+const EMPTY_NETLIST_PATTERN = /^error:\s*incomplete or empty netlist/iu;
+/** result-data's notice for ngspice's `Plotname: constants`. */
+const CONSTANTS_PLOT_PATTERN = /"constants" plot/iu;
+function diagnosticKey(diagnostic) {
+    // The same notice can be dropped input for the author's card and not for
+    // the Profile library's; counting one into the other would lose the first.
+    return JSON.stringify([
+        diagnostic.severity,
+        diagnostic.text,
+        diagnostic.location ?? null,
+        diagnostic.droppedInput === true,
+    ]);
+}
+function appendDiagnostic(diagnostics, diagnostic) {
+    const previous = diagnostics.find((candidate) => diagnosticKey(candidate) === diagnosticKey(diagnostic));
+    if (previous) {
+        previous.count = (previous.count ?? 1) + 1;
+        return;
+    }
+    diagnostics.push(diagnostic);
+}
+/**
+ * Read ngspice's output into diagnostics.
+ *
+ * The exit status is deliberately not the input. Measured against ngspice
+ * 44: a deck whose resistor line is malformed exits **0** while printing
+ * "Warning: 'r1 in out' is not a valid resistor instance line, ignored!" and
+ * then solving the circuit that remains. Trusting the status there would
+ * report a clean success for numbers describing a circuit the author never
+ * drew.
+ *
+ * `sources` are the run's own source texts: the deck and every file submitted
+ * with it, Canvas-generated ones included. The Profile's model library is
+ * not among them. When they are given, a parameter ngspice ignored on a model
+ * card none of them defines is no longer dropped input: the qualified SKY130
+ * NPN card prints `unrecognized parameter (dcap) - ignored` on every run
+ * (#1313), and its author cannot change it. The line stays, as information.
+ * Without them, every ignored line still counts, since a card in an unknown
+ * file cannot be told apart from the author's own.
+ */
+export function readNgspiceDiagnostics(output, sources) {
+    const diagnostics = [];
+    const lines = output.split(/\r?\n/u);
+    const defined = sources === undefined ? undefined : definedModelNames(sources);
+    let modelCard;
+    for (const raw of lines) {
+        const text = raw.trim();
+        if (text.length === 0) {
+            modelCard = undefined;
+            continue;
+        }
+        if (MODEL_ISSUE_PATTERN.test(text))
+            modelCard = "header";
+        else if (modelCard === "header")
+            modelCard = readModelCardEcho(text);
+        else if (modelCard && !MODEL_PARAMETER_NOTICE_PATTERN.test(text))
+            modelCard = undefined;
+        const location = text.match(LOCATION_PATTERN);
+        if (location) {
+            const previous = diagnostics[diagnostics.length - 1];
+            if (previous && previous.location === undefined) {
+                previous.location = {
+                    line: Number(location[1]),
+                    file: location[2].trim(),
+                };
+                continue;
+            }
+        }
+        const libraryNotice = defined !== undefined &&
+            typeof modelCard === "object" &&
+            MODEL_PARAMETER_NOTICE_PATTERN.test(text) &&
+            !definesModelCard(modelCard, defined);
+        const dropped = !libraryNotice &&
+            DROPPED_INPUT_PATTERNS.some((pattern) => pattern.test(text));
+        const isError = ERROR_PATTERNS.some((pattern) => pattern.test(text));
+        const isWarning = /^\s*warning/iu.test(text);
+        if (!dropped && !isError && !isWarning && !libraryNotice)
+            continue;
+        appendDiagnostic(diagnostics, {
+            severity: isError ? "error" : isWarning ? "warning" : "info",
+            text,
+            ...(dropped ? { droppedInput: true } : {}),
+        });
+    }
+    const genericFailure = diagnostics.some((diagnostic) => GENERIC_FAILURE_PATTERN.test(diagnostic.text));
+    const hasSpecificCause = diagnostics.some((diagnostic) => !GENERIC_FAILURE_PATTERN.test(diagnostic.text) &&
+        diagnostic.severity === "error");
+    if (hasSpecificCause) {
+        const emptyNetlist = diagnostics.findIndex((diagnostic) => EMPTY_NETLIST_PATTERN.test(diagnostic.text));
+        if (emptyNetlist >= 0)
+            diagnostics.splice(emptyNetlist, 1);
+    }
+    if (genericFailure && !hasSpecificCause) {
+        const interruptedIndex = lines.findIndex((line) => /simulation interrupted/iu.test(line));
+        if (interruptedIndex > 0) {
+            const context = lines
+                .slice(Math.max(0, interruptedIndex - 3), interruptedIndex)
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0 &&
+                !diagnostics.some((diagnostic) => diagnostic.text === line));
+            for (const line of context)
+                appendDiagnostic(diagnostics, {
+                    severity: "info",
+                    text: "ngspice context: " + line,
+                });
+        }
+    }
+    return diagnostics;
+}
+/**
+ * The diagnostic a non-zero exit deserves, or null when the exit says nothing.
+ *
+ * ngspice's exit status is not a verdict on the circuit. Version 39 exits
+ * non-zero after a batch pass that has already run the author's `.control`
+ * block and printed every value asked for, because that pass then finds no
+ * `.plot`/`.print`/`.fourier` card and says so; version 46 exits 0 for the
+ * identical deck. So the status varies with the build, not with the run.
+ *
+ * It is still worth reporting. A caller that ignored it entirely would hide
+ * the one clue available when a run goes wrong in a way nothing printed.
+ *
+ * The benefit of the doubt is only for a run that looks complete. With no
+ * data, or with data and an error already reported (a transient that gave up
+ * part-way), the status is stated plainly.
+ */
+export function describeExitStatus(exitCode, options = {}) {
+    if (exitCode === null || exitCode === 0)
+        return null;
+    if (options.hasData === false) {
+        return {
+            severity: "error",
+            text: "The simulator exited with code " +
+                exitCode +
+                " before producing structured results.",
+        };
+    }
+    if (options.afterErrors === true) {
+        return {
+            severity: "warning",
+            text: `The simulator exited with code ${exitCode} after the errors above. ` +
+                `The results below hold only what it computed before it stopped.`,
+        };
+    }
+    return {
+        severity: "warning",
+        text: `The simulator exited with code ${exitCode}. Some builds of ngspice do ` +
+            `this after a run that produced everything asked of it, so check the ` +
+            `results below before treating it as a problem.`,
+    };
+}
+/**
+ * The outcome, from the diagnostics rather than the exit status — except for
+ * a timeout, which only the caller can know about.
+ *
+ * The exit status was once enough on its own to fail a run, which discarded
+ * correct answers: on 2026-09-04 every simulation the hosted container ran
+ * came back `failed` with an empty `diagnostics` array while the response
+ * carried the right values, including a five-transistor OTA whose operating
+ * point matched ngspice 46 with a full PDK to every digit (#568). Nothing had
+ * gone wrong; ngspice 39 exits non-zero for its own reasons.
+ *
+ * This remains the small final reduction from diagnostics to a terminal
+ * outcome. `evaluateSimulationRun` below owns the stronger evidence policy:
+ * it first proves that the run produced what its deck requested, then calls
+ * this function. Consumers must use that evaluator rather than treating this
+ * reduction as a complete run policy.
+ */
+export function classifySimulationOutcome(diagnostics, options) {
+    if (options.timedOut) {
+        return { status: "timed-out", timeoutMs: options.timeoutMs };
+    }
+    if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+        return { status: "failed" };
+    }
+    if (diagnostics.some((diagnostic) => diagnostic.droppedInput)) {
+        return { status: "completed-with-dropped-input" };
+    }
+    return { status: "completed" };
+}
+/**
+ * Evidence that ngspice at least accepted and entered a batch run.
+ *
+ * This is deliberately a fallback for decks that requested no rawfile. A
+ * readable rawfile is stronger evidence and does not need a console banner.
+ * Keep the test narrow: arbitrary non-empty stderr is not proof that a deck
+ * ran, which is the exact hole recorded by #613.
+ */
+export function hasNgspiceExecutionEvidence(output) {
+    return (/^\s*circuit\s*:/imu.test(output) ||
+        /^\s*doing analysis at\b/imu.test(output) ||
+        /^\s*no\. of data rows\s*:/imu.test(output) ||
+        /^\s*note:\s*simulation executed from \.control section\b/imu.test(output));
+}
+/**
+ * Turn one execution observation into the only product terminal verdict.
+ *
+ * Success is positive evidence, not the absence of a recognised error line:
+ * a deck that requested vectors must return readable vectors; a deck that did
+ * not must at least show that ngspice accepted the deck. The exit code remains
+ * diagnostic because supported ngspice builds can exit non-zero after
+ * producing every requested result. `sources` are the run's own source texts;
+ * `readNgspiceDiagnostics` says what they change.
+ */
+export function evaluateSimulationRun(expectations, observation, options) {
+    const diagnostics = readNgspiceDiagnostics(observation.log, options.sources);
+    if (!observation.timedOut &&
+        observation.signal !== null &&
+        observation.signal.length > 0) {
+        diagnostics.push({
+            severity: "error",
+            text: `The simulator was terminated by ${observation.signal} before it finished.`,
+        });
+    }
+    let data;
+    if (observation.rawfileTruncated) {
+        diagnostics.push({
+            severity: "error",
+            text: "The simulator rawfile was truncated, so its numeric result is incomplete.",
+        });
+    }
+    else if (observation.rawfileFormat === "binary") {
+        diagnostics.push({
+            severity: "error",
+            text: "The simulator wrote a binary rawfile, which carries no numbers this " +
+                "reader can use. Put `set filetype=ascii` before `write`.",
+        });
+    }
+    else if (observation.rawfile !== null &&
+        observation.rawfile.trim().length > 0) {
+        const reading = readSimulationData(observation.rawfile);
+        diagnostics.push(...reading.diagnostics);
+        if (reading.status === "read")
+            data = reading.data;
+    }
+    if (!observation.timedOut && data === undefined) {
+        if (expectations.rawfile === "required") {
+            const alreadyExplained = diagnostics.some((diagnostic) => diagnostic.severity === "error");
+            if (!alreadyExplained) {
+                diagnostics.push({
+                    severity: "error",
+                    text: "The deck requested a rawfile, but the simulator returned no readable vectors.",
+                });
+            }
+        }
+        else if (!hasNgspiceExecutionEvidence(observation.stdout === undefined && observation.stderr === undefined
+            ? observation.log
+            : `${observation.stdout ?? ""}${observation.stderr ?? ""}`)) {
+            diagnostics.push({
+                severity: "error",
+                text: observation.log.trim().length === 0
+                    ? "The simulator produced no output, so this run has no result."
+                    : "The simulator output contains no evidence that ngspice accepted or ran the deck.",
+            });
+        }
+    }
+    // ngspice's built-in constants are all a `write` finds when the analysis
+    // failed before making a plot. Once something else explains the failure,
+    // saying this release cannot read them only distracts from the cause.
+    if (data === undefined &&
+        diagnostics.some((diagnostic) => diagnostic.severity === "error" &&
+            !CONSTANTS_PLOT_PATTERN.test(diagnostic.text))) {
+        for (let index = diagnostics.length - 1; index >= 0; index--) {
+            if (CONSTANTS_PLOT_PATTERN.test(diagnostics[index].text))
+                diagnostics.splice(index, 1);
+        }
+    }
+    const exitStatus = describeExitStatus(observation.exitCode, {
+        hasData: data !== undefined,
+        afterErrors: diagnostics.some((diagnostic) => diagnostic.severity === "error"),
+    });
+    if (exitStatus)
+        diagnostics.push(exitStatus);
+    const outcome = classifySimulationOutcome(diagnostics, {
+        timedOut: observation.timedOut,
+        timeoutMs: options.timeoutMs,
+    });
+    if (expectations.rawfile === "not-required" &&
+        data === undefined &&
+        (outcome.status === "completed" ||
+            outcome.status === "completed-with-dropped-input")) {
+        diagnostics.push({
+            severity: "info",
+            text: "No rawfile capture was requested; no structured waveform data is available. " +
+                "Log-only or scalar-measurement runs are valid. For waveform data, save the " +
+                "required vectors before analysis and write an ASCII rawfile afterwards; " +
+                "print only produces log text.",
+        });
+    }
+    return {
+        outcome,
+        diagnostics,
+        ...(data === undefined ? {} : { data }),
+    };
+}

@@ -1,0 +1,1 @@
+function e(e){let t=[`pointerdown`,`keydown`,`focusin`],n=()=>{window.cancelAnimationFrame(r);for(let e of t)window.removeEventListener(e,n,!0)},r=window.requestAnimationFrame(()=>{n();let t=e();t?.isConnected&&t.getClientRects().length>0&&t.focus({preventScroll:!0})});for(let e of t)window.addEventListener(e,n,!0);return n}export{e as t};

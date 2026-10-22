@@ -1,0 +1,93 @@
+/**
+ * A bridged T-coil: pins 1 and 2 are the coil's ends and pin 3 its centre
+ * tap. The Symbol dots L1 at pin 1 and L2 at the tap, so a current running
+ * from pin 1 through to pin 2 enters both windings at their dots and the two
+ * aid: end to end the coil is L1 + L2 + 2M. CB bridges the two ends.
+ */
+const T_COIL = {
+    subcircuit: "tcoil",
+    ports: [
+        { pinName: "1", port: "n1" },
+        { pinName: "2", port: "n2" },
+        { pinName: "3", port: "n3" },
+    ],
+    windings: [
+        { element: "L1", dotted: "n1", undotted: "n3", parameter: "l1" },
+        { element: "L2", dotted: "n3", undotted: "n2", parameter: "l2" },
+    ],
+    coupling: { element: "K12", parameter: "k" },
+    capacitors: [{ element: "CB", from: "n1", to: "n2", parameter: "cb" }],
+};
+/** A transformer, whose Symbol dots both windings at their + pins. */
+const TRANSFORMER = {
+    subcircuit: "xfmr",
+    ports: [
+        { pinName: "P-", port: "p_minus" },
+        { pinName: "P+", port: "p_plus" },
+        { pinName: "S-", port: "s_minus" },
+        { pinName: "S+", port: "s_plus" },
+    ],
+    windings: [
+        { element: "LP", dotted: "p_plus", undotted: "p_minus", parameter: "lp" },
+        { element: "LS", dotted: "s_plus", undotted: "s_minus", parameter: "ls" },
+    ],
+    coupling: { element: "K1", parameter: "k" },
+    capacitors: [],
+};
+/**
+ * A centre-tapped inductor: two series windings meeting at the tap, pin 3,
+ * with no bridge capacitor (#1513). Its coupling defaults to 0, so the
+ * halves are plain series inductors until a value is given; given one, they
+ * aid end to end like the T-coil's, written from pin 1 and the tap.
+ */
+const CENTER_TAP = {
+    subcircuit: "ct_inductor",
+    ports: [
+        { pinName: "1", port: "n1" },
+        { pinName: "2", port: "n2" },
+        { pinName: "3", port: "n3" },
+    ],
+    windings: [
+        { element: "L1", dotted: "n1", undotted: "n3", parameter: "l1" },
+        { element: "L2", dotted: "n3", undotted: "n2", parameter: "l2" },
+    ],
+    coupling: { element: "K12", parameter: "k" },
+    capacitors: [],
+};
+/** Each network by the library Symbol drawing it. */
+const NETWORKS = new Map([
+    ["tcoil", T_COIL],
+    ["xfmr", TRANSFORMER],
+    ["center-tap-inductor", CENTER_TAP],
+]);
+/** Every parameter a network reads, in the order its subcircuit declares them. */
+export function drawnMagneticParameters(network) {
+    return [
+        ...network.windings.map((winding) => winding.parameter),
+        network.coupling.parameter,
+        ...network.capacitors.map((capacitor) => capacitor.parameter),
+    ];
+}
+/**
+ * The coupled network a device lowers to, or null for every other device.
+ * The T-coil, transformer and centre-tap inductor qualify, including the copies a saved Project
+ * carries of them, while they still have the library's identity, its pins in
+ * its order, its parameters, and no netlist target of their own. Which end of
+ * a winding is dotted belongs to the pins, as the library draws them.
+ */
+export function drawnMagneticNetwork(definition) {
+    const network = NETWORKS.get(definition.id);
+    if (!network ||
+        definition.symbolId !== definition.id ||
+        definition.deviceClass !== "inductor" ||
+        definition.targetPolicy !== "none")
+        return null;
+    const pins = network.ports.map((port) => port.pinName);
+    if (definition.pinOrder.length !== pins.length ||
+        definition.pinOrder.some((pin, index) => pin !== pins[index]))
+        return null;
+    const declared = new Set(definition.parameters.map((parameter) => parameter.name.toLowerCase()));
+    return drawnMagneticParameters(network).every((name) => declared.has(name))
+        ? network
+        : null;
+}

@@ -1,0 +1,48 @@
+import { ANALOG_CANVAS_MATH_PROFILE_ID, cachedFormulaResult, formulaSourceHash, prepareFormula, retainFormulaArtifacts, } from "@icm/math-typesetting/cache";
+import { soleRichTextMathRun } from "@icm/model";
+export function formulaRequestsForDocument(document) {
+    const requests = [];
+    const add = (content, bold = true, italic = false) => {
+        const formula = content && soleRichTextMathRun(content);
+        if (formula)
+            requests.push({
+                latex: formula.latex,
+                display: formula.display,
+                profileId: ANALOG_CANVAS_MATH_PROFILE_ID,
+                bold,
+                italic,
+            });
+    };
+    for (const annotation of document.annotations) {
+        add(annotation.content);
+        add(annotation.formatOverride);
+    }
+    for (const instance of document.instances)
+        if (instance.signalFlowParameters?.formula)
+            add(instance.signalFlowParameters.formulaFormat);
+    for (const object of document.drafting?.objects ?? []) {
+        if (object.kind === "text" || object.kind === "callout") {
+            add(object.content, object.styleOverride?.weight !== "normal", object.styleOverride?.italic === true);
+        }
+    }
+    return [
+        ...new Map(requests.map((request) => [formulaSourceHash(request), request])).values(),
+    ];
+}
+export async function prepareDocumentFormulaArtifacts(document) {
+    const requests = formulaRequestsForDocument(document);
+    const preparedNewArtifact = requests.some((request) => cachedFormulaResult(request) === undefined);
+    const release = retainFormulaArtifacts(requests);
+    try {
+        const results = await Promise.all(requests.map(prepareFormula));
+        const failure = results.find((result) => !result.ok);
+        if (failure && !failure.ok) {
+            throw new Error(`Formula preparation failed: ${failure.diagnostic.message}`);
+        }
+        return { preparedNewArtifact, release };
+    }
+    catch (error) {
+        release();
+        throw error;
+    }
+}

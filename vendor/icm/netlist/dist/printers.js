@@ -1,0 +1,345 @@
+import { generatedBehavioralModel, generatedBehavioralDefinition, } from "./generated-models.js";
+import { printSpectreBehavioralModel } from "./behavioral-model.js";
+import { switchBehavioralDefinition } from "./ideal-switch-model.js";
+import { printInstanceCard } from "./printed-card.js";
+import { printedCouplingValue } from "./extract-coupling.js";
+function wrapSpice(tokens, width = 100) {
+    const lines = [];
+    let line = "";
+    for (const token of tokens) {
+        const separator = line ? " " : "";
+        if (line && line.length + separator.length + token.length > width) {
+            lines.push(line);
+            line = `+ ${token}`;
+        }
+        else {
+            line += `${separator}${token}`;
+        }
+    }
+    if (line)
+        lines.push(line);
+    return lines;
+}
+function spiceInstance(instance) {
+    return printInstanceCard(instance, "spice").lines;
+}
+/** A Cell's own model cards, each `.model NAME TYPE(PARAM=VALUE …)`. */
+/** A model a Cell carries, as the SPICE card its body holds. */
+export function spiceModelCard(model) {
+    const values = model.parameters
+        .map((parameter) => `${parameter.name}=${parameter.rawValue}`)
+        .join(" ");
+    // A MOS stand-in reads as decks write one, `.model NMOS nmos level=54`.
+    if (model.type === "nmos" || model.type === "pmos")
+        return `.model ${model.name} ${model.type} ${values}`;
+    return `.model ${model.name} ${model.type}(${values})`;
+}
+function spiceModels(cell) {
+    return (cell.models ?? []).map(spiceModelCard);
+}
+/**
+ * A drawn T-coil's or transformer's coupled windings, as the subcircuit its
+ * `X` calls name. Each inductor is written from its dotted node, which is how
+ * the `K` card reads polarity.
+ */
+function spiceMagneticSubcircuit(subcircuit) {
+    return [
+        ...wrapSpice([
+            ".subckt",
+            subcircuit.name,
+            ...subcircuit.ports,
+            "params:",
+            ...subcircuit.formalParameters.map((parameter) => `${parameter.name}=${parameter.defaultValue}`),
+        ]),
+        ...subcircuit.inductors.map((inductor) => `${inductor.name} ${inductor.nodes.join(" ")} {${inductor.parameter}}`),
+        `${subcircuit.coupling.name} ${subcircuit.coupling.inductors.join(" ")} {${subcircuit.coupling.parameter}}`,
+        ...subcircuit.capacitors.map((capacitor) => `${capacitor.name} ${capacitor.nodes.join(" ")} {${capacitor.parameter}}`),
+        `.ends ${subcircuit.name}`,
+    ];
+}
+/** Each `K` over two of the Cell's inductor cards, by their printed names. */
+function couplingCards(cell, format) {
+    const references = new Map(cell.instances.map((instance) => [instance.id, instance.reference]));
+    return (cell.couplings ?? []).map((coupling) => {
+        const [first, second] = coupling.inductorIds.map((id) => references.get(id) ?? id);
+        const k = printedCouplingValue(coupling, format);
+        return format === "spice"
+            ? `${coupling.reference} ${first} ${second} ${k}`
+            : `${coupling.reference} mutual_inductor coupling=${k} ind1=${first} ind2=${second}`;
+    });
+}
+function spiceCell(cell, onInstance) {
+    const lines = wrapSpice([
+        ".subckt",
+        cell.name,
+        ...cell.ports.map((port) => port.name),
+        ...(cell.formalParameters?.length
+            ? [
+                "params:",
+                ...cell.formalParameters.map((parameter) => `${parameter.name}=${parameter.defaultValue}`),
+            ]
+            : []),
+    ]);
+    // Inside the body, so each Cell stays whole wherever it is included.
+    lines.push(...spiceModels(cell));
+    let offset = lines.join("\n").length + 1;
+    for (const instance of cell.instances) {
+        const card = printInstanceCard(instance, "spice", Boolean(onInstance));
+        onInstance?.(instance, offset, card);
+        lines.push(...card.lines);
+        offset += card.lines.reduce((total, line) => total + line.length + 1, 0);
+    }
+    lines.push(...couplingCards(cell, "spice"));
+    lines.push(`.ends ${cell.name}`);
+    return lines;
+}
+/**
+ * One Cell's instances as top-level SPICE cards, without a `.subckt` wrapper.
+ *
+ * A simulation root is instantiated rather than defined: its devices are the
+ * deck's own cards. This shares `spiceInstance` with `spiceCell` so a
+ * testbench card can never drift from the `.subckt` card the structural
+ * export writes for the same Instance — same tokens, same wrapping, same
+ * order. Net markers still print nothing.
+ */
+export function printSpiceCellInstances(cell) {
+    return [
+        ...cell.instances.flatMap((instance) => spiceInstance(instance)),
+        ...couplingCards(cell, "spice"),
+    ];
+}
+/** The same printer supplies locations; no parser guesses IDs from printed refs. */
+export function printSpiceWithLocations(ir, rootAsTopLevel = false) {
+    const { text, parameters, instances } = renderSpice(ir, rootAsTopLevel, true);
+    return { text, parameters, instances };
+}
+function renderSpice(ir, rootAsTopLevel, locations) {
+    const lines = ["* Generated by Analog Canvas netlist-export/1.0"];
+    const parameters = [];
+    const instances = [];
+    let length = lines[0].length;
+    const append = (...next) => {
+        for (const line of next) {
+            lines.push(line);
+            length += line.length + 1;
+        }
+    };
+    const fields = [];
+    const locate = cardRecorder(ir, { instances, fields }, parameters);
+    const globals = ir.globals.filter((name) => name !== "0");
+    if (globals.length)
+        append(...wrapSpice([".global", ...globals]));
+    for (const definition of ir.generatedDefinitions ?? []) {
+        append("");
+        append(...(definition.kind === "magnetic"
+            ? spiceMagneticSubcircuit(definition)
+            : generatedBehavioralModel(definition.name, definition.ports)));
+    }
+    for (const cell of ir.cells) {
+        if (rootAsTopLevel && cell.id === ir.topCellId)
+            continue;
+        append("");
+        const offset = length + 1;
+        append(...spiceCell(cell, locations
+            ? (instance, relative, card) => locate(cell, instance, offset + relative, card)
+            : undefined));
+    }
+    if (rootAsTopLevel) {
+        const root = ir.cells.find((cell) => cell.id === ir.topCellId);
+        const defaults = root?.formalParameters?.filter((parameter) => parameter.defaultValue !== undefined) ?? [];
+        if (defaults.length)
+            append(...wrapSpice([
+                ".param",
+                ...defaults.map((parameter) => `${parameter.name}=${parameter.defaultValue}`),
+            ]));
+        if (root) {
+            append(...spiceModels(root));
+            for (const instance of root.instances) {
+                const card = printInstanceCard(instance, "spice", locations);
+                if (locations)
+                    locate(root, instance, length + 1, card);
+                append(...card.lines);
+            }
+            append(...couplingCards(root, "spice"));
+        }
+    }
+    return { text: `${lines.join("\n")}\n`, parameters, instances, fields };
+}
+export function printSpiceNetlist(ir) {
+    return renderSpice(ir, false, false).text;
+}
+/** The Spectre form of a drawn magnetic device's coupled windings. */
+function spectreMagneticSubcircuit(subcircuit) {
+    const [first, second] = subcircuit.coupling.inductors;
+    return [
+        `subckt ${subcircuit.name} (${subcircuit.ports.join(" ")})`,
+        `parameters ${subcircuit.formalParameters
+            .map((parameter) => `${parameter.name}=${parameter.defaultValue}`)
+            .join(" ")}`,
+        ...subcircuit.inductors.map((inductor) => `${inductor.name} (${inductor.nodes.join(" ")}) inductor l=${inductor.parameter}`),
+        `${subcircuit.coupling.name} mutual_inductor coupling=${subcircuit.coupling.parameter} ind1=${first} ind2=${second}`,
+        ...subcircuit.capacitors.map((capacitor) => `${capacitor.name} (${capacitor.nodes.join(" ")}) capacitor c=${capacitor.parameter}`),
+        `ends ${subcircuit.name}`,
+    ];
+}
+function spectreCell(cell, onInstance) {
+    const portNames = cell.ports.map((port) => port.name);
+    const lines = [
+        `subckt ${cell.name}${portNames.length ? ` (${portNames.join(" ")})` : ""}`,
+    ];
+    if (cell.formalParameters?.length) {
+        lines.push(`parameters ${cell.formalParameters
+            .map((parameter) => `${parameter.name}=${parameter.defaultValue}`)
+            .join(" ")}`);
+    }
+    for (const model of cell.models ?? []) {
+        if (model.type === "SW")
+            lines.push(...printSpectreBehavioralModel(switchBehavioralDefinition(model)));
+        // A MOS stand-in is Spectre's own BSIM4, as SPICE's is level 54.
+        if (model.type === "nmos" || model.type === "pmos")
+            lines.push(`model ${model.name} bsim4 type=${model.type === "nmos" ? "n" : "p"}`);
+        // Classic junction / Gummel-Poon stand-ins, with the same explicit
+        // parameters as the SPICE export. Extraction omits these from Spectre runs.
+        if (["D", "NPN", "PNP"].includes(model.type)) {
+            const kind = model.type === "D" ? "diode" : `bjt type=${model.type.toLowerCase()}`;
+            const parameters = model.parameters
+                .map((p) => `${p.name.toLowerCase()}=${p.rawValue}`)
+                .join(" ");
+            lines.push(`model ${model.name} ${kind}${parameters ? " " + parameters : ""}`);
+        }
+    }
+    let offset = lines.join("\n").length + 1;
+    for (const instance of cell.instances) {
+        const card = printInstanceCard(instance, "spectre", Boolean(onInstance));
+        if (card.text) {
+            onInstance?.(instance, offset, card);
+            lines.push(card.text);
+            offset += card.text.length + 1;
+        }
+    }
+    lines.push(...couplingCards(cell, "spectre"));
+    lines.push(`ends ${cell.name}`);
+    return lines;
+}
+/** A Cell the netlist generates, an ideal block's body, as a file holds it. */
+export function printGeneratedCell(cell, format) {
+    return format === "spice" ? spiceCell(cell) : spectreCell(cell);
+}
+function renderSpectre(ir, locations = false) {
+    const lines = [
+        "// Generated by Analog Canvas netlist-export/1.0",
+        "simulator lang=spectre",
+    ];
+    const instances = [];
+    const fields = [];
+    const locate = cardRecorder(ir, { instances, fields });
+    const globals = ir.globals.filter((name) => name !== "0");
+    if (globals.length)
+        lines.push(`global ${globals.join(" ")}`);
+    for (const definition of ir.generatedDefinitions ?? [])
+        lines.push("", ...(definition.kind === "magnetic"
+            ? spectreMagneticSubcircuit(definition)
+            : printSpectreBehavioralModel(generatedBehavioralDefinition(definition.name, definition.ports))));
+    let length = lines.join("\n").length;
+    for (const cell of ir.cells) {
+        const offset = length + 2;
+        const cellLines = spectreCell(cell, locations
+            ? (instance, relative, card) => locate(cell, instance, offset + relative, card)
+            : undefined);
+        lines.push("", ...cellLines);
+        length += 2 + cellLines.join("\n").length;
+    }
+    return { text: `${lines.join("\n")}\n`, instances, fields };
+}
+export function printSpectreNetlist(ir) {
+    return renderSpectre(ir).text;
+}
+export function printDesignNetlist(format, ir) {
+    return format === "spice"
+        ? {
+            extension: ".spi",
+            mediaType: "application/x-spice",
+            text: printSpiceNetlist(ir),
+        }
+        : {
+            extension: ".scs",
+            mediaType: "application/x-spectre",
+            text: printSpectreNetlist(ir),
+        };
+}
+/** Record a card at its final file offset. Compiler-owned targets stay locked. */
+function cardRecorder(ir, result, parameters) {
+    const generated = new Set((ir.generatedDefinitions ?? []).map((d) => d.name));
+    const ownModels = new Map(ir.cells.map((cell) => [
+        cell.id,
+        new Set((cell.models ?? []).filter((m) => !m.authoredName).map((m) => m.name)),
+    ]));
+    return (cell, instance, offset, card) => {
+        if (!card.text)
+            return;
+        const owner = { documentId: cell.id, instanceId: instance.id };
+        result.instances.push({
+            ...owner,
+            startOffset: offset,
+            endOffset: offset + card.text.length,
+        });
+        const byParameter = new Map();
+        for (const field of card.fields) {
+            const span = {
+                ...owner,
+                ...field,
+                startOffset: offset + field.startOffset,
+                endOffset: offset + field.endOffset,
+            };
+            if (field.kind !== "target" ||
+                !(generated.has(field.rawValue) ||
+                    ownModels.get(cell.id).has(field.rawValue)))
+                result.fields.push(span);
+            if (parameters && field.kind === "parameter") {
+                const parameter = {
+                    ...owner,
+                    parameter: field.parameter,
+                    rawValue: field.rawValue,
+                    startOffset: span.startOffset,
+                    endOffset: span.endOffset,
+                };
+                const existing = byParameter.get(parameter.parameter);
+                if (existing)
+                    existing.push(parameter);
+                else
+                    byParameter.set(parameter.parameter, [parameter]);
+            }
+        }
+        if (parameters)
+            for (const p of instance.parameters)
+                parameters.push(...(byParameter.get(p.name) ?? []));
+    };
+}
+/** Both dialects emit their text and field provenance in the same pass. */
+export function printDesignNetlistWithLocations(format, ir) {
+    const printed = format === "spice" ? renderSpice(ir, false, true) : renderSpectre(ir, true);
+    return {
+        file: {
+            extension: format === "spice" ? ".spi" : ".scs",
+            mediaType: format === "spice" ? "application/x-spice" : "application/x-spectre",
+            text: printed.text,
+        },
+        locations: {
+            instances: printed.instances,
+            fields: printed.fields.toSorted((a, b) => a.startOffset - b.startOffset),
+        },
+    };
+}
+/** Presentation adds/removes only a leading title; coordinates remain UTF-16
+ * string offsets, matching CodeMirror and every existing source consumer. */
+export function shiftDesignNetlistLocations(locations, offset) {
+    const shift = (span) => ({
+        ...span,
+        startOffset: span.startOffset + offset,
+        endOffset: span.endOffset + offset,
+    });
+    return {
+        instances: locations.instances.map(shift),
+        fields: locations.fields.map(shift),
+    };
+}

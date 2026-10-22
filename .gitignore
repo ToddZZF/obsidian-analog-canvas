@@ -1,0 +1,8 @@
+node_modules/
+data.json
+preview/
+.DS_Store
+
+# 上游编辑器仓库的本地检出，不属于本仓库，也不在本仓库改动
+analog-canvas-go/
+analog-canvas/

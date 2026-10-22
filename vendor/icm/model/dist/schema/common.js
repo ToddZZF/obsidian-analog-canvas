@@ -1,0 +1,70 @@
+import { z } from "zod";
+/**
+ * Version of the normalized runtime/editor model.
+ *
+ * This is deliberately distinct from the portable Project File schema owned
+ * by `@icm/project-protocol`. It is the version used by the validated model
+ * that rendering, connectivity and transactions operate on; it is not the
+ * value written to an `.icproj.json` file's `schemaVersion` field.
+ */
+export const CURRENT_MODEL_SCHEMA_VERSION = 58;
+export const StableIdSchema = z.string().min(1).max(256);
+/** Strict persisted/presentation hex color token. Format: `#RRGGBB`. */
+export const HexColorSchema = z
+    .string()
+    .regex(/^#[0-9A-Fa-f]{6}$/u, "Color must be #RRGGBB hex format");
+/** A persisted Document page point before its Document-grid relation is known. */
+export const GridPointSchema = z.strictObject({
+    x: z.number().int(),
+    y: z.number().int(),
+});
+/** A grid-domain rectangle. Alignment is validated with a Document grid. */
+export const GridRectSchema = z.strictObject({
+    x: z.number().int(),
+    y: z.number().int(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+});
+/** Read-only renderer/diagnostic geometry. It may be fractional. */
+export const DerivedPointSchema = z.strictObject({
+    x: z.number().finite(),
+    y: z.number().finite(),
+});
+/** Read-only renderer/diagnostic bounds. Empty geometry may have zero extent. */
+export const DerivedRectSchema = z.strictObject({
+    x: z.number().finite(),
+    y: z.number().finite(),
+    width: z.number().finite().nonnegative(),
+    height: z.number().finite().nonnegative(),
+});
+/** Symbol-library artwork coordinates, unrelated to a Document page grid. */
+export const SymbolLocalPointSchema = z.strictObject({
+    x: z.number().finite(),
+    y: z.number().finite(),
+});
+export const SymbolLocalRectSchema = z.strictObject({
+    x: z.number().finite(),
+    y: z.number().finite(),
+    width: z.number().finite().positive(),
+    height: z.number().finite().positive(),
+});
+// Compatibility aliases remain internal migration aids. New code must name
+// Grid* or Derived* explicitly at package boundaries.
+export const PointSchema = GridPointSchema;
+export const RectSchema = GridRectSchema;
+export const RotationSchema = z.union([
+    z.literal(0),
+    z.literal(45),
+    z.literal(90),
+    z.literal(135),
+    z.literal(180),
+    z.literal(225),
+    z.literal(270),
+    z.literal(315),
+]);
+/** Independent screen-space reflection axes; `both` composes the two. */
+export const MirrorSchema = z.enum(["none", "horizontal", "vertical", "both"]);
+export const OrientationSchema = z.strictObject({
+    rotation: RotationSchema,
+    mirror: MirrorSchema,
+});

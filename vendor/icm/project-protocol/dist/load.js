@@ -1,0 +1,382 @@
+import { CircuitProjectSchema, CURRENT_MODEL_SCHEMA_VERSION, validateProjectSnapshot, } from "@icm/model";
+import { collectProjectModelSources } from "@icm/netlist";
+import { ProjectFormatError, } from "./diagnostics.js";
+import { ProjectMigrationError, upgradeSchema24To25, upgradeSchema25To26, upgradeSchema26To27, upgradeSchema27To28, upgradeSchema28To29, upgradeSchema29To30, upgradeSchema30To31, upgradeSchema31To32, upgradeSchema32To33, upgradeSchema33To34, upgradeSchema34To35, upgradeSchema35To36, upgradeSchema36To37, upgradeSchema37To38, upgradeSchema38To39, upgradeSchema39To40, upgradeSchema40To41, upgradeSchema41To42, upgradeSchema42To43, upgradeSchema43To44, upgradeSchema44To45, upgradeSchema45To46, upgradeSchema46To47, upgradeSchema47To48, upgradeSchema48To49, } from "./previous-to-current.js";
+import { repairBoundFormatOverrides } from "./transforms/bound-format-override.js";
+import { repairMisdrawnReviewedBindings } from "./transforms/misdrawn-reviewed-binding.js";
+import { repairUnmodelledReviewedSizes } from "./transforms/reviewed-size.js";
+import { repairAmplifierPolaritySnapshots } from "./transforms/amplifier-polarity.js";
+import { OLDEST_SUPPORTED_PROJECT_SCHEMA_VERSION } from "./version.js";
+import { upgradeSchema49To50 } from "./transforms/simulation-folders.js";
+import { upgradeSchema50To51 } from "./transforms/drafting-shape-paint.js";
+import { upgradeSchema51To52 } from "./transforms/mirror-directions.js";
+import { upgradeSchema52To53 } from "./transforms/rotation-steps.js";
+import { upgradeSchema53To54 } from "./transforms/parameter-annotations.js";
+import { upgradeSchema54To55 } from "./transforms/arrow-end-styles.js";
+import { upgradeSchema55To56 } from "./transforms/route-line-style.js";
+import { upgradeSchema56To57 } from "./transforms/power-rail-terminals.js";
+import { CURRENT_PROJECT_FILE_VERSION, decodeProjectFile, rejectKeptDocumentStyle, } from "./owned-project-file.js";
+/**
+ * One upgrade step per historical version, oldest first: entry N carries a
+ * Project from schemaVersion OLDEST + N to OLDEST + N + 1. A file loads by
+ * running every step from its own version to the current one, so the whole
+ * window stays honest as long as this chain stays contiguous.
+ */
+const UPGRADE_CHAIN = [
+    upgradeSchema24To25,
+    upgradeSchema25To26,
+    upgradeSchema26To27,
+    upgradeSchema27To28,
+    upgradeSchema28To29,
+    upgradeSchema29To30,
+    upgradeSchema30To31,
+    upgradeSchema31To32,
+    upgradeSchema32To33,
+    upgradeSchema33To34,
+    upgradeSchema34To35,
+    upgradeSchema35To36,
+    upgradeSchema36To37,
+    upgradeSchema37To38,
+    upgradeSchema38To39,
+    upgradeSchema39To40,
+    upgradeSchema40To41,
+    upgradeSchema41To42,
+    upgradeSchema42To43,
+    upgradeSchema43To44,
+    upgradeSchema44To45,
+    upgradeSchema45To46,
+    upgradeSchema46To47,
+    upgradeSchema47To48,
+    upgradeSchema48To49,
+    upgradeSchema49To50,
+    upgradeSchema50To51,
+    upgradeSchema51To52,
+    upgradeSchema52To53,
+    upgradeSchema53To54,
+    upgradeSchema54To55,
+    upgradeSchema55To56,
+    upgradeSchema56To57,
+    (raw) => ({ ...raw, schemaVersion: 58 }),
+];
+function isRecord(value) {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function hasExplicitCellBody(project) {
+    const items = (value) => Array.isArray(value) ? value.filter(isRecord) : [];
+    const presentationHasBody = (value) => isRecord(value) && Object.hasOwn(value, "bodyBounds");
+    const artworkHasBody = (value) => isRecord(value) &&
+        isRecord(value.generatedFrom) &&
+        presentationHasBody(value.generatedFrom.presentation);
+    return (items(project.documents).some((document) => isRecord(document.presentation) &&
+        presentationHasBody(document.presentation.cellSymbol)) ||
+        items(project.externalSubcircuitDefinitions).some((definition) => presentationHasBody(definition.presentation)) ||
+        items(project.componentDefinitions).some(artworkHasBody) ||
+        items(project.modelSources).some((source) => isRecord(source.draft) &&
+            items(source.draft.authoring).some((candidate) => presentationHasBody(candidate.presentation) ||
+                artworkHasBody(candidate.lastValidArtwork) ||
+                (isRecord(candidate.legacyRepair) &&
+                    artworkHasBody(candidate.legacyRepair.baseline)))));
+}
+export function tryValidateProject(input) {
+    return checkedProject(CircuitProjectSchema.safeParse(input));
+}
+/** Canonical read path; the model alone owns immutable validation provenance. */
+export function validateProjectReadSnapshot(input) {
+    const result = checkedProject(validateProjectSnapshot(input));
+    if (!result.ok)
+        throw new ProjectFormatError(result.diagnostics);
+    return result.project;
+}
+function checkedProject(result) {
+    if (!result.success)
+        return {
+            ok: false,
+            diagnostics: result.error.issues.map((issue) => ({
+                code: "INVALID_PROJECT",
+                message: issue.message,
+                path: issue.path.map((segment) => typeof segment === "symbol"
+                    ? (segment.description ?? "symbol")
+                    : segment),
+            })),
+        };
+    const project = repairAmplifierPolaritySnapshots(result.data);
+    const modelDiagnostics = collectProjectModelSources(project, project.externalSubcircuitDefinitions.map((d) => d.id)).diagnostics.filter((d) => d.severity === "error");
+    if (modelDiagnostics.length)
+        return {
+            ok: false,
+            diagnostics: modelDiagnostics.map((d) => ({
+                code: "INVALID_PROJECT",
+                message: d.message,
+                path: ["modelSources"],
+            })),
+        };
+    return {
+        ok: true,
+        project,
+        sourceSchemaVersion: CURRENT_MODEL_SCHEMA_VERSION,
+        migrated: project !== result.data,
+    };
+}
+export function validateProject(input) {
+    const result = tryValidateProject(input);
+    if (!result.ok)
+        throw new ProjectFormatError(result.diagnostics);
+    return result.project;
+}
+export function tryParseProjectWithMetadata(serialized) {
+    let parsed;
+    try {
+        parsed = JSON.parse(serialized);
+    }
+    catch (error) {
+        return {
+            ok: false,
+            diagnostics: [
+                {
+                    code: "INVALID_JSON",
+                    message: error instanceof Error
+                        ? error.message
+                        : "Project is not valid JSON",
+                    path: [],
+                },
+            ],
+        };
+    }
+    if (!isRecord(parsed) || !Number.isInteger(parsed.schemaVersion)) {
+        return {
+            ok: false,
+            diagnostics: [
+                {
+                    code: "UNSUPPORTED_SCHEMA_VERSION",
+                    message: "Project schemaVersion must be an integer",
+                    path: ["schemaVersion"],
+                },
+            ],
+        };
+    }
+    const sourceSchemaVersion = parsed.schemaVersion;
+    const migrated = sourceSchemaVersion !== CURRENT_PROJECT_FILE_VERSION;
+    if (sourceSchemaVersion < OLDEST_SUPPORTED_PROJECT_SCHEMA_VERSION ||
+        sourceSchemaVersion > CURRENT_PROJECT_FILE_VERSION) {
+        return {
+            ok: false,
+            diagnostics: [
+                {
+                    code: "UNSUPPORTED_SCHEMA_VERSION",
+                    message: `Project schemaVersion must be between ${OLDEST_SUPPORTED_PROJECT_SCHEMA_VERSION} and ${CURRENT_PROJECT_FILE_VERSION}`,
+                    path: ["schemaVersion"],
+                },
+            ],
+        };
+    }
+    let current;
+    try {
+        if (sourceSchemaVersion < 74 && hasExplicitCellBody(parsed))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "An explicit Cell symbol body requires Project schema 74",
+                    path: ["schemaVersion"],
+                },
+            ]);
+        if (sourceSchemaVersion < 73 &&
+            Array.isArray(parsed.documents) &&
+            parsed.documents.some((document) => isRecord(document) &&
+                Array.isArray(document.junctions) &&
+                document.junctions.some((junction) => isRecord(junction) &&
+                    (Object.hasOwn(junction, "styleOverride") ||
+                        Object.hasOwn(junction, "contactAnchor") ||
+                        junction.role === "style-anchor"))))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    path: ["documents"],
+                    message: "Junction colors require Project schema 73",
+                },
+            ]);
+        if (sourceSchemaVersion < 72 &&
+            Array.isArray(parsed.documents) &&
+            parsed.documents.some((document) => isRecord(document) &&
+                isRecord(document.presentation) &&
+                Object.hasOwn(document.presentation, "textFace")))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "A Document font requires Project schema 72",
+                    path: ["documents"],
+                },
+            ]);
+        if (sourceSchemaVersion < 71 &&
+            Array.isArray(parsed.modelSources) &&
+            parsed.modelSources.some((source) => isRecord(source) &&
+                isRecord(source.draft) &&
+                Array.isArray(source.draft.authoring) &&
+                source.draft.authoring.some((candidate) => isRecord(candidate) &&
+                    Object.hasOwn(candidate, "artworkInitialized"))))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "Custom artwork initialization requires Project schema 71",
+                    path: ["modelSources"],
+                },
+            ]);
+        if (sourceSchemaVersion < 68 &&
+            (Object.hasOwn(parsed, "componentAuthoringDrafts") ||
+                (Array.isArray(parsed.modelSources) &&
+                    parsed.modelSources.some((source) => isRecord(source) &&
+                        isRecord(source.draft) &&
+                        Object.hasOwn(source.draft, "authoring")))))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "Component authoring drafts require Project schema 68",
+                    path: ["schemaVersion"],
+                },
+            ]);
+        if (sourceSchemaVersion < 67 &&
+            Array.isArray(parsed.modelSources) &&
+            parsed.modelSources.some((s) => isRecord(s) &&
+                (s.language === "spectre" ||
+                    (isRecord(s.draft) && Object.hasOwn(s.draft, "language")))))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "Native model languages require Project schema 67",
+                    path: ["modelSources"],
+                },
+            ]);
+        if (sourceSchemaVersion < 66 &&
+            (Object.hasOwn(parsed, "modelSources") ||
+                (Array.isArray(parsed.externalSubcircuitDefinitions) &&
+                    parsed.externalSubcircuitDefinitions.some((d) => isRecord(d) && Object.hasOwn(d, "implementation"))))) {
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "Project model source ownership requires Project schema 66",
+                    path: ["modelSources"],
+                },
+            ]);
+        }
+        if (sourceSchemaVersion < 69 &&
+            [parsed.componentDefinitions, parsed.externalSubcircuitDefinitions].some((definitions) => Array.isArray(definitions) &&
+                definitions.some((definition) => isRecord(definition) &&
+                    Object.hasOwn(definition, "libraryOrigin"))))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "Component library provenance requires Project schema 69",
+                    path: ["componentDefinitions"],
+                },
+            ]);
+        if (sourceSchemaVersion < 70 &&
+            Array.isArray(parsed.documents) &&
+            parsed.documents.some((document) => isRecord(document) && Object.hasOwn(document, "inductorCouplings")))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "Inductor couplings require Project schema 70",
+                    path: ["documents"],
+                },
+            ]);
+        if (sourceSchemaVersion < 64)
+            rejectKeptDocumentStyle(parsed);
+        current = sourceSchemaVersion >= 59 ? decodeProjectFile(parsed) : parsed;
+        for (let version = current.schemaVersion; version < CURRENT_MODEL_SCHEMA_VERSION; version += 1) {
+            current =
+                UPGRADE_CHAIN[version - OLDEST_SUPPORTED_PROJECT_SCHEMA_VERSION](current);
+        }
+    }
+    catch (error) {
+        if (error instanceof ProjectFormatError)
+            return { ok: false, diagnostics: error.diagnostics };
+        if (error instanceof ProjectMigrationError) {
+            return {
+                ok: false,
+                diagnostics: [
+                    {
+                        code: "INVALID_PROJECT",
+                        message: error.message,
+                        path: [...error.path],
+                    },
+                ],
+            };
+        }
+        throw error;
+    }
+    // A bound format override is derived from the name it decorates. When the
+    // two have drifted apart — #463 retired the leading-capital rule under
+    // overrides already written and published — restore the text instead of
+    // refusing the Project, because a file that will not open is, to its
+    // author, a file that is gone.
+    // SPICE invocation prefixes belong to export, never to file loading.
+    current = repairBoundFormatOverrides(current);
+    const validated = tryValidateProject(current);
+    if (!validated.ok)
+        return validated;
+    // A Var Cap bound to the SKY130 varactor (#1298) could be neither wired nor
+    // exported; it opens as an ideal Var Cap. A repair the schema would refuse
+    // leaves the Project as it was rather than refusing to open it.
+    let project = validated.project;
+    const repaired = repairMisdrawnReviewedBindings(project);
+    if (repaired !== project) {
+        const checked = CircuitProjectSchema.safeParse(repaired);
+        if (checked.success)
+            project = checked.data;
+    }
+    // A 16 V part at a size SKY130 has no model for opens at a size it has,
+    // changed as little as it can be (#1485).
+    const resized = repairUnmodelledReviewedSizes(project);
+    if (resized !== project) {
+        const checked = CircuitProjectSchema.safeParse(resized);
+        if (checked.success)
+            project = checked.data;
+    }
+    if (project.componentDefinitions) {
+        const definitions = new Map(project.componentDefinitions.map((definition) => [
+            definition.symbol.id,
+            definition.symbol,
+        ]));
+        for (const document of project.documents) {
+            const uses = [
+                ...document.instances.map((instance) => ({
+                    id: instance.symbolId,
+                    variant: instance.symbolVariantId,
+                })),
+                ...(document.drafting?.objects ?? []).flatMap((object) => object.kind === "floating-symbol"
+                    ? [{ id: object.symbolId, variant: undefined }]
+                    : []),
+            ];
+            for (const use of uses) {
+                const definition = definitions.get(use.id);
+                if (!definition ||
+                    (use.variant &&
+                        !definition.variants.some((variant) => variant.id === use.variant)))
+                    return {
+                        ok: false,
+                        diagnostics: [
+                            {
+                                code: "INVALID_PROJECT",
+                                path: ["componentDefinitions"],
+                                message: `Missing included component definition or variant: ${use.id}${use.variant ? `/${use.variant}` : ""}`,
+                            },
+                        ],
+                    };
+            }
+        }
+    }
+    return {
+        ok: true,
+        project,
+        sourceSchemaVersion,
+        migrated: migrated || validated.migrated,
+    };
+}
+export function parseProjectWithMetadata(serialized) {
+    const result = tryParseProjectWithMetadata(serialized);
+    if (!result.ok)
+        throw new ProjectFormatError(result.diagnostics);
+    return result;
+}
+export function parseProject(serialized) {
+    return parseProjectWithMetadata(serialized).project;
+}

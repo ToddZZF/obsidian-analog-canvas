@@ -1,0 +1,561 @@
+import { readSimulationExperimentConfig, SIMULATION_NOISE_INPUT_DENSITY_ID, SIMULATION_NOISE_OUTPUT_DENSITY_ID, } from "@icm/model";
+import { projectSourceSimulation } from "./simulation-source-projection.js";
+import { collectProjectModelSources, projectModelReachability, projectModelText, renderProjectModelSource, inspectProjectModelSource, } from "./project-model-source.js";
+import { simulationNetlistDiagnostic } from "./simulation-diagnostic.js";
+import { reachableCircuitBindings } from "./source-file-graph.js";
+import { sha256Hex } from "@icm/derived";
+import { resolveReviewedLibraryInterface, standardCellBindingForMaster, standardCellLibraryOfName, } from "@icm/devices";
+import { mapSimulationFile, insertSimulationText, } from "./simulation-source-map.js";
+import { buildSimulationPlan, } from "./simulation-compile.js";
+import { printSpiceWithLocations } from "./printers.js";
+import { inspectSimulationSourceGraph, } from "./simulation-source-graph.js";
+import { resolveAuthoredCircuitScope } from "./simulation-source-scopes.js";
+import { nativeSourceCollection } from "./simulation-native-collection.js";
+import { ngspiceSimulationDevices, NATIVE_MOS_OP_PARAMETERS, } from "./simulation-ngspice-devices.js";
+import { prepareNgspiceAuthoredNames, spellNgspiceAuthoredText, } from "./simulation-ngspice-name-diagnostics.js";
+/**
+ * Why a definition without a body cannot run, and what would. A standard
+ * cell is named as one (#1596): what is wrong with it, and which cells run.
+ */
+function missingImplementation(definition) {
+    const cell = standardCellBindingForMaster(definition.name);
+    if (cell)
+        return {
+            code: "STANDARD_CELL_UNSUPPORTED",
+            severity: "error",
+            message: `${definition.name} is declared with pins ${definition.terminals.map((terminal) => terminal.name).join(" ")}, not in the library's order ${cell.terminals.map((terminal) => terminal.targetName).join(" ")}, so the library's cell cannot stand in for it. Bind a Library gate to the cell with set-model or Properties; the gate calls it in the library's order.`,
+        };
+    const library = standardCellLibraryOfName(definition.name);
+    if (library)
+        return {
+            code: "STANDARD_CELL_UNSUPPORTED",
+            severity: "error",
+            message: `${definition.name} is a ${library} cell that simulation does not run. Hosted ngspice runs sky130_fd_sc_hd combinational gate cells (inverters, buffers, NAND, NOR, AND, OR, XOR and XNOR) bound to a Library gate; give this cell a Project model source to run it.`,
+        };
+    return {
+        code: "MODEL_IMPLEMENTATION_MISSING",
+        severity: "error",
+        message: `Legacy model ${definition.name} has no resolvable implementation in this experiment. Define its source in Cell Manager`,
+    };
+}
+/** Author text stays native. Canvas extraction, instrumentation and output math remain shared. */
+export function compileNgspiceSourceSimulation(project, folder, variant) {
+    if (folder.input.drafts?.length)
+        return {
+            ok: false,
+            diagnostics: folder.input.drafts.map((draft) => ({
+                code: "SIMULATION_SOURCE_DRAFT_PENDING",
+                severity: "error",
+                path: draft.path,
+                message: "This folder contains a saved unapplied draft. Apply or discard it before running; saving remains available.",
+            })),
+        };
+    const diagnostics = [];
+    const fail = (code, message, field) => diagnostics.push({
+        code,
+        severity: "error",
+        message,
+        ...(field ? { field } : {}),
+    });
+    const parsedConfig = readSimulationExperimentConfig(folder);
+    if (!parsedConfig.ok)
+        return {
+            ok: false,
+            diagnostics: (parsedConfig.fields.length
+                ? parsedConfig.fields
+                : [{ message: parsedConfig.message, field: "" }]).map((issue) => ({
+                code: parsedConfig.fields.length
+                    ? "SIMULATION_CONFIG_INVALID"
+                    : "SIMULATION_CONFIG_JSON",
+                severity: "error",
+                message: issue.message,
+                path: parsedConfig.path,
+                ...(issue.field ? { field: issue.field } : {}),
+            })),
+        };
+    const authoredGraph = inspectSimulationSourceGraph(folder.input);
+    const modelReachability = projectModelReachability(project, reachableCircuitBindings(folder.input, authoredGraph).map((b) => b.documentId));
+    const projectModels = collectProjectModelSources(project, modelReachability.definitionIds, {
+        format: "spice",
+        requireImplementation: true,
+        reservedNames: project.documents
+            .filter((d) => modelReachability.documentIds.includes(d.id))
+            .map((d) => d.netlist?.name)
+            .filter((n) => Boolean(n)),
+    });
+    diagnostics.push(...projectModels.diagnostics);
+    // A definition without a body runs only when something defines it: a
+    // reviewed library interface, a PDK device or a standard cell in its exact
+    // pin order (#1596), whose library the Profile mounts and Preparation
+    // checks; or a .subckt of the experiment's own files. A loaded dependency
+    // no longer stands in for one (#1596): whether it defines this name, and in
+    // this pin order, is not known here, and an undefined or misordered call
+    // would reach ngspice. An unreviewed library name takes a Project model
+    // source or an authored .subckt.
+    for (const id of modelReachability.definitionIds) {
+        const definition = project.externalSubcircuitDefinitions.find((d) => d.id === id);
+        if (!definition ||
+            definition.implementation ||
+            resolveReviewedLibraryInterface(definition.name, definition.terminals.map((t) => t.name)))
+            continue;
+        const declaration = authoredGraph.statements.find(({ statement }) => statement.kind === "subckt_start" &&
+            statement.name.toLowerCase() === definition.name.toLowerCase());
+        if (!declaration)
+            diagnostics.push(missingImplementation(definition));
+    }
+    const modelNames = new Set(projectModels.sources.flatMap((s) => inspectProjectModelSource(s).entries.map((e) => e.name.toLowerCase())));
+    const deviceModelNames = new Set(projectModels.sources.flatMap((s) => inspectProjectModelSource(s).globalModels.map((m) => m.name.toLowerCase())));
+    let authoredSubcircuit = false;
+    for (const { statement, path } of authoredGraph.statements) {
+        if (statement.kind === "subckt_start")
+            authoredSubcircuit = true;
+        else if (statement.kind === "subckt_end")
+            authoredSubcircuit = false;
+        if ((statement.kind === "subckt_start" &&
+            modelNames.has(statement.name.toLowerCase())) ||
+            (statement.kind === "model" &&
+                !authoredSubcircuit &&
+                deviceModelNames.has(statement.name.toLowerCase())))
+            diagnostics.push({
+                code: "MODEL_SOURCE_SHADOW",
+                severity: "error",
+                message: `Experiment cannot override Project model ${statement.name}; edit its shared model source`,
+                path,
+                sourceRef: statement.sourceRef,
+            });
+    }
+    diagnostics.push(...authoredGraph.diagnostics);
+    const authoredNames = prepareNgspiceAuthoredNames(authoredGraph);
+    diagnostics.push(...authoredNames.diagnostics);
+    if (diagnostics.some((d) => d.severity === "error"))
+        return { ok: false, diagnostics };
+    const replacementsByPath = new Map();
+    for (const replacement of authoredNames.replacements)
+        replacementsByPath.set(replacement.path, [
+            ...(replacementsByPath.get(replacement.path) ?? []),
+            replacement,
+        ]);
+    const preparedFiles = folder.input.files.map((file) => {
+        let text = file.text;
+        for (const replacement of (replacementsByPath.get(file.path) ?? []).sort((left, right) => right.start - left.start))
+            text =
+                text.slice(0, replacement.start) +
+                    replacement.text +
+                    text.slice(replacement.end);
+        return { ...file, text };
+    });
+    const preparedFolder = {
+        ...folder,
+        input: { ...folder.input, files: preparedFiles },
+    };
+    const graph = inspectSimulationSourceGraph(preparedFolder.input);
+    const projection = projectSourceSimulation(project, preparedFolder, parsedConfig.config, graph, variant, parsedConfig.authority);
+    const effective = projection.project;
+    const config = projection.config;
+    if (parsedConfig.authority === "code") {
+        const native = nativeSourceCollection(graph);
+        config.collection = native.collection;
+        diagnostics.push(...native.diagnostics);
+    }
+    diagnostics.push(...projection.diagnostics);
+    const reachable = new Set(graph.paths);
+    const bindings = folder.input.circuitBindings.filter((b) => reachable.has(b.path));
+    const byBinding = new Map(bindings.map((b) => [b.id, b]));
+    const leaves = new Map();
+    const perBinding = new Map(bindings.map((b) => [
+        b.id,
+        [],
+    ]));
+    function register(expression) {
+        if (expression.kind === "voltage" || expression.kind === "current") {
+            const binding = byBinding.get(expression.circuit.bindingId);
+            if (!binding) {
+                fail("SIMULATION_BINDING_UNAVAILABLE", `Output binding ${expression.circuit.bindingId} is missing or is not included by the entry`);
+                return;
+            }
+            const id = `source-leaf-${leaves.size}`;
+            const { circuit: _circuit, ...local } = expression;
+            leaves.set(expression, { id, binding });
+            perBinding.get(binding.id).push({ id, expression: local });
+        }
+        else if ("operand" in expression)
+            register(expression.operand);
+        else if ("left" in expression) {
+            register(expression.left);
+            register(expression.right);
+        }
+    }
+    config.outputs.forEach((output) => register(output.expression));
+    for (const target of config.deviceOperatingPoints)
+        if (!byBinding.has(target.circuit.bindingId))
+            fail("SIMULATION_BINDING_UNAVAILABLE", `Device OP binding ${target.circuit.bindingId} is missing or not included`);
+    const intents = new Map(bindings.map((binding) => [
+        binding.id,
+        {
+            version: 3,
+            input: {
+                kind: "structured",
+                rootDocumentId: binding.documentId,
+                environment: config.environment,
+                analyses: [],
+                outputs: perBinding
+                    .get(binding.id)
+                    .map((leaf) => ({ ...leaf, label: leaf.id })),
+                deviceOperatingPoints: config.deviceOperatingPoints
+                    .filter((target) => target.circuit.bindingId === binding.id)
+                    .map(({ circuit: _circuit, ...target }) => target),
+                measurements: [],
+                designVariables: [],
+                runPlan: { mode: "nominal" },
+            },
+        },
+    ]));
+    // Two passes share one ephemeral instrumentation set across reused Cell definitions.
+    // No additional sources or pins are written back into the Project.
+    let instrumentations = [];
+    // The files this run reads: a model they define is the run's own.
+    const deckSources = preparedFiles
+        .filter((file) => reachable.has(file.path))
+        .map((file) => file.text);
+    deckSources.push(...projectModels.sources.map(projectModelText));
+    for (const [id, intent] of intents) {
+        const plan = buildSimulationPlan(effective, intent, {
+            nativeControl: true,
+            rootAsTopLevel: byBinding.get(id).emission === "top-level",
+            terminalInstrumentations: instrumentations,
+            deckSources,
+        });
+        if (plan.ok)
+            instrumentations = plan.terminalInstrumentations;
+        else
+            diagnostics.push(...plan.diagnostics.map(simulationNetlistDiagnostic));
+    }
+    if (diagnostics.some((d) => d.severity === "error"))
+        return { ok: false, diagnostics };
+    const plans = new Map();
+    for (const [id, intent] of intents) {
+        const plan = buildSimulationPlan(effective, intent, {
+            nativeControl: true,
+            rootAsTopLevel: byBinding.get(id).emission === "top-level",
+            terminalInstrumentations: instrumentations,
+            deckSources,
+        });
+        if (!plan.ok)
+            return {
+                ok: false,
+                diagnostics: plan.diagnostics.map(simulationNetlistDiagnostic),
+            };
+        plans.set(id, plan);
+        diagnostics.push(...plan.warnings.map(simulationNetlistDiagnostic));
+    }
+    // A generated definition is emitted once even when two bound roots reach it.
+    const definitions = new Map();
+    const names = new Map();
+    for (const binding of bindings) {
+        const plan = plans.get(binding.id);
+        for (const cell of plan.circuit.cells) {
+            const name = cell.name.toLowerCase();
+            if (names.has(name) && names.get(name) !== cell.id)
+                fail("SIMULATION_GENERATED_NAME_COLLISION", `Generated Cells share the name ${cell.name}`);
+            names.set(name, cell.id);
+            if (binding.emission === "top-level" && cell.id === binding.documentId)
+                continue;
+            const prior = definitions.get(cell.id);
+            if (prior && JSON.stringify(prior.cell) !== JSON.stringify(cell))
+                fail("SIMULATION_GENERATED_DEFINITION_CONFLICT", `Cell ${cell.name} has conflicting generated definitions`);
+            else if (!prior)
+                definitions.set(cell.id, { cell, bindingId: binding.id });
+        }
+    }
+    // Behavioral and magnetic definitions share ownership: the first bound
+    // root that calls the model emits it, even if later roots reach it too.
+    const generatedOwners = new Map();
+    const generatedDefinitions = new Map();
+    for (const binding of bindings) {
+        for (const subcircuit of plans.get(binding.id).circuit
+            .generatedDefinitions ?? []) {
+            const name = subcircuit.name.toLowerCase();
+            const prior = generatedDefinitions.get(name);
+            if (prior && JSON.stringify(prior) !== JSON.stringify(subcircuit))
+                fail("SIMULATION_GENERATED_DEFINITION_CONFLICT", `Conflicting generated model ${subcircuit.name}`);
+            generatedDefinitions.set(name, subcircuit);
+            if (names.has(name))
+                fail("SIMULATION_GENERATED_NAME_COLLISION", `Generated Cell ${subcircuit.name} shares its name with the built-in ${subcircuit.name} subcircuit`);
+            if (!generatedOwners.has(name))
+                generatedOwners.set(name, binding.id);
+        }
+    }
+    for (const { path, statement } of graph.statements) {
+        if (statement.kind === "subckt_start" &&
+            (names.has(statement.name.toLowerCase()) ||
+                generatedOwners.has(statement.name.toLowerCase())))
+            diagnostics.push({
+                code: "SIMULATION_GENERATED_DEFINITION_SHADOWED",
+                severity: "error",
+                message: `Author definition shadows generated Cell ${statement.name}`,
+                path,
+                sourceRef: statement.sourceRef,
+            });
+        if (bindings.length &&
+            statement.kind === "control_command" &&
+            ["source", "circbyline", "remcirc", "edit"].includes(statement.command.toLowerCase()))
+            diagnostics.push({
+                code: "SIMULATION_BOUND_TOPOLOGY_REPLACED",
+                severity: "error",
+                message: "Use Canvas edits for topology changes, or an unbound source experiment to replace the loaded circuit",
+                path,
+                sourceRef: statement.sourceRef,
+            });
+    }
+    const generated = bindings.map((binding) => {
+        const ir = plans.get(binding.id).circuit;
+        const cells = ir.cells.filter((cell) => definitions.get(cell.id)?.bindingId === binding.id ||
+            (binding.emission === "top-level" && cell.id === binding.documentId));
+        const printed = printSpiceWithLocations({
+            ...ir,
+            cells,
+            generatedDefinitions: (ir.generatedDefinitions ?? []).filter((subcircuit) => generatedOwners.get(subcircuit.name.toLowerCase()) === binding.id),
+        }, binding.emission === "top-level");
+        return { bindingId: binding.id, path: binding.path, ...printed };
+    });
+    const vectors = [];
+    if (projectModels.sources.length && generated[0]) {
+        const file = generated[0];
+        file.modelSources = [];
+        for (const source of projectModels.sources) {
+            const model = renderProjectModelSource(source, {
+                outputPath: file.path,
+                format: "spice",
+            });
+            file.text += `\n* Project model: applied version ${source.revision}\n`;
+            const offset = file.text.length;
+            file.text += model.text;
+            file.modelSources.push(...model.segments.map((s) => ({
+                ...s,
+                startOffset: s.startOffset + offset,
+                endOffset: s.endOffset + offset,
+            })));
+        }
+    }
+    const capture = new Set();
+    const scopes = new Map();
+    const getScope = (binding, scope) => {
+        const key = JSON.stringify([
+            binding.id,
+            scope.callPath.map((part) => part.toLowerCase()),
+        ]);
+        let resolved = scopes.get(key);
+        if (!resolved) {
+            resolved = resolveAuthoredCircuitScope(graph, binding, plans.get(binding.id).circuit, scope);
+            scopes.set(key, resolved);
+            if (!resolved.ok)
+                fail("SIMULATION_CALL_SCOPE", resolved.message);
+        }
+        return resolved;
+    };
+    function acquisition(vector, quantity, collect) {
+        const normalized = vector.toLowerCase();
+        if (normalized === "v(0)")
+            return { kind: "constant", value: 0, unit: "V" };
+        const existing = vectors.find((item) => item.vector === normalized && item.quantity === quantity);
+        const item = existing ?? {
+            probeId: `source-acquisition-${vectors.length}`,
+            vector: normalized,
+            quantity,
+        };
+        if (!existing)
+            vectors.push(item);
+        if (collect)
+            capture.add(normalized);
+        return {
+            kind: "acquisition",
+            acquisitionId: item.probeId,
+            quantity: item.quantity,
+        };
+    }
+    function scoped(expression, plan, binding, scope) {
+        if (expression.kind === "acquisition") {
+            const original = plan.vectors.find((v) => v.probeId === expression.acquisitionId);
+            const resolved = getScope(binding, scope);
+            return resolved.ok
+                ? acquisition(resolved.vector(original.vector), original.quantity, true)
+                : expression;
+        }
+        if ("operand" in expression)
+            return {
+                ...expression,
+                operand: scoped(expression.operand, plan, binding, scope),
+            };
+        if ("left" in expression)
+            return {
+                ...expression,
+                left: scoped(expression.left, plan, binding, scope),
+                right: scoped(expression.right, plan, binding, scope),
+            };
+        return { ...expression };
+    }
+    function expression(source) {
+        if (source.kind === "voltage" || source.kind === "current") {
+            const leaf = leaves.get(source);
+            const plan = plans.get(leaf.binding.id);
+            getScope(leaf.binding, source.circuit);
+            return scoped(plan.outputs.find((o) => o.id === leaf.id).expression, plan, leaf.binding, source.circuit);
+        }
+        if (source.kind === "vector") {
+            if (/[\r\n;]/u.test(source.vector))
+                fail("SIMULATION_VECTOR_INVALID", "A native vector must be one expression, not multiple commands");
+            return acquisition(spellNgspiceAuthoredText(source.vector), "native", false);
+        }
+        if ("operand" in source)
+            return { ...source, operand: expression(source.operand) };
+        if ("left" in source)
+            return {
+                ...source,
+                left: expression(source.left),
+                right: expression(source.right),
+            };
+        return { ...source };
+    }
+    const outputs = config.outputs.map((output) => ({
+        ...output,
+        expression: expression(output.expression),
+    }));
+    const deviceOperatingPoints = config.deviceOperatingPoints.map((target) => {
+        const binding = byBinding.get(target.circuit.bindingId);
+        const plan = plans.get(binding.id);
+        const compiled = plan.deviceOperatingPoints.find((item) => item.id === target.id);
+        return {
+            ...compiled,
+            reference: [...target.circuit.callPath, compiled.reference].join("."),
+            values: compiled.values.map((value) => ({
+                ...value,
+                expression: scoped(value.expression, plan, binding, target.circuit),
+            })),
+        };
+    });
+    // Discover mappings, but do not request any acquisition here. Only vectors
+    // actually returned by the native program become Device OP rows.
+    if (parsedConfig.authority === "code") {
+        for (const device of ngspiceSimulationDevices(project, preparedFolder.input)) {
+            if (!device.polarity || !device.nativeDevice)
+                continue;
+            deviceOperatingPoints.push({
+                id: `native-op:${device.nativeDevice}`,
+                documentId: device.documentId,
+                instanceId: device.instanceId,
+                occurrence: device.occurrence,
+                reference: device.reference,
+                polarity: device.polarity,
+                values: NATIVE_MOS_OP_PARAMETERS.map((parameter) => ({
+                    parameter,
+                    label: parameter.toUpperCase(),
+                    unit: parameter === "id" ? "A" : parameter.startsWith("g") ? "S" : "V",
+                    expression: acquisition(`@${device.nativeDevice}[${parameter}]`, "native", false),
+                })),
+            });
+        }
+    }
+    for (const measurement of config.measurements)
+        if (!outputs.some((o) => o.id === measurement.outputId) &&
+            measurement.outputId !== SIMULATION_NOISE_INPUT_DENSITY_ID &&
+            measurement.outputId !== SIMULATION_NOISE_OUTPUT_DENSITY_ID)
+            fail("SIMULATION_MEASUREMENT_OUTPUT_MISSING", `Measurement ${measurement.label} references missing Output ${measurement.outputId}`);
+    if (diagnostics.some((d) => d.severity === "error"))
+        return { ok: false, diagnostics };
+    const mappedFiles = [
+        ...projection.mappedFiles,
+        ...generated.map(({ path, text, bindingId, modelSources }) => {
+            const file = mapSimulationFile(path, text, {
+                kind: "generated",
+                purpose: "canvas-circuit",
+                bindingId,
+            });
+            if (modelSources?.length) {
+                file.segments = [];
+                let offset = 0;
+                for (const s of modelSources) {
+                    if (offset < s.startOffset)
+                        file.segments.push({
+                            startOffset: offset,
+                            endOffset: s.startOffset,
+                            origin: {
+                                kind: "generated",
+                                purpose: "canvas-circuit",
+                                bindingId,
+                            },
+                        });
+                    file.segments.push({
+                        startOffset: s.startOffset,
+                        endOffset: s.endOffset,
+                        origin: {
+                            kind: "model-source",
+                            sourceId: s.sourceId,
+                            revision: s.revision,
+                            path: s.path,
+                            startOffset: s.sourceOffset,
+                            ...(s.derived
+                                ? { derived: true, sourceLength: s.sourceLength }
+                                : {}),
+                        },
+                    });
+                    offset = s.endOffset;
+                }
+                if (offset < text.length)
+                    file.segments.push({
+                        startOffset: offset,
+                        endOffset: text.length,
+                        origin: { kind: "generated", purpose: "canvas-circuit", bindingId },
+                    });
+            }
+            return file;
+        }),
+    ];
+    if (capture.size) {
+        const index = mappedFiles.findIndex((f) => f.path === folder.input.entry);
+        const entry = mappedFiles[index];
+        const end = entry.text.indexOf("\n");
+        const explicitSave = graph.statements.some(({ statement }) => statement.kind === "control_command" &&
+            statement.command.toLowerCase() === "save") ||
+            preparedFolder.input.files.some((file) => /^\s*\.save\b/imu.test(file.text));
+        const prefix = `* Canvas acquisitions (generated)\n.save ${explicitSave ? "" : "all "}${[...capture].join(" ")}\n`;
+        // Keep the native title in place. Other author bytes are never reformatted.
+        mappedFiles[index] = insertSimulationText(entry, end < 0 ? entry.text.length : end + 1, (end < 0 ? "\n" : "") + prefix, { kind: "generated", purpose: "canvas-acquisitions" });
+    }
+    return {
+        ok: true,
+        config,
+        authority: parsedConfig.authority,
+        authoredFiles: structuredClone(folder.input.files),
+        files: mappedFiles.map(({ path, text }) => ({ path, text })),
+        sourceMaps: mappedFiles.map(({ path, segments }) => ({ path, segments })),
+        includes: graph.includes,
+        ...(projectModels.sources.length
+            ? {
+                modelSources: projectModels.sources.map(({ draft: _draft, ...source }) => structuredClone(source)),
+                modelDependencies: projectModels.sources.flatMap((s) => s.dependencies),
+            }
+            : {}),
+        electricalHash: sha256Hex(JSON.stringify(projectModels.sources.length
+            ? {
+                models: projectModels.sources.map(({ draft: _draft, ...source }) => source),
+                circuits: [...plans]
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([id, plan]) => ({
+                    bindingId: id,
+                    circuit: plan.circuit,
+                })),
+            }
+            : [...plans]
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([id, plan]) => ({ bindingId: id, circuit: plan.circuit })))),
+        entry: folder.input.entry,
+        generated,
+        vectors,
+        outputs,
+        deviceOperatingPoints,
+        warnings: diagnostics,
+        reachedDocumentIds: [
+            ...new Set([...plans.values()].flatMap((plan) => plan.circuit.cells.map((cell) => cell.id))),
+        ],
+    };
+}

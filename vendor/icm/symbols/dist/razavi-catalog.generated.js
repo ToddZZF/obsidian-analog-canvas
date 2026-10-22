@@ -1,0 +1,20280 @@
+export const razaviSymbolCatalogIdentity = {
+    schemaVersion: 2,
+    id: "razavi-symbols",
+    version: 1,
+};
+export const razaviSymbolCatalogEntries = [
+    {
+        symbolId: "and-gate",
+        name: "AND Gate",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "B", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic gate; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "and-gate.json",
+        assetHash: "b7d3816401cbf0a5475b23a71f5b5e694684a3ded875285e7daf6eb5edbf0fd8",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/logic-and-gate-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/logic-and-gate-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/logic-gate-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/logic-and-gate-vector-source.json",
+            converterPath: "scripts/generate-razavi-logic-gate-assets.mjs",
+            converterVersion: 3,
+            bodyNormalization: "left-grid-anchor",
+        },
+    },
+    {
+        symbolId: "and-gate-3",
+        name: "AND Gate (3 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "Three-input product derivation from the calibrated two-input AND; the cited PDF does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the AND input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "and-gate-3.json",
+        assetHash: "ecacacdb6ea33394d074debe3a5427821a38bca48e893ec03bef75b0a8ca5c85",
+        generation: {
+            kind: "derived-multi-input-and-gate",
+            sourceSymbolId: "and-gate",
+            inputCount: 3,
+            converterPath: "scripts/lib/derived-and-gate.mjs",
+            converterVersion: 2,
+        },
+    },
+    {
+        symbolId: "and-gate-4",
+        name: "AND Gate (4 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "Four-input product derivation from the calibrated two-input AND; the cited PDF does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "D", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the AND input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "and-gate-4.json",
+        assetHash: "588c6fd97436ab125605b998bf6e0a8251d5add986c4588a4bdf6fc75d70b675",
+        generation: {
+            kind: "derived-multi-input-and-gate",
+            sourceSymbolId: "and-gate",
+            inputCount: 4,
+            converterPath: "scripts/lib/derived-and-gate.mjs",
+            converterVersion: 2,
+        },
+    },
+    {
+        symbolId: "battery",
+        name: "Battery",
+        category: "source",
+        reviewStatus: "reviewed",
+        pinOrder: ["+", "-"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "SPICE V cards do not distinguish battery plate artwork from a circular voltage source, so ordinary V imports keep the circular symbol.",
+        assetPath: "battery.json",
+        assetHash: "ac5a89ba8b959ffd557ab8335ac2c86caf8a5ac0105b2cdc5c2bbd9a62166b3a",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/battery-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/battery-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/battery-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/battery-vector-source.json",
+            converterPath: "scripts/generate-razavi-battery-asset.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "buffer",
+        name: "Buffer",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic symbol; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "buffer.json",
+        assetHash: "fb75e868c9aec3f6f80532740e27aac424c5e2b23c5712285422c1111b032902",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/buffer-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/buffer-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/buffer-dff-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/buffer-vector-source.json",
+            converterPath: "scripts/generate-razavi-buffer-dff-assets.mjs",
+            converterVersion: 3,
+            bodyNormalization: "left-grid-anchor",
+        },
+    },
+    {
+        symbolId: "capacitor",
+        name: "Capacitor",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["1", "2"],
+        palette: true,
+        automaticMappings: ["spice:C"],
+        assetPath: "capacitor.json",
+        assetHash: "6ccdd4cdcbbd95bd10c0a59f83edd58c1b7ace5fca39a7a485b45e7dca3fe6b2",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/capacitor-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/capacitor-geometry.json",
+        },
+    },
+    {
+        symbolId: "closed-switch",
+        name: "Closed Switch",
+        category: "switch",
+        reviewStatus: "reviewed",
+        pinOrder: ["1", "2"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Two-terminal Razavi switch; SPICE S has a four-terminal control contract.",
+        assetPath: "closed-switch.json",
+        assetHash: "96208e1fc730ce7ce199df0001be3efcb20f7bb9c08e86de5af5115d8ad6dccf",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/closed-switch-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/closed-switch-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/closed-switch-vector-source.json",
+            converterPath: "scripts/generate-razavi-common-assets.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "comparator",
+        name: "Comparator",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Textbook comparator block; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "comparator.json",
+        assetHash: "2f2701121aa69e74bf76594f0ab0ab3ba6a1dda13322b509dccbeda9cbec78c5",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+            converterPath: "scripts/generate-razavi-opamp-asset.mjs",
+            converterVersion: 6,
+            bodyNormalization: "equilateral-triangle",
+        },
+    },
+    {
+        symbolId: "comparator-inputs-swapped",
+        name: "Comparator (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Textbook comparator block; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "comparator-inputs-swapped.json",
+        assetHash: "ca0abbc4716ce0e7d380dc40d379f9f422306cb0426dbfd2b0b6b725f556350a",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "comparator",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "comparator-unmarked",
+        name: "Comparator (unmarked)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Unmarked comparator block; SPICE subcircuit pin polarity and supply contracts require an explicit PDK mapping.",
+        assetPath: "comparator-unmarked.json",
+        assetHash: "21dab86cca8e41549dab92672b9b0313d682570e1e817d8dbb9bb5eed37b6501",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+            converterPath: "scripts/generate-razavi-opamp-asset.mjs",
+            converterVersion: 6,
+            bodyNormalization: "equilateral-triangle",
+        },
+    },
+    {
+        symbolId: "comparator-unmarked-inputs-swapped",
+        name: "Comparator (unmarked) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Unmarked comparator block; SPICE subcircuit pin polarity and supply contracts require an explicit PDK mapping.",
+        assetPath: "comparator-unmarked-inputs-swapped.json",
+        assetHash: "c79af617c604de8888fbc9bff6044ccebc479f4bcda519fdac1620e2301e0cdb",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "comparator-unmarked",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "comparator-differential",
+        name: "Fully Differential Comparator",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "User-requested complementary-output extension of the existing comparator using the shared differential triangle; no exact textbook witness is claimed.",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Ideal complementary-output comparator; an external implementation may be selected explicitly.",
+        assetPath: "comparator-differential.json",
+        assetHash: "4484d4513ffb4b448e5dc426647e5f5de48aae72aa13f55367321edf72fe6b78",
+        generation: {
+            kind: "derived-differential-comparator",
+            sourceSymbolId: "comparator",
+            converterPath: "scripts/generate-razavi-opamp-asset.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "comparator-differential-inputs-swapped",
+        name: "Fully Differential Comparator (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "User-requested complementary-output extension of the existing comparator using the shared differential triangle; no exact textbook witness is claimed.",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Ideal complementary-output comparator; an external implementation may be selected explicitly.",
+        assetPath: "comparator-differential-inputs-swapped.json",
+        assetHash: "20a409c5fa21fbbeb944e0ba6217fe2e0b37debe3f171684872710ced6e63c95",
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "comparator-differential",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "comparator-differential-unmarked",
+        name: "Fully Differential Comparator (unmarked)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "User-requested complementary-output extension of the existing comparator using the shared differential triangle; no exact textbook witness is claimed.",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Ideal complementary-output comparator; an external implementation may be selected explicitly.",
+        assetPath: "comparator-differential-unmarked.json",
+        assetHash: "5aaa6fb16f3d50b932bd911f680510cf39f95ad60522133506b0c1618e50de69",
+        generation: {
+            kind: "derived-differential-comparator",
+            sourceSymbolId: "comparator",
+            converterPath: "scripts/generate-razavi-opamp-asset.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "comparator-differential-unmarked-inputs-swapped",
+        name: "Fully Differential Comparator (unmarked) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "User-requested complementary-output extension of the existing comparator using the shared differential triangle; no exact textbook witness is claimed.",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Ideal complementary-output comparator; an external implementation may be selected explicitly.",
+        assetPath: "comparator-differential-unmarked-inputs-swapped.json",
+        assetHash: "95d00fa99730fba09afe0b76409e828bdb20363919f874af2b90b605961b5dd2",
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "comparator-differential-unmarked",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "current-source",
+        name: "Independent Current Source",
+        category: "source",
+        reviewStatus: "reviewed",
+        pinOrder: ["+", "-"],
+        palette: true,
+        automaticMappings: ["spice:I"],
+        assetPath: "current-source.json",
+        assetHash: "9484e9b2320cd17cd5ba32f965f0b10578697701a3e2106c0d0db4e303124de5",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/current-port-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/current-port-geometry.json",
+        },
+        generation: {
+            kind: "razavi-raster-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            converterPath: "scripts/generate-razavi-peripheral-assets.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "vccs",
+        name: "Voltage-Controlled Current Source",
+        category: "source",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "The source body, pins, strokes and polarity/arrow marks are copied exactly from the reviewed current-source Symbol; the controlled relation and control selection are product semantics, not claimed as textbook artwork.",
+        pinOrder: ["+", "-"],
+        palette: true,
+        automaticMappings: ["spice:G"],
+        assetPath: "vccs.json",
+        assetHash: "110797f21226a59d22d280c7e6f8478b8512117d2bc3b32250425497d44aa322",
+    },
+    {
+        symbolId: "cccs",
+        name: "Current-Controlled Current Source",
+        category: "source",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "The source body, pins, strokes and polarity/arrow marks are copied exactly from the reviewed current-source Symbol; the controlled relation and control selection are product semantics, not claimed as textbook artwork.",
+        pinOrder: ["+", "-"],
+        palette: true,
+        automaticMappings: ["spice:F"],
+        assetPath: "cccs.json",
+        assetHash: "12da436812ed9bf4b08fda6d80297c4a42c2d4fe52932485bb3da1417f73e49c",
+    },
+    {
+        symbolId: "d-flip-flop",
+        name: "D Flip-Flop",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["D", "CK", "Q", "QBAR"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic symbol; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "d-flip-flop.json",
+        assetHash: "e39f752861f8f344b462b432a7ce0bbc58fa4174e5977377249390c5a015b629",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/d-flip-flop-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/d-flip-flop-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/buffer-dff-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/d-flip-flop-vector-source.json",
+            converterPath: "scripts/generate-razavi-buffer-dff-assets.mjs",
+            converterVersion: 3,
+        },
+    },
+    {
+        symbolId: "d-flip-flop-reset",
+        name: "D Flip-Flop (Reset)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["D", "CK", "RST", "Q", "QBAR"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic symbol; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "d-flip-flop-reset.json",
+        assetHash: "31d26049400241cad7698fb6998575dc934ff20dba16a9bed3931c9248be53ba",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/d-flip-flop-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/d-flip-flop-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/buffer-dff-geometry.json",
+        },
+        generation: {
+            kind: "derived-reset-pin",
+            sourceSymbolId: "d-flip-flop",
+            converterPath: "scripts/generate-razavi-buffer-dff-assets.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "d-flip-flop-q",
+        name: "D Flip-Flop (Q)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["D", "CK", "Q"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic symbol; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "d-flip-flop-q.json",
+        assetHash: "ca7d19af2d62a52d470c0cf0102b66c283bdaae28b4be129852b112ecd00fd8c",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/d-flip-flop-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/d-flip-flop-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/buffer-dff-geometry.json",
+        },
+        generation: {
+            kind: "derived-output-drop",
+            sourceSymbolId: "d-flip-flop",
+            converterPath: "scripts/generate-razavi-buffer-dff-assets.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "delay-cell",
+        name: "Delay Cell",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Manual placement; noninverting formula propagation delay or an explicit project Cell implementation, not pure transport delay.",
+        assetPath: "delay-cell.json",
+        assetHash: "384d3be7c07eef3a8237cc2d21928b9c9df329b05b6101a1fe4184378a8a42fc",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/delay-cell-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/delay-cell-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/delay-cell-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/delay-cell-vector-source.json",
+            converterPath: "scripts/generate-razavi-delay-cell-asset.mjs",
+            converterVersion: 2,
+        },
+    },
+    {
+        symbolId: "adder",
+        name: "Adder",
+        category: "signal-flow",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "B", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral summing node; structural netlists need an explicit implementation mapping.",
+        assetPath: "adder.json",
+        assetHash: "bce68bd71f7b7789b53fe474150c11b80a580d1917743f12134c07a8d524b192",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+        },
+    },
+    {
+        symbolId: "multiplier",
+        name: "Multiplier",
+        category: "signal-flow",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "B", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral mixing node; structural netlists need an explicit implementation mapping.",
+        assetPath: "multiplier.json",
+        assetHash: "2fc0c7e6a80a91ea5613ed870457215207a0a3899445cc11b55316ff7319bf9c",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+        },
+    },
+    {
+        symbolId: "transconductance",
+        name: "Transconductance (gₘ)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral transconductance block; structural netlists need an explicit implementation mapping.",
+        assetPath: "transconductance.json",
+        assetHash: "80b329010551f1e54c6ec85c2ca9f6dab5686f3a90c5fd688a1598704d0acbe9",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+        },
+    },
+    {
+        symbolId: "differential-transconductance",
+        name: "Differential Transconductance (gₘ)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "User-requested differential-input companion to the reference-calibrated single-input transconductance block.",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral differential transconductance block; structural netlists need an explicit implementation mapping.",
+        assetPath: "differential-transconductance.json",
+        assetHash: "7970e7ed34487ae420f9b69a35c36a27dbc51a1a268549903a5f42d1d65fdea9",
+    },
+    {
+        symbolId: "differential-transconductance-inputs-swapped",
+        name: "Differential Transconductance (gₘ) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "User-requested differential-input companion to the reference-calibrated single-input transconductance block.",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral differential transconductance block; structural netlists need an explicit implementation mapping.",
+        assetPath: "differential-transconductance-inputs-swapped.json",
+        assetHash: "9bf0673fd5a06a21e627cfd940f3ec14699992c347f7ef22517ec236111a6a44",
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "differential-transconductance",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "integrator",
+        name: "Integrator (1/s)",
+        category: "signal-flow",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral s-domain block; structural netlists need an explicit implementation mapping.",
+        assetPath: "integrator.json",
+        assetHash: "da5c0ce58b82461babadee1487f4f5ef263d7186e6ded85c67ecdd5f5014102c",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+        },
+    },
+    {
+        symbolId: "unit-delay",
+        name: "Unit Delay (z⁻¹)",
+        category: "signal-flow",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral z-domain block; structural netlists need an explicit implementation mapping.",
+        assetPath: "unit-delay.json",
+        assetHash: "581d6c08558e3cfe83d69121e4004d53c959ecbfdbf6ec38c40f600c2488b45f",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+        },
+    },
+    {
+        symbolId: "discrete-time-integrator",
+        name: "Discrete-Time Integrator (z⁻¹/(1−z⁻¹))",
+        category: "signal-flow",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral z-domain block; structural netlists need an explicit implementation mapping.",
+        assetPath: "discrete-time-integrator.json",
+        assetHash: "814c6aaf7463c1d2c18eef6b6ee9e9c12c67b8662e178386c67d589d3b9530f3",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+        },
+    },
+    {
+        symbolId: "quantizer",
+        name: "Quantizer",
+        category: "signal-flow",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral quantization block; structural netlists need an explicit implementation mapping.",
+        assetPath: "quantizer.json",
+        assetHash: "86e52b7909fd8bc796cf040eb71b6ef29a5e658c9ffac1c9bf06c4b30032c498",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/delta-sigma-geometry.json",
+        },
+    },
+    {
+        symbolId: "diode",
+        name: "Diode",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "K"],
+        palette: true,
+        automaticMappings: ["spice:D"],
+        assetPath: "diode.json",
+        assetHash: "9f7b396145d285f43d3a88ff74ab75ebf9177b0bb32223dd3c9f03e353167899",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/diode-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/diode-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/diode-vector-source.json",
+            converterPath: "scripts/generate-razavi-common-assets.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "externally-controlled-switch",
+        name: "Externally Controlled Switch",
+        category: "switch",
+        reviewStatus: "reviewed",
+        pinOrder: ["P", "N", "CTRL"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal single-ended control is visually explicit in the textbook but has no exact primitive SPICE S contract.",
+        assetPath: "externally-controlled-switch.json",
+        assetHash: "d8dbcb4c635b367ee8906bd1410505cc8ef5bef9ba15d667223b5c47f6050a6c",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/externally-controlled-switch-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/externally-controlled-switch-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/externally-controlled-switch-vector-source.json",
+            converterPath: "scripts/generate-razavi-common-assets.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "ground",
+        name: "Ground",
+        category: "power",
+        reviewStatus: "reviewed",
+        pinOrder: ["0"],
+        palette: true,
+        automaticMappings: [],
+        assetPath: "ground.json",
+        assetHash: "b2ca65ec6b08eb1395070f3442dac5374d62472ae02789121466767bd09d6a1a",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/peripheral-geometry.json",
+        },
+        generation: {
+            kind: "razavi-raster-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            converterPath: "scripts/generate-razavi-peripheral-assets.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "ideal-switch",
+        name: "Ideal Switch",
+        category: "switch",
+        reviewStatus: "reviewed",
+        pinOrder: ["1", "2"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Two-terminal Razavi switch; SPICE S has a four-terminal control contract.",
+        assetPath: "ideal-switch.json",
+        assetHash: "913c542255bf8a82b5b3d7cd0a30bfdd527b0c863c38780435d3edfcb293c6cd",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/ideal-switch-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/ideal-switch-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/ideal-switch-vector-source.json",
+            converterPath: "scripts/generate-razavi-common-assets.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "inductor",
+        name: "Large Inductor",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["1", "2"],
+        palette: true,
+        automaticMappings: [],
+        assetPath: "inductor.json",
+        assetHash: "11c01f2890b89fbe505252f2622e62838cd047885ad544fd862c3ae2d5821369",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/inductor-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/inductor-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/inductor-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/inductor-vector-source.json",
+            converterPath: "scripts/generate-razavi-inductor-asset.mjs",
+            converterVersion: 2,
+        },
+        manualOnlyReason: "Evidence-exact textbook proportions; imported L elements take the scale-reconciled inductor-compact symbol.",
+    },
+    {
+        symbolId: "inductor-compact",
+        name: "Inductor",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["1", "2"],
+        palette: true,
+        automaticMappings: ["spice:L"],
+        assetPath: "inductor-compact.json",
+        assetHash: "ea49a969428ddb0bdce0a567467e11295a1e39f15ba71d0eafd5d316a0cbc6ea",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/inductor-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/inductor-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/inductor-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/inductor-vector-source.json",
+            converterPath: "scripts/generate-razavi-inductor-asset.mjs",
+            converterVersion: 2,
+            pinSpanScale: 0.666667,
+        },
+    },
+    {
+        symbolId: "tcoil",
+        name: "T-Coil",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["1", "2", "3"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "A bridged T-coil is a composite L1/L2/K/CB network that SPICE import does not recognize, so it is placed by hand; netlist export writes it as the built-in tcoil subcircuit.",
+        assetPath: "tcoil.json",
+        assetHash: "5ed7deb8796445e28438a203d3143c65ff250191e6be02659210a788a20a53a8",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/tcoil-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/tcoil-reference.png",
+            ],
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/tcoil-vector-source.json",
+            converterPath: "scripts/generate-razavi-magnetic-components.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "xfmr",
+        name: "XFMR",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["P-", "P+", "S-", "S+"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "A transformer is two inductors plus mutual coupling that SPICE import does not recognize, so it is placed by hand; netlist export writes it as the built-in xfmr subcircuit.",
+        assetPath: "xfmr.json",
+        assetHash: "5b159d1e1e167d998953670feca9001577323642806c640e58a564ae71b6f9d3",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/xfmr-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/xfmr-reference.png",
+            ],
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/xfmr-vector-source.json",
+            converterPath: "scripts/generate-razavi-magnetic-components.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "center-tap-inductor",
+        name: "Center-Tap Inductor",
+        category: "passive",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "The reference draws a centre-tapped winding only inside its bridged T-coil. Drawn here as that figure's two windings and tap, without the bridge capacitor or polarity dots.",
+        pinOrder: ["1", "2", "3"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "A centre-tapped inductor is two series windings meeting at the tap, which SPICE import does not recognize as one part, so it is placed by hand; netlist export writes it as the built-in ct_inductor subcircuit.",
+        assetPath: "center-tap-inductor.json",
+        assetHash: "04288eb964236b39a10bd9392e3930ee68bcc208a0aa9be4a24fbbb9c42b357d",
+    },
+    {
+        symbolId: "inverter",
+        name: "Inverter",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic gate; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "inverter.json",
+        assetHash: "2b994628d395feb5d92573d03d35c05630780a3b114c5ca998fd755f7afcddbd",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/logic-inverter-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/logic-inverter-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/logic-gate-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/logic-inverter-vector-source.json",
+            converterPath: "scripts/generate-razavi-logic-gate-assets.mjs",
+            converterVersion: 3,
+            bodyNormalization: "left-grid-anchor",
+        },
+    },
+    {
+        symbolId: "nand-gate",
+        name: "NAND Gate",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "B", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic gate; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "nand-gate.json",
+        assetHash: "01a2d7b49fb95dd633ed631884120a7d259d94149b9da5dad8dd5dad79bdc67a",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/logic-nand-gate-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/logic-nand-gate-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/logic-gate-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/logic-nand-gate-vector-source.json",
+            converterPath: "scripts/generate-razavi-logic-gate-assets.mjs",
+            converterVersion: 3,
+            bodyNormalization: "left-grid-anchor",
+        },
+    },
+    {
+        symbolId: "nand-gate-3",
+        name: "NAND Gate (3 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "3-input product derivation from the calibrated two-input nand-gate; the cited reference does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the NAND Gate input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "nand-gate-3.json",
+        assetHash: "290ad9fe05a623fa49b04e34973bdb53c749a1fdbb3a740ec9672eaab23c4806",
+        generation: {
+            kind: "derived-multi-input-logic-gate",
+            sourceSymbolId: "nand-gate",
+            inputCount: 3,
+            converterPath: "scripts/lib/derived-logic-gate.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "nand-gate-4",
+        name: "NAND Gate (4 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "4-input product derivation from the calibrated two-input nand-gate; the cited reference does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "D", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the NAND Gate input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "nand-gate-4.json",
+        assetHash: "672fe149821a2230d4e8bda5891273a7d1a3cf76503a75e2b36c3047b10371f7",
+        generation: {
+            kind: "derived-multi-input-logic-gate",
+            sourceSymbolId: "nand-gate",
+            inputCount: 4,
+            converterPath: "scripts/lib/derived-logic-gate.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "nmos",
+        name: "NMOS",
+        category: "transistor",
+        reviewStatus: "reviewed",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/mos-geometry.json",
+        },
+        pinOrder: ["D", "G", "S", "B"],
+        palette: true,
+        automaticMappings: ["spice:M:nmos", "pdk:model-type:nmos"],
+        assetPath: "nmos.json",
+        assetHash: "7bfa080f6bc6166a4ae7e0e91f8f6c058e6f6a4cc22a208818c6283fe8650953",
+    },
+    {
+        symbolId: "nor-gate",
+        name: "NOR Gate",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "B", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic gate; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "nor-gate.json",
+        assetHash: "17ac0b7e6e6ebaeb3845567474e2999bd19d74d4df8bba0299c7ca991fa52eb4",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/logic-nor-gate-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/logic-nor-gate-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/logic-gate-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/logic-nor-gate-vector-source.json",
+            converterPath: "scripts/generate-razavi-logic-gate-assets.mjs",
+            converterVersion: 3,
+            bodyNormalization: "left-grid-anchor",
+        },
+    },
+    {
+        symbolId: "nor-gate-3",
+        name: "NOR Gate (3 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "3-input product derivation from the calibrated two-input nor-gate; the cited reference does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the NOR Gate input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "nor-gate-3.json",
+        assetHash: "be4b0604132aff25fb6493ff2a1edf2724cedccdf033fa86e3c832bebb932189",
+        generation: {
+            kind: "derived-multi-input-logic-gate",
+            sourceSymbolId: "nor-gate",
+            inputCount: 3,
+            converterPath: "scripts/lib/derived-logic-gate.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "nor-gate-4",
+        name: "NOR Gate (4 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "4-input product derivation from the calibrated two-input nor-gate; the cited reference does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "D", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the NOR Gate input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "nor-gate-4.json",
+        assetHash: "207d166b8b8612fcaea346aab8c7a8d51bbe7f03511f016aa2eef920f75963d5",
+        generation: {
+            kind: "derived-multi-input-logic-gate",
+            sourceSymbolId: "nor-gate",
+            inputCount: 4,
+            converterPath: "scripts/lib/derived-logic-gate.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "npn",
+        name: "NPN Bipolar Transistor",
+        category: "transistor",
+        reviewStatus: "reviewed",
+        pinOrder: ["C", "B", "E"],
+        palette: true,
+        automaticMappings: ["spice:Q:npn", "pdk:model-type:npn"],
+        assetPath: "npn.json",
+        assetHash: "675e01c4efdb7f068b9748b365908ef272dea956e1de5d70f066f249a6c6e66e",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/npn-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/npn-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/npn-vector-source.json",
+            converterPath: "scripts/generate-razavi-common-assets.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp",
+        name: "Operational Amplifier",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal textbook op-amp; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp.json",
+        assetHash: "162bb0b53fa197d07896f44f4cd77ecc5a41f0ca6bafa246aea01df29c340638",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+            converterPath: "scripts/generate-razavi-opamp-asset.mjs",
+            converterVersion: 6,
+            bodyNormalization: "equilateral-triangle",
+        },
+    },
+    {
+        symbolId: "opamp-wide",
+        name: "Op Amp Wide",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal textbook op-amp; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-wide.json",
+        assetHash: "bdd2a3bd55046a1fd0e5df8a4b9171968c929738b196d29a803e6da61227d1d9",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-lettered",
+        name: "Operational Amplifier (lettered)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal textbook op-amp; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-lettered.json",
+        assetHash: "7d6b25a1f9c5066212ab647cc33852574b9d7ca0dddcf5a64162624bf1dde5bf",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-lettered-body",
+            sourceSymbolId: "opamp",
+            converterPath: "scripts/generate-lettered-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-wide-lettered",
+        name: "Op Amp Wide (lettered)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal textbook op-amp; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-wide-lettered.json",
+        assetHash: "b86b6795882ad3d3377fefc329f6c41331c397f6f08773b3b29035dcd64f6b6a",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-lettered",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-lettered-inputs-swapped",
+        name: "Operational Amplifier (lettered) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal textbook op-amp; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-lettered-inputs-swapped.json",
+        assetHash: "00ed86b7c3eba1369e6957a14803ec3c181a79f24075dc2a7472b268e20477d7",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "opamp-lettered",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-wide-lettered-inputs-swapped",
+        name: "Op Amp Wide (lettered) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal textbook op-amp; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-wide-lettered-inputs-swapped.json",
+        assetHash: "7fc38ea248deaddebb84690410618f5449309e0bc5a69dfb174e638e805f383d",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-lettered-inputs-swapped",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-inputs-swapped",
+        name: "Operational Amplifier (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal textbook op-amp; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-inputs-swapped.json",
+        assetHash: "450fccd1b4f951244bd05fa5b70ec5c13dae9ea7c7f71cbd438deac26a1c061e",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "opamp",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-wide-inputs-swapped",
+        name: "Op Amp Wide (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal textbook op-amp; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-wide-inputs-swapped.json",
+        assetHash: "1f2d330938c20ee721069a8dc9976a92678f807c7f69fa4792f4d684fd6b719f",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-inputs-swapped",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential",
+        name: "Differential Op Amp",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Fully differential textbook body; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential.json",
+        assetHash: "31e9a96bf32a85d620cc2bd60f320b53971e72a19de8f36c8a3431eb82995ed3",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+            converterPath: "scripts/generate-razavi-opamp-asset.mjs",
+            converterVersion: 9,
+            bodyNormalization: "equilateral-triangle",
+        },
+    },
+    {
+        symbolId: "opamp-differential-wide",
+        name: "FD Amp Wide",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Fully differential textbook body; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-wide.json",
+        assetHash: "7ff369cab4f5dd8358b6bbb59ac32d5a1772c9bf1f7fca6c460825663dff48ce",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-differential",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-lettered",
+        name: "Differential Op Amp (lettered)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Fully differential textbook body; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-lettered.json",
+        assetHash: "5115d30d6d62c84ecfa3fde255638b96eec98398cb38f136b1e744eb7097ff0c",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-lettered-body",
+            sourceSymbolId: "opamp-differential",
+            converterPath: "scripts/generate-lettered-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-wide-lettered",
+        name: "FD Amp Wide (lettered)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Fully differential textbook body; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-wide-lettered.json",
+        assetHash: "6fcf2147a2759f448effaf4f6e5f1c2ed032b2bc53688f53f1831c09ef99fee9",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-differential-lettered",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-lettered-inputs-swapped",
+        name: "Differential Op Amp (lettered) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Fully differential textbook body; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-lettered-inputs-swapped.json",
+        assetHash: "d93244df0156ce88f5f2342784cb0ea76ccd0bad3746c204fb293f00dcb072ad",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "opamp-differential-lettered",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-wide-lettered-inputs-swapped",
+        name: "FD Amp Wide (lettered) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Fully differential textbook body; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-wide-lettered-inputs-swapped.json",
+        assetHash: "d2cee0ec295be15ef40e0a7af94385733dc96d487029c4f5ebdcdd5e7181eec0",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-differential-lettered-inputs-swapped",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-inputs-swapped",
+        name: "Differential Op Amp (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Fully differential textbook body; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-inputs-swapped.json",
+        assetHash: "0d982b2e73a6ca4618baf007b83bd059a48d01d3fbd8ac368d1812885b91d8d0",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "opamp-differential",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-wide-inputs-swapped",
+        name: "FD Amp Wide (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Fully differential textbook body; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-wide-inputs-swapped.json",
+        assetHash: "c313c63ea0b46dd923961879e071812b3fe171ccfb488b858109181118cbbe99",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-differential-inputs-swapped",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-crossed",
+        name: "Differential Op Amp (crossed outputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Output-polarity sibling of opamp-differential; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-crossed.json",
+        assetHash: "a7aa6c0af136aeb441fc9733cff2b878632afb7da035ff0fb745d1c14a2c1260",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+            converterPath: "scripts/generate-razavi-opamp-asset.mjs",
+            converterVersion: 9,
+            bodyNormalization: "equilateral-triangle",
+        },
+    },
+    {
+        symbolId: "opamp-differential-wide-crossed",
+        name: "FD Amp Wide (crossed outputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Output-polarity sibling of opamp-differential; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-wide-crossed.json",
+        assetHash: "d0dc1d79bad6b4a6dbb7598aaa36143ac2de12d67a794d352d345166b4ff1e35",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-differential-crossed",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-crossed-lettered",
+        name: "Differential Op Amp (crossed outputs, lettered)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Output-polarity sibling of opamp-differential; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-crossed-lettered.json",
+        assetHash: "e1a90a288ae57c904828d3fe2ad6412c58beee94bfa048d876bcf47b5d8696ef",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-lettered-body",
+            sourceSymbolId: "opamp-differential-crossed",
+            converterPath: "scripts/generate-lettered-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-wide-crossed-lettered",
+        name: "FD Amp Wide (crossed outputs, lettered)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Output-polarity sibling of opamp-differential; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-wide-crossed-lettered.json",
+        assetHash: "33a0b92d7c1b5961e561da68bc13a626bf0ba1bfbb9adc9932ce56b39f3f633d",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-differential-crossed-lettered",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-crossed-lettered-inputs-swapped",
+        name: "Differential Op Amp (crossed outputs, lettered) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Output-polarity sibling of opamp-differential; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-crossed-lettered-inputs-swapped.json",
+        assetHash: "25589e66614ff9f5c7f688e18bd703d0bc4d105f539d9c7bd6708ffb90be0c81",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "opamp-differential-crossed-lettered",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-wide-crossed-lettered-inputs-swapped",
+        name: "FD Amp Wide (crossed outputs, lettered) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Output-polarity sibling of opamp-differential; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-wide-crossed-lettered-inputs-swapped.json",
+        assetHash: "e76801d8405998072db11bac17fa02ef9c8005c30150a95487ca3718a2e0f4e1",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-differential-crossed-lettered-inputs-swapped",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-crossed-inputs-swapped",
+        name: "Differential Op Amp (crossed outputs) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Output-polarity sibling of opamp-differential; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-crossed-inputs-swapped.json",
+        assetHash: "769dfc584b2e44441a4d2a86f60482dbee6856522358ef7b7eade16122ab110b",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-input-swap",
+            sourceSymbolId: "opamp-differential-crossed",
+            converterPath: "scripts/generate-input-swapped-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "opamp-differential-wide-crossed-inputs-swapped",
+        name: "FD Amp Wide (crossed outputs) (swapped inputs)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN+", "IN-", "OUT+", "OUT-"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Output-polarity sibling of opamp-differential; SPICE subcircuit pin and supply contracts require an explicit PDK mapping.",
+        assetPath: "opamp-differential-wide-crossed-inputs-swapped.json",
+        assetHash: "0d2cf01759b6bae5cbb343ca970288f91ed1bc4cb5bb9a197f24e1e3a4bd8e2b",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/differential-opamp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/differential-opamp-geometry.json",
+        },
+        generation: {
+            kind: "derived-wide-amplifier",
+            sourceSymbolId: "opamp-differential-crossed-inputs-swapped",
+            converterPath: "scripts/generate-component-library.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "or-gate",
+        name: "OR Gate",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "B", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic gate; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "or-gate.json",
+        assetHash: "8bb895aaab18d7da97dee4c5da1f679d6df1ff93a112d43947454d541ee5d718",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/logic-nor-gate-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/logic-nor-gate-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/logic-gate-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/logic-nor-gate-vector-source.json",
+            converterPath: "scripts/generate-razavi-logic-gate-assets.mjs",
+            converterVersion: 3,
+            bodyNormalization: "left-grid-anchor",
+        },
+    },
+    {
+        symbolId: "or-gate-3",
+        name: "OR Gate (3 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "3-input product derivation from the calibrated two-input or-gate; the cited reference does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the OR Gate input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "or-gate-3.json",
+        assetHash: "4cd8458cddad0ca960326d89fcb2921f0d0e5b118e323308ed4e875d2cec12ee",
+        generation: {
+            kind: "derived-multi-input-logic-gate",
+            sourceSymbolId: "or-gate",
+            inputCount: 3,
+            converterPath: "scripts/lib/derived-logic-gate.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "or-gate-4",
+        name: "OR Gate (4 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "4-input product derivation from the calibrated two-input or-gate; the cited reference does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "D", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the OR Gate input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "or-gate-4.json",
+        assetHash: "8f6b8c479166b11e071086d557322162eaf25c08ddfbde3bd9b280003baa75db",
+        generation: {
+            kind: "derived-multi-input-logic-gate",
+            sourceSymbolId: "or-gate",
+            inputCount: 4,
+            converterPath: "scripts/lib/derived-logic-gate.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "pmos",
+        name: "PMOS",
+        category: "transistor",
+        reviewStatus: "reviewed",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/mos-geometry.json",
+        },
+        pinOrder: ["D", "G", "S", "B"],
+        palette: true,
+        automaticMappings: ["spice:M:pmos", "pdk:model-type:pmos"],
+        assetPath: "pmos.json",
+        assetHash: "daaa6cbb9dcd9de154a9b3e4796b2e8e5b24b39161661935c91f2e078fe1af74",
+    },
+    {
+        symbolId: "pnp",
+        name: "PNP Bipolar Transistor",
+        category: "transistor",
+        reviewStatus: "reviewed",
+        pinOrder: ["C", "B", "E"],
+        palette: true,
+        automaticMappings: ["spice:Q:pnp", "pdk:model-type:pnp"],
+        assetPath: "pnp.json",
+        assetHash: "148684128ffc893ebdbc559880d7f428d40eda7843d66ff006cf7e3deecef03a",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/pnp-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/pnp-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/pnp-vector-source.json",
+            converterPath: "scripts/generate-razavi-common-assets.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "port",
+        name: "Port",
+        category: "interface",
+        reviewStatus: "reviewed",
+        pinOrder: ["P"],
+        palette: true,
+        automaticMappings: [],
+        assetPath: "port.json",
+        assetHash: "f94640fba241c90e2a2538ba1cb0dbaaa75bb85d2d85234f4c67692421f7981f",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/current-port-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/current-port-geometry.json",
+        },
+    },
+    {
+        symbolId: "port-filled",
+        name: "Bias Voltage Port",
+        category: "interface",
+        reviewStatus: "reviewed",
+        pinOrder: ["P"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Explicit solid endpoint style; no automatic SPICE mapping.",
+        assetPath: "port-filled.json",
+        assetHash: "4ef4fd95eec824b1cade61785af18d925343a77288137d04b8ca62f4ed28fa4b",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/current-port-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/current-port-geometry.json",
+        },
+    },
+    {
+        symbolId: "resistor",
+        name: "Resistor",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["1", "2"],
+        palette: true,
+        automaticMappings: ["spice:R"],
+        assetPath: "resistor.json",
+        assetHash: "90ade2be2a9733fdc90c38518d6bf6be7afe8a9c4212266bc82e34c25c63adab",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/passive-geometry.json",
+        },
+    },
+    {
+        symbolId: "simple-spdt-switch",
+        name: "Simple SPDT Switch",
+        category: "switch",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "The contact-circle drawing of a selector and its plain drawing are one component in two states. Drawn here as the SPDT's sibling so the state is reached by an action rather than by a second Library tile.",
+        pinOrder: ["COM", "A", "B"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal selector; SPICE has no single-pole double-throw primitive.",
+        assetPath: "simple-spdt-switch.json",
+        assetHash: "c586e487e5a4f2dd6fb48f096fa9183162ea9cb02b6ad1edc7706a706f1122cf",
+    },
+    {
+        symbolId: "simple-switch",
+        name: "Simple Switch",
+        category: "switch",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "The reviewed page draws its switch with contact circles. Analog schematics far more often draw the same element as one broken line with a blade, so it is drawn here rather than by removing evidence from the traced symbol.",
+        pinOrder: ["1", "2"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Two-terminal switch; SPICE S has a four-terminal control contract.",
+        assetPath: "simple-switch.json",
+        assetHash: "d379bb5a1986dca82cf603c7b7721b7fe8680ccabc33b72bc0ab4bf3e5460cbe",
+    },
+    {
+        symbolId: "spdt-switch",
+        name: "SPDT Switch",
+        category: "switch",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "A single-pole double-throw switch does not appear on the reviewed page; it is drawn here in the family's idiom, with the traced switch's contact circles and blade angle.",
+        pinOrder: ["COM", "A", "B"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Three-terminal selector; SPICE has no single-pole double-throw primitive.",
+        assetPath: "spdt-switch.json",
+        assetHash: "619b00cf2fdb0a6b81830a245018425fcabb38641eec39fe2bb21fd4a285e92d",
+    },
+    {
+        symbolId: "chopper",
+        name: "Chopper",
+        category: "switch",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "A chopper does not appear on the reviewed page; it is drawn here as chopper-stabilized amplifiers draw it, a crossed box as tall as the op-amp body and about a quarter as wide, its pins on the op-amp's input rows.",
+        pinOrder: ["INP", "INN", "OUTP", "OUTN"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Four switches on one clock, straight while it is high and crossed while it is low; SPICE has no single chopper primitive.",
+        assetPath: "chopper.json",
+        assetHash: "5042e5a4b1d2784b28b0ded160f49c3b69bb7057f95a0e502aef625f63498208",
+    },
+    {
+        symbolId: "variable-capacitor",
+        name: "Variable Capacitor",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["P1", "P2"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Manually selected adjustable presentation; structural SPICE C does not preserve a distinct variable-capacitor symbol.",
+        assetPath: "variable-capacitor.json",
+        assetHash: "feffb09d98cfeb5c5e6a29502112bb7bcfc3796f6654b7dcbb920036295f5a28",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/passive-geometry.json",
+        },
+    },
+    {
+        symbolId: "variable-inductor",
+        name: "Variable Inductor",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["P1", "P2"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Manually selected adjustable presentation; structural SPICE L does not preserve a distinct variable-inductor symbol.",
+        assetPath: "variable-inductor.json",
+        assetHash: "ac2a1e9e7c26bb77d9bb6f698d241b751e554583aba4e55478b1b5280fe7a018",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/passive-geometry.json",
+        },
+    },
+    {
+        symbolId: "variable-resistor",
+        name: "Variable Resistor",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["P1", "P2"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Manually selected adjustable presentation; structural SPICE R does not preserve a distinct variable-resistor symbol.",
+        assetPath: "variable-resistor.json",
+        assetHash: "b281a5d5b954430073cd2bb4374390fdc90e34d046206d86ae7bce40d1532b01",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/passive-geometry.json",
+        },
+    },
+    {
+        symbolId: "vdd-port",
+        name: "VDD Power Port",
+        category: "power",
+        reviewStatus: "reviewed",
+        pinOrder: ["P"],
+        palette: true,
+        automaticMappings: [],
+        assetPath: "vdd-port.json",
+        assetHash: "4df004c2c020a7d969eca39479393980fc83fec2ecc5901d4ba1667996493320",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/vdd-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/vdd-geometry.json",
+        },
+    },
+    {
+        symbolId: "voltage-amplifier",
+        name: "Voltage Amplifier",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN", "OUT"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Textbook gain block has implicit reference nodes and no exact primitive SPICE terminal contract.",
+        assetPath: "voltage-amplifier.json",
+        assetHash: "29f5a9a4f74c6e716c53ab3d5f78577e7ba9779a6836e33d534f8dd84e1b3420",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/voltage-amplifier-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/voltage-amplifier-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/voltage-amplifier-vector-source.json",
+            converterPath: "scripts/generate-razavi-common-assets.mjs",
+            converterVersion: 6,
+            bodyNormalization: "equilateral-triangle",
+        },
+    },
+    {
+        symbolId: "voltage-amplifier-lettered",
+        name: "Voltage Amplifier (lettered)",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        pinOrder: ["IN", "OUT"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Textbook gain block has implicit reference nodes and no exact primitive SPICE terminal contract.",
+        assetPath: "voltage-amplifier-lettered.json",
+        assetHash: "7cb8b8af81bedd40430a11eb9c1a0e7da362aa59b39e42740e78c5df92e6f5fd",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/voltage-amplifier-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/voltage-amplifier-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/common-symbol-geometry.json",
+        },
+        generation: {
+            kind: "derived-lettered-body",
+            sourceSymbolId: "voltage-amplifier",
+            converterPath: "scripts/generate-lettered-amplifiers.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "pulse-voltage-source",
+        name: "Pulse Voltage Source",
+        category: "source",
+        reviewStatus: "reviewed",
+        pinOrder: ["+", "-"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Pulse semantics require authored timing parameters and must not replace imported DC voltage sources automatically.",
+        assetPath: "pulse-voltage-source.json",
+        assetHash: "ed85c05f409cd66ff2d969bc84c4803a8352b5d022dcd26c7fc998715924717f",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+                "fixtures/visual-reference/razavi-reference-v1/data-converters-clock-pulse-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/data-converters-clock-pulse-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/peripheral-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/data-converters-clock-pulse-vector-source.json",
+            converterPath: "scripts/generate-razavi-peripheral-assets.mjs",
+            converterVersion: 4,
+        },
+    },
+    {
+        symbolId: "voltage-controlled-switch",
+        name: "Voltage-Controlled Switch",
+        category: "switch",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "The reference draws a two-terminal switch and no control terminals, while a SPICE switch is S<ref> n+ n- nc+ nc- MODEL. Drawn here rather than by widening the two-terminal evidence with geometry the source does not contain.",
+        pinOrder: ["P", "N", "CP", "CN"],
+        palette: true,
+        automaticMappings: ["spice:S"],
+        assetPath: "voltage-controlled-switch.json",
+        assetHash: "142d614b491f439bb58ec7775729c9eb5271ba1b2147b4e5fe4c7506d05f31b4",
+    },
+    {
+        symbolId: "voltage-source",
+        name: "Independent Voltage Source",
+        category: "source",
+        reviewStatus: "reviewed",
+        pinOrder: ["+", "-"],
+        palette: true,
+        automaticMappings: ["spice:V"],
+        assetPath: "voltage-source.json",
+        assetHash: "2feeef8f7e425cc38ba9de64ed9b81333ec4c53c3c553a030264c22a919e5402",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/peripheral-geometry.json",
+        },
+        generation: {
+            kind: "razavi-raster-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/razavi-six-panel.png",
+            converterPath: "scripts/generate-razavi-peripheral-assets.mjs",
+            converterVersion: 2,
+        },
+    },
+    {
+        symbolId: "vcvs",
+        name: "Voltage-Controlled Voltage Source",
+        category: "source",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "The controlled voltage source reuses the reviewed voltage-source circle, pins, normal stroke and external polarity marks, with the existing source diamond as an optional outline. It is product artwork and does not claim an exact textbook witness.",
+        pinOrder: ["+", "-"],
+        palette: true,
+        automaticMappings: ["spice:E"],
+        assetPath: "vcvs.json",
+        assetHash: "5cd4b3977fd71655cbece80af3daaff7dda0dc2dbe77a8338a67612d84fd9982",
+    },
+    {
+        symbolId: "ccvs",
+        name: "Current-Controlled Voltage Source",
+        category: "source",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "The controlled voltage source reuses the reviewed voltage-source circle, pins, normal stroke and external polarity marks, with the existing source diamond as an optional outline. It is product artwork and does not claim an exact textbook witness.",
+        pinOrder: ["+", "-"],
+        palette: true,
+        automaticMappings: ["spice:H"],
+        assetPath: "ccvs.json",
+        assetHash: "ce90afdc8185f83c347f6d22dc02daef0099e7911a41d3989b2c036cb31ccb34",
+    },
+    {
+        symbolId: "xnor-gate",
+        name: "XNOR Gate",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "B", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic gate; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "xnor-gate.json",
+        assetHash: "f33fb5175aec838828b0a4d93a9885fbcbe5d2cc9b16863e8bd80b8a7eecae66",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/logic-xor-gate-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/logic-xor-gate-reference.png",
+                "fixtures/visual-reference/razavi-reference-v1/logic-nor-gate-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/logic-nor-gate-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/logic-gate-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/logic-xor-gate-vector-source.json",
+            converterPath: "scripts/generate-razavi-logic-gate-assets.mjs",
+            converterVersion: 3,
+            bodyNormalization: "left-grid-anchor",
+        },
+    },
+    {
+        symbolId: "xnor-gate-3",
+        name: "XNOR Gate (3 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "3-input product derivation from the calibrated two-input xnor-gate; the cited reference does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the XNOR Gate input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "xnor-gate-3.json",
+        assetHash: "009bc23d1e260e05700678412e2ee6de1d12932ed9de34fc16ac23559a45369e",
+        generation: {
+            kind: "derived-multi-input-logic-gate",
+            sourceSymbolId: "xnor-gate",
+            inputCount: 3,
+            converterPath: "scripts/lib/derived-logic-gate.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "xnor-gate-4",
+        name: "XNOR Gate (4 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "4-input product derivation from the calibrated two-input xnor-gate; the cited reference does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "D", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the XNOR Gate input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "xnor-gate-4.json",
+        assetHash: "e4cba3f9d9f138e00b5e0d7fca7bf629799cf3ad8a3370be76e9088b0af23cfe",
+        generation: {
+            kind: "derived-multi-input-logic-gate",
+            sourceSymbolId: "xnor-gate",
+            inputCount: 4,
+            converterPath: "scripts/lib/derived-logic-gate.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "xor-gate",
+        name: "XOR Gate",
+        category: "logic",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "B", "Y"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "Behavioral logic gate; structural SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "xor-gate.json",
+        assetHash: "7b6dc951ae1dba8bfd9891d1d092fd018e6bfb00ede2fc930baac0f56bd01689",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/logic-xor-gate-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/logic-xor-gate-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/logic-gate-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/logic-xor-gate-vector-source.json",
+            converterPath: "scripts/generate-razavi-logic-gate-assets.mjs",
+            converterVersion: 3,
+            bodyNormalization: "left-grid-anchor",
+        },
+    },
+    {
+        symbolId: "xor-gate-3",
+        name: "XOR Gate (3 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "3-input product derivation from the calibrated two-input xor-gate; the cited reference does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the XOR Gate input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "xor-gate-3.json",
+        assetHash: "c40671f12f1707030a62ef51afaa33d6c4056c95ea320815b13da9f22c37a216",
+        generation: {
+            kind: "derived-multi-input-logic-gate",
+            sourceSymbolId: "xor-gate",
+            inputCount: 3,
+            converterPath: "scripts/lib/derived-logic-gate.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "xor-gate-4",
+        name: "XOR Gate (4 inputs)",
+        category: "logic",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "4-input product derivation from the calibrated two-input xor-gate; the cited reference does not contain this exact arity.",
+        pinOrder: ["A", "B", "C", "D", "Y"],
+        palette: false,
+        automaticMappings: [],
+        manualOnlyReason: "Select through the XOR Gate input-count property; behavioral SPICE realization requires an explicit subcircuit or PDK mapping.",
+        assetPath: "xor-gate-4.json",
+        assetHash: "d60d9d0f39b213c307b21370eeeb40383d9db61c3d282860fe755c94de7fd03a",
+        generation: {
+            kind: "derived-multi-input-logic-gate",
+            sourceSymbolId: "xor-gate",
+            inputCount: 4,
+            converterPath: "scripts/lib/derived-logic-gate.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "zener-diode",
+        name: "Zener Diode",
+        category: "passive",
+        reviewStatus: "reviewed",
+        pinOrder: ["A", "K"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "SPICE D syntax does not distinguish a Zener presentation from an ordinary diode; select this reviewed symbol manually or through an explicit PDK mapping.",
+        assetPath: "zener-diode.json",
+        assetHash: "01261cd11d9a03e7e457d5b0d7ab261b69ff4c28c022a087883ab6614f295772",
+        visualAuthority: {
+            kind: "razavi-reference-v1",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePaths: [
+                "fixtures/visual-reference/razavi-reference-v1/zener-diode-vector-source.json",
+                "fixtures/visual-reference/razavi-reference-v1/zener-diode-reference.png",
+            ],
+            calibrationPath: "fixtures/visual-reference/razavi-reference-v1/zener-diode-geometry.json",
+        },
+        generation: {
+            kind: "razavi-pdf-vector-reference",
+            referenceManifestPath: "fixtures/visual-reference/razavi-reference-v1/manifest.json",
+            referencePath: "fixtures/visual-reference/razavi-reference-v1/zener-diode-vector-source.json",
+            converterPath: "scripts/generate-razavi-zener-asset.mjs",
+            converterVersion: 1,
+        },
+    },
+    {
+        symbolId: "adc",
+        name: "Analog-to-Digital Converter",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "The reference draws converter internals, never a block standing for one on a sheet. Drawn here as the arrow a data path is read through.",
+        pinOrder: ["IN", "OUT"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "A converter block stands for a subsystem; SPICE has no primitive for one.",
+        assetPath: "adc.json",
+        assetHash: "8ee369db66cfddbd10f3052b96dd577039f8fa37fc4f9e6f5fba1d6f3d92efc2",
+    },
+    {
+        symbolId: "dac",
+        name: "Digital-to-Analog Converter",
+        category: "analog-block",
+        reviewStatus: "reviewed",
+        provenance: "house",
+        houseReason: "The reference draws converter internals, never a block standing for one on a sheet. Drawn here as the ADC's mirror so a signal chain reads in both directions.",
+        pinOrder: ["IN", "OUT"],
+        palette: true,
+        automaticMappings: [],
+        manualOnlyReason: "A converter block stands for a subsystem; SPICE has no primitive for one.",
+        assetPath: "dac.json",
+        assetHash: "a4c4dee2f1b9c06490e8931bd8e1671e0dd8def4482e3c0393b9bd3968075d38",
+    },
+];
+export const razaviSemanticPrimitives = [
+    {
+        id: "junction-dot",
+        disposition: "semantic-primitive",
+        geometry: {
+            kind: "circle",
+            sourceDiameterIU: 0.0787401574803157,
+            fill: "foreground",
+            stroke: "none",
+        },
+        runtimeOwner: "presentation.nodes.junction",
+    },
+];
+export const razaviCatalogSymbols = [
+    {
+        schemaVersion: 1,
+        id: "and-gate",
+        name: "AND Gate",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 5,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -20,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -20,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -0.938181 -15.077165 C -0.938181 -15.077165 -0.938181 -15.077165 -0.781236 -15.077165 C -0.626035 -15.077165 -0.312146 -15.077165 -0.156945 -15.0388 C 0 -14.998692 0 -14.998692 0.676607 -14.895806 C 1.353213 -14.791176 2.70817 -14.58366 3.918389 -14.231406 C 5.130352 -13.879152 6.197576 -13.385648 7.357224 -12.590461 C 8.515128 -11.797018 9.765455 -10.701892 10.72805 -9.556195 C 11.692388 -8.410498 12.368995 -7.21423 12.8904 -5.988316 C 13.411806 -4.764147 13.776267 -3.515564 13.971576 -2.212922 C 14.166885 -0.912024 14.193042 0.442933 14.062255 1.707211 C 13.931468 2.969745 13.645479 4.141599 13.111867 5.43029 C 12.578255 6.718982 11.797018 8.126253 10.898945 9.284157 C 10.000872 10.443805 8.984218 11.354085 8.150667 12.030691 C 7.317116 12.709042 6.666667 13.153719 5.97611 13.502485 C 5.285553 13.854739 4.556631 14.116314 3.906182 14.323829 C 3.253989 14.533089 2.682013 14.690034 2.174558 14.777226 C 1.665359 14.869649 1.22417 14.89755 0.767286 14.909757 C 0.312146 14.921964 -0.156945 14.921964 -0.650449 14.921964 C -1.145697 14.921964 -1.667102 14.921964 -1.926933 14.921964 C -2.110036 14.921964 -2.110036 14.921964 -2.110036 14.921964 L -20 14.921964 L -20 -15.077165 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -15.077165,
+                    width: 34.193042,
+                    height: 29.999129,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 14.68829,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "and-gate-3",
+        name: "AND Gate (3 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 5,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -20,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -20,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -0.938181 -15.077165 C -0.938181 -15.077165 -0.938181 -15.077165 -0.781236 -15.077165 C -0.626035 -15.077165 -0.312146 -15.077165 -0.156945 -15.0388 C 0 -14.998692 0 -14.998692 0.676607 -14.895806 C 1.353213 -14.791176 2.70817 -14.58366 3.918389 -14.231406 C 5.130352 -13.879152 6.197576 -13.385648 7.357224 -12.590461 C 8.515128 -11.797018 9.765455 -10.701892 10.72805 -9.556195 C 11.692388 -8.410498 12.368995 -7.21423 12.8904 -5.988316 C 13.411806 -4.764147 13.776267 -3.515564 13.971576 -2.212922 C 14.166885 -0.912024 14.193042 0.442933 14.062255 1.707211 C 13.931468 2.969745 13.645479 4.141599 13.111867 5.43029 C 12.578255 6.718982 11.797018 8.126253 10.898945 9.284157 C 10.000872 10.443805 8.984218 11.354085 8.150667 12.030691 C 7.317116 12.709042 6.666667 13.153719 5.97611 13.502485 C 5.285553 13.854739 4.556631 14.116314 3.906182 14.323829 C 3.253989 14.533089 2.682013 14.690034 2.174558 14.777226 C 1.665359 14.869649 1.22417 14.89755 0.767286 14.909757 C 0.312146 14.921964 -0.156945 14.921964 -0.650449 14.921964 C -1.145697 14.921964 -1.667102 14.921964 -1.926933 14.921964 C -2.110036 14.921964 -2.110036 14.921964 -2.110036 14.921964 L -20 14.921964 L -20 -15.077165 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -15.077165,
+                    width: 34.193042,
+                    height: 29.999129,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 14.68829,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "and-gate-4",
+        name: "AND Gate (4 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "D",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 5,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -12,
+                },
+                to: {
+                    x: -20,
+                    y: -12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -4,
+                },
+                to: {
+                    x: -20,
+                    y: -4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 4,
+                },
+                to: {
+                    x: -20,
+                    y: 4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 12,
+                },
+                to: {
+                    x: -20,
+                    y: 12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -0.938181 -15.077165 C -0.938181 -15.077165 -0.938181 -15.077165 -0.781236 -15.077165 C -0.626035 -15.077165 -0.312146 -15.077165 -0.156945 -15.0388 C 0 -14.998692 0 -14.998692 0.676607 -14.895806 C 1.353213 -14.791176 2.70817 -14.58366 3.918389 -14.231406 C 5.130352 -13.879152 6.197576 -13.385648 7.357224 -12.590461 C 8.515128 -11.797018 9.765455 -10.701892 10.72805 -9.556195 C 11.692388 -8.410498 12.368995 -7.21423 12.8904 -5.988316 C 13.411806 -4.764147 13.776267 -3.515564 13.971576 -2.212922 C 14.166885 -0.912024 14.193042 0.442933 14.062255 1.707211 C 13.931468 2.969745 13.645479 4.141599 13.111867 5.43029 C 12.578255 6.718982 11.797018 8.126253 10.898945 9.284157 C 10.000872 10.443805 8.984218 11.354085 8.150667 12.030691 C 7.317116 12.709042 6.666667 13.153719 5.97611 13.502485 C 5.285553 13.854739 4.556631 14.116314 3.906182 14.323829 C 3.253989 14.533089 2.682013 14.690034 2.174558 14.777226 C 1.665359 14.869649 1.22417 14.89755 0.767286 14.909757 C 0.312146 14.921964 -0.156945 14.921964 -0.650449 14.921964 C -1.145697 14.921964 -1.667102 14.921964 -1.926933 14.921964 C -2.110036 14.921964 -2.110036 14.921964 -2.110036 14.921964 L -20 14.921964 L -20 -15.077165 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -15.077165,
+                    width: 34.193042,
+                    height: 29.999129,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 14.68829,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "battery",
+        name: "Battery",
+        viewBox: {
+            x: -24,
+            y: -24,
+            width: 48,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "+",
+                role: "positive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 17,
+                },
+            },
+            {
+                name: "-",
+                role: "negative",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 17,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -20,
+                },
+                to: {
+                    x: 0,
+                    y: -3.361068,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 3.361068,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -15.341072,
+                        y: -4.959888,
+                    },
+                    {
+                        x: 15.366866,
+                        y: -4.959888,
+                    },
+                    {
+                        x: 15.366866,
+                        y: -1.762248,
+                    },
+                    {
+                        x: -15.341072,
+                        y: -1.762248,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -7.987992,
+                        y: 1.762248,
+                    },
+                    {
+                        x: 8.005849,
+                        y: 1.762248,
+                    },
+                    {
+                        x: 8.005849,
+                        y: 4.959888,
+                    },
+                    {
+                        x: -7.987992,
+                        y: 4.959888,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 7.918549,
+                    y: -13.416494,
+                },
+                to: {
+                    x: 15.985905,
+                    y: -13.416494,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 11.952227,
+                    y: -17.450172,
+                },
+                to: {
+                    x: 11.952227,
+                    y: -9.3848,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 7.918549,
+                    y: 13.472049,
+                },
+                to: {
+                    x: 15.985905,
+                    y: 13.472049,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "buffer",
+        name: "Buffer",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 10,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 6,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 3.750277 0 L -20 14.998936 L -20 -13.749865 L 3.750277 0",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -13.749865,
+                    width: 23.750277,
+                    height: 28.748801,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 3.750277,
+                    y: 0,
+                },
+                to: {
+                    x: 10,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "capacitor",
+        name: "Capacitor",
+        viewBox: {
+            x: -12,
+            y: -24,
+            width: 24,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "1",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "2",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: 8.05064,
+                    y: -3.233605,
+                },
+                to: {
+                    x: -8.05064,
+                    y: -3.233605,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 8.05064,
+                    y: 3.233605,
+                },
+                to: {
+                    x: -8.05064,
+                    y: 3.233605,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -3.233605,
+                },
+                to: {
+                    x: 0,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 3.233605,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "closed-switch",
+        name: "Closed Switch",
+        viewBox: {
+            x: -34,
+            y: -12,
+            width: 68,
+            height: 24,
+        },
+        pins: [
+            {
+                name: "1",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "2",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 0,
+                },
+                to: {
+                    x: -13.562064,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: -10.36318,
+                    y: 0,
+                },
+                radius: 3.198884,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -7.186611,
+                    y: -1.496234,
+                },
+                to: {
+                    x: 13.608926,
+                    y: -4.694003,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 10.36318,
+                    y: 0,
+                },
+                radius: 3.198884,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 13.562064,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "comparator",
+        name: "Comparator",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -18.038476 7 L -10.038476 7 L -10.038476 -7 L -2.0384759999999993 -7",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "hysteresis-step",
+                bounds: {
+                    x: -18.038476,
+                    y: -7,
+                    width: 16,
+                    height: 14,
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "comparator-inputs-swapped",
+        name: "Comparator (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -18.038476 7 L -10.038476 7 L -10.038476 -7 L -2.0384759999999993 -7",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "hysteresis-step",
+                bounds: {
+                    x: -18.038476,
+                    y: -7,
+                    width: 16,
+                    height: 14,
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "comparator-unmarked",
+        name: "Comparator (unmarked)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "path",
+                data: "M -20.679492 7 L -12.679492 7 L -12.679492 -7 L -4.679492 -7",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "hysteresis-step",
+                bounds: {
+                    x: -20.679492,
+                    y: -7,
+                    width: 16,
+                    height: 14,
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "comparator-unmarked-inputs-swapped",
+        name: "Comparator (unmarked) (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "path",
+                data: "M -20.679492 7 L -12.679492 7 L -12.679492 -7 L -4.679492 -7",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "hysteresis-step",
+                bounds: {
+                    x: -20.679492,
+                    y: -7,
+                    width: 16,
+                    height: 14,
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "comparator-differential",
+        name: "Fully Differential Comparator",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -18.038476 7 L -10.038476 7 L -10.038476 -7 L -2.0384759999999993 -7",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "hysteresis-step",
+                bounds: {
+                    x: -18.038476,
+                    y: -7,
+                    width: 16,
+                    height: 14,
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "comparator-differential-inputs-swapped",
+        name: "Fully Differential Comparator (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -18.038476 7 L -10.038476 7 L -10.038476 -7 L -2.0384759999999993 -7",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "hysteresis-step",
+                bounds: {
+                    x: -18.038476,
+                    y: -7,
+                    width: 16,
+                    height: 14,
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "comparator-differential-unmarked",
+        name: "Fully Differential Comparator (unmarked)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -18.038476 7 L -10.038476 7 L -10.038476 -7 L -2.0384759999999993 -7",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "hysteresis-step",
+                bounds: {
+                    x: -18.038476,
+                    y: -7,
+                    width: 16,
+                    height: 14,
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "comparator-differential-unmarked-inputs-swapped",
+        name: "Fully Differential Comparator (unmarked) (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -18.038476 7 L -10.038476 7 L -10.038476 -7 L -2.0384759999999993 -7",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "hysteresis-step",
+                bounds: {
+                    x: -18.038476,
+                    y: -7,
+                    width: 16,
+                    height: 14,
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "current-source",
+        name: "Independent Current Source",
+        viewBox: {
+            x: -15,
+            y: -24,
+            width: 30,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "+",
+                role: "positive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "-",
+                role: "negative",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 10.755814,
+                part: "body",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -6.976744,
+                },
+                to: {
+                    x: 0,
+                    y: -2.325581,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: 0,
+                        y: 6.976744,
+                    },
+                    {
+                        x: -4.651163,
+                        y: -2.325581,
+                    },
+                    {
+                        x: 4.651163,
+                        y: -2.325581,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: -20,
+                },
+                part: "lead-positive",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                part: "lead-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [
+            {
+                id: "diamond",
+                hiddenPinNames: [],
+                hiddenPrimitiveParts: ["body", "lead-positive", "lead-negative"],
+                additionalPrimitives: [
+                    {
+                        kind: "polygon",
+                        points: [
+                            {
+                                x: 0,
+                                y: -12.5,
+                            },
+                            {
+                                x: 12.5,
+                                y: 0,
+                            },
+                            {
+                                x: 0,
+                                y: 12.5,
+                            },
+                            {
+                                x: -12.5,
+                                y: 0,
+                            },
+                        ],
+                        fill: "none",
+                        stroke: "foreground",
+                        part: "diamond-body",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "line",
+                        from: {
+                            x: 0,
+                            y: -12.5,
+                        },
+                        to: {
+                            x: 0,
+                            y: -20,
+                        },
+                        part: "diamond-lead-positive",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "line",
+                        from: {
+                            x: 0,
+                            y: 12.5,
+                        },
+                        to: {
+                            x: 0,
+                            y: 20,
+                        },
+                        part: "diamond-lead-negative",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        schemaVersion: 1,
+        id: "vccs",
+        name: "Voltage-Controlled Current Source",
+        viewBox: {
+            x: -15,
+            y: -24,
+            width: 30,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "+",
+                role: "positive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "-",
+                role: "negative",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 10.755814,
+                part: "body",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -6.976744,
+                },
+                to: {
+                    x: 0,
+                    y: -2.325581,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: 0,
+                        y: 6.976744,
+                    },
+                    {
+                        x: -4.651163,
+                        y: -2.325581,
+                    },
+                    {
+                        x: 4.651163,
+                        y: -2.325581,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: -20,
+                },
+                part: "lead-positive",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                part: "lead-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [
+            {
+                id: "diamond",
+                hiddenPinNames: [],
+                hiddenPrimitiveParts: ["body", "lead-positive", "lead-negative"],
+                additionalPrimitives: [
+                    {
+                        kind: "polygon",
+                        points: [
+                            {
+                                x: 0,
+                                y: -12.5,
+                            },
+                            {
+                                x: 12.5,
+                                y: 0,
+                            },
+                            {
+                                x: 0,
+                                y: 12.5,
+                            },
+                            {
+                                x: -12.5,
+                                y: 0,
+                            },
+                        ],
+                        fill: "none",
+                        stroke: "foreground",
+                        part: "diamond-body",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "line",
+                        from: {
+                            x: 0,
+                            y: -12.5,
+                        },
+                        to: {
+                            x: 0,
+                            y: -20,
+                        },
+                        part: "diamond-lead-positive",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "line",
+                        from: {
+                            x: 0,
+                            y: 12.5,
+                        },
+                        to: {
+                            x: 0,
+                            y: 20,
+                        },
+                        part: "diamond-lead-negative",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        schemaVersion: 1,
+        id: "cccs",
+        name: "Current-Controlled Current Source",
+        viewBox: {
+            x: -15,
+            y: -24,
+            width: 30,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "+",
+                role: "positive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "-",
+                role: "negative",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 10.755814,
+                part: "body",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -6.976744,
+                },
+                to: {
+                    x: 0,
+                    y: -2.325581,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: 0,
+                        y: 6.976744,
+                    },
+                    {
+                        x: -4.651163,
+                        y: -2.325581,
+                    },
+                    {
+                        x: 4.651163,
+                        y: -2.325581,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: -20,
+                },
+                part: "lead-positive",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                part: "lead-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [
+            {
+                id: "diamond",
+                hiddenPinNames: [],
+                hiddenPrimitiveParts: ["body", "lead-positive", "lead-negative"],
+                additionalPrimitives: [
+                    {
+                        kind: "polygon",
+                        points: [
+                            {
+                                x: 0,
+                                y: -12.5,
+                            },
+                            {
+                                x: 12.5,
+                                y: 0,
+                            },
+                            {
+                                x: 0,
+                                y: 12.5,
+                            },
+                            {
+                                x: -12.5,
+                                y: 0,
+                            },
+                        ],
+                        fill: "none",
+                        stroke: "foreground",
+                        part: "diamond-body",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "line",
+                        from: {
+                            x: 0,
+                            y: -12.5,
+                        },
+                        to: {
+                            x: 0,
+                            y: -20,
+                        },
+                        part: "diamond-lead-positive",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "line",
+                        from: {
+                            x: 0,
+                            y: 12.5,
+                        },
+                        to: {
+                            x: 0,
+                            y: 20,
+                        },
+                        part: "diamond-lead-negative",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        schemaVersion: 1,
+        id: "d-flip-flop",
+        name: "D Flip-Flop",
+        viewBox: {
+            x: -42,
+            y: -27,
+            width: 84,
+            height: 54,
+        },
+        pins: [
+            {
+                name: "D",
+                role: "input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+            {
+                name: "CK",
+                role: "clock",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+            {
+                name: "Q",
+                role: "output",
+                at: {
+                    x: 40,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+            {
+                name: "QBAR",
+                role: "output-complement",
+                at: {
+                    x: 40,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    displayName: "Q",
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -25.000855,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -25.000855,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -25.000855 -25.0 L 25.000855 -25.0 L 25.000855 25.0 L -25.000855 25.0 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 25.000855,
+                    y: -10,
+                },
+                to: {
+                    x: 40,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 25.000855,
+                    y: 10,
+                },
+                to: {
+                    x: 40,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "d-flip-flop-reset",
+        name: "D Flip-Flop (Reset)",
+        viewBox: {
+            x: -42,
+            y: -27,
+            width: 84,
+            height: 79,
+        },
+        pins: [
+            {
+                name: "D",
+                role: "input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+            {
+                name: "CK",
+                role: "clock",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+            {
+                name: "RST",
+                role: "reset",
+                at: {
+                    x: 0,
+                    y: 50,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+            {
+                name: "Q",
+                role: "output",
+                at: {
+                    x: 40,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+            {
+                name: "QBAR",
+                role: "output-complement",
+                at: {
+                    x: 40,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    displayName: "Q",
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -25.000855,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -25.000855,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -25.000855 -25.0 L 25.000855 -25.0 L 25.000855 35.0 L -25.000855 35.0 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 25.000855,
+                    y: -10,
+                },
+                to: {
+                    x: 40,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 25.000855,
+                    y: 10,
+                },
+                to: {
+                    x: 40,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 35,
+                },
+                to: {
+                    x: 0,
+                    y: 50,
+                },
+                part: "reset-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "d-flip-flop-q",
+        name: "D Flip-Flop (Q)",
+        viewBox: {
+            x: -42,
+            y: -27,
+            width: 84,
+            height: 54,
+        },
+        pins: [
+            {
+                name: "D",
+                role: "input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+            {
+                name: "CK",
+                role: "clock",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+            {
+                name: "Q",
+                role: "output",
+                at: {
+                    x: 40,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                    showName: true,
+                    textStyle: "math-symbol",
+                    textSizeScale: 0.68,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -25.000855,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -25.000855,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -25.000855 -25.0 L 25.000855 -25.0 L 25.000855 25.0 L -25.000855 25.0 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 25.000855,
+                    y: 0,
+                },
+                to: {
+                    x: 40,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "delay-cell",
+        name: "Delay Cell",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -40,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 40,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 0,
+                },
+                to: {
+                    x: -24,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -24 -12 L 24 -12 L 24 12 L -24 12 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 24,
+                    y: 0,
+                },
+                to: {
+                    x: 40,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -0.951005,
+                        y: -3.867967,
+                    },
+                    {
+                        x: -1.48366,
+                        y: -1.398387,
+                    },
+                    {
+                        x: -4.606953,
+                        y: 5.332432,
+                    },
+                    {
+                        x: -5.551205,
+                        y: 6.034567,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -0.951005,
+                        y: -3.867967,
+                    },
+                    {
+                        x: 3.092327,
+                        y: 6.034567,
+                    },
+                    {
+                        x: 1.300671,
+                        y: 5.332432,
+                    },
+                    {
+                        x: -1.48366,
+                        y: -1.398387,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -5.551205,
+                        y: 6.034567,
+                    },
+                    {
+                        x: -4.606953,
+                        y: 5.332432,
+                    },
+                    {
+                        x: 1.300671,
+                        y: 5.332432,
+                    },
+                    {
+                        x: 3.092327,
+                        y: 6.034567,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: 6.610361,
+                        y: 4.848793,
+                    },
+                    {
+                        x: 4.842916,
+                        y: 4.848793,
+                    },
+                    {
+                        x: 6.319823,
+                        y: -2.293621,
+                    },
+                    {
+                        x: 3.801819,
+                        y: -2.293621,
+                    },
+                    {
+                        x: 4.116569,
+                        y: -3.722104,
+                    },
+                    {
+                        x: 10.871599,
+                        y: -3.722104,
+                    },
+                    {
+                        x: 10.581059,
+                        y: -2.293621,
+                    },
+                    {
+                        x: 8.087267,
+                        y: -2.293621,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "adder",
+        name: "Adder",
+        viewBox: {
+            x: -24,
+            y: -16,
+            width: 48,
+            height: 40,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 0,
+                },
+                to: {
+                    x: -13,
+                    y: 0,
+                },
+                part: "input-a-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                part: "body",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 12,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "emphasis",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 13,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                part: "output-y-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 13,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                part: "input-b-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "plus-horizontal",
+                from: {
+                    x: -6,
+                    y: 0,
+                },
+                to: {
+                    x: 6,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                part: "plus-vertical",
+                from: {
+                    x: 0,
+                    y: -6,
+                },
+                to: {
+                    x: 0,
+                    y: 6,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "multiplier",
+        name: "Multiplier",
+        viewBox: {
+            x: -24,
+            y: -16,
+            width: 48,
+            height: 40,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 0,
+                },
+                to: {
+                    x: -13,
+                    y: 0,
+                },
+                part: "input-a-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                part: "body",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 12,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "emphasis",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 13,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                part: "output-y-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 13,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                part: "input-b-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "multiply-descending",
+                from: {
+                    x: -4.243,
+                    y: -4.243,
+                },
+                to: {
+                    x: 4.243,
+                    y: 4.243,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                part: "multiply-ascending",
+                from: {
+                    x: -4.243,
+                    y: 4.243,
+                },
+                to: {
+                    x: 4.243,
+                    y: -4.243,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "transconductance",
+        name: "Transconductance (gₘ)",
+        viewBox: {
+            x: -34,
+            y: -39,
+            width: 68,
+            height: 78,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -20,
+                    y: 0,
+                },
+                part: "input-a-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                part: "body",
+                data: "M -20 -35 L 20 -17.5 L 20 17.5 L -20 35 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 20,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                part: "output-y-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        formulaPresentation: {
+            defaultFormula: "g_m",
+            supportsCoefficient: true,
+            center: {
+                x: 0,
+                y: 0,
+            },
+            fontSize: 12,
+            adaptiveFrame: {
+                shape: "right-tapered-trapezoid",
+                minBodyWidth: 40,
+                minBodyHeight: 70,
+                horizontalPadding: 4,
+                verticalPadding: 4,
+                leadLength: 10,
+            },
+        },
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "differential-transconductance",
+        name: "Differential Transconductance (gₘ)",
+        viewBox: {
+            x: -34,
+            y: -39,
+            width: 68,
+            height: 78,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-positive-lead",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -20,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-negative-lead",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -20,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                part: "body",
+                data: "M -20 -35 L 20 -17.5 L 20 17.5 L -20 35 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -35,
+                    width: 40,
+                    height: 70,
+                },
+            },
+            {
+                kind: "line",
+                part: "input-polarity",
+                from: {
+                    x: -13,
+                    y: 10,
+                },
+                to: {
+                    x: -7,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-polarity",
+                from: {
+                    x: -10,
+                    y: 7,
+                },
+                to: {
+                    x: -10,
+                    y: 13,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                part: "upright-input-polarity-negative",
+                from: {
+                    x: -13,
+                    y: -10,
+                },
+                to: {
+                    x: -7,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 20,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        formulaPresentation: {
+            defaultFormula: "g_m",
+            supportsCoefficient: true,
+            center: {
+                x: 3,
+                y: 0,
+            },
+            fontSize: 12,
+        },
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "differential-transconductance-inputs-swapped",
+        name: "Differential Transconductance (gₘ) (swapped inputs)",
+        viewBox: {
+            x: -34,
+            y: -39,
+            width: 68,
+            height: 78,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-positive-lead",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -20,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-negative-lead",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -20,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                part: "body",
+                data: "M -20 -35 L 20 -17.5 L 20 17.5 L -20 35 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -35,
+                    width: 40,
+                    height: 70,
+                },
+            },
+            {
+                kind: "line",
+                part: "input-polarity",
+                from: {
+                    x: -13,
+                    y: -10,
+                },
+                to: {
+                    x: -7,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-polarity",
+                from: {
+                    x: -10,
+                    y: -7,
+                },
+                to: {
+                    x: -10,
+                    y: -13,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                part: "upright-input-polarity-negative",
+                from: {
+                    x: -13,
+                    y: 10,
+                },
+                to: {
+                    x: -7,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 20,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        formulaPresentation: {
+            defaultFormula: "g_m",
+            supportsCoefficient: true,
+            center: {
+                x: 3,
+                y: 0,
+            },
+            fontSize: 12,
+        },
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "integrator",
+        name: "Integrator (1/s)",
+        viewBox: {
+            x: -34,
+            y: -24,
+            width: 68,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -20,
+                    y: 0,
+                },
+                part: "input-a-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                part: "body",
+                data: "M -20 -20 L 20 -20 L 20 20 L -20 20 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 20,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                part: "output-y-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        formulaPresentation: {
+            defaultFormula: "1/s",
+            supportsCoefficient: true,
+            center: {
+                x: 0,
+                y: 0,
+            },
+            fontSize: 12,
+            adaptiveFrame: {
+                minBodyWidth: 40,
+                minBodyHeight: 30,
+                horizontalPadding: 8,
+                verticalPadding: 4,
+                leadLength: 10,
+            },
+        },
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "unit-delay",
+        name: "Unit Delay (z⁻¹)",
+        viewBox: {
+            x: -34,
+            y: -24,
+            width: 68,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -20,
+                    y: 0,
+                },
+                part: "input-a-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                part: "body",
+                data: "M -20 -15 L 20 -15 L 20 15 L -20 15 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 20,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                part: "output-y-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        formulaPresentation: {
+            defaultFormula: "z^-1",
+            supportsCoefficient: true,
+            center: {
+                x: 0,
+                y: 0,
+            },
+            fontSize: 12,
+            adaptiveFrame: {
+                minBodyWidth: 40,
+                minBodyHeight: 30,
+                horizontalPadding: 8,
+                verticalPadding: 4,
+                leadLength: 10,
+            },
+        },
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "discrete-time-integrator",
+        name: "Discrete-Time Integrator (z⁻¹/(1−z⁻¹))",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -40,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 40,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 0,
+                },
+                to: {
+                    x: -30,
+                    y: 0,
+                },
+                part: "input-a-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                part: "body",
+                data: "M -30 -20 L 30 -20 L 30 20 L -30 20 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 30,
+                    y: 0,
+                },
+                to: {
+                    x: 40,
+                    y: 0,
+                },
+                part: "output-y-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        formulaPresentation: {
+            defaultFormula: "z^-1/(1-z^-1)",
+            supportsCoefficient: true,
+            center: {
+                x: 0,
+                y: 0,
+            },
+            fontSize: 12,
+            adaptiveFrame: {
+                minBodyWidth: 40,
+                minBodyHeight: 30,
+                horizontalPadding: 8,
+                verticalPadding: 4,
+                leadLength: 10,
+            },
+        },
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "quantizer",
+        name: "Quantizer",
+        viewBox: {
+            x: -34,
+            y: -24,
+            width: 68,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -20,
+                    y: 0,
+                },
+                part: "input-a-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                part: "body",
+                data: "M -20 -20 L 20 -20 L 20 20 L -20 20 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 20,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                part: "output-y-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polyline",
+                part: "quantizer-staircase",
+                points: [
+                    {
+                        x: -14,
+                        y: 15,
+                    },
+                    {
+                        x: -7,
+                        y: 15,
+                    },
+                    {
+                        x: -7,
+                        y: 5,
+                    },
+                    {
+                        x: 0,
+                        y: 5,
+                    },
+                    {
+                        x: 0,
+                        y: -5,
+                    },
+                    {
+                        x: 7,
+                        y: -5,
+                    },
+                    {
+                        x: 7,
+                        y: -15,
+                    },
+                    {
+                        x: 14,
+                        y: -15,
+                    },
+                ],
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "diode",
+        name: "Diode",
+        viewBox: {
+            x: -24,
+            y: -10,
+            width: 48,
+            height: 20,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "anode",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "K",
+                role: "cathode",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 0,
+                },
+                to: {
+                    x: -8.333334,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -8.333334,
+                        y: -6.75,
+                    },
+                    {
+                        x: -8.333334,
+                        y: 6.75,
+                    },
+                    {
+                        x: 5.833334,
+                        y: 0,
+                    },
+                ],
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 6.666666,
+                    y: -7.333334,
+                },
+                to: {
+                    x: 6.666666,
+                    y: 7.333334,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 6.666666,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "externally-controlled-switch",
+        name: "Externally Controlled Switch",
+        viewBox: {
+            x: -24,
+            y: -24,
+            width: 48,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "P",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "N",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "CTRL",
+                role: "input",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -20,
+                },
+                to: {
+                    x: 0,
+                    y: -12.41417,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: -9.215286,
+                },
+                radius: 3.198884,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -2.635977,
+                    y: -6.895603,
+                },
+                to: {
+                    x: -13.528591,
+                    y: 6.997824,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 0,
+                },
+                to: {
+                    x: -7.427615,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: 11.511074,
+                },
+                radius: 3.198884,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 14.709958,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "ground",
+        name: "Ground",
+        viewBox: {
+            x: -12,
+            y: -14,
+            width: 24,
+            height: 31,
+        },
+        pins: [
+            {
+                name: "0",
+                role: "ground",
+                at: {
+                    x: 0,
+                    y: -10,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -10,
+                },
+                to: {
+                    x: 0,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -6.395349,
+                    y: 0,
+                },
+                to: {
+                    x: 6.395349,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "ground",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -4.069767,
+                    y: 5.813953,
+                },
+                to: {
+                    x: 4.069767,
+                    y: 5.813953,
+                },
+                style: {
+                    strokeRole: "ground",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -2.325581,
+                    y: 11.046512,
+                },
+                to: {
+                    x: 2.325581,
+                    y: 11.046512,
+                },
+                style: {
+                    strokeRole: "ground",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "ideal-switch",
+        name: "Open Switch",
+        viewBox: {
+            x: -34,
+            y: -18,
+            width: 68,
+            height: 30,
+        },
+        pins: [
+            {
+                name: "1",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "2",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 0,
+                },
+                to: {
+                    x: -12.726917,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: -9.524128,
+                    y: -0.020084,
+                },
+                radius: 3.202789,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -6.953731,
+                    y: -2.417959,
+                },
+                to: {
+                    x: 6.405579,
+                    y: -12.806695,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 11.201116,
+                    y: -0.020084,
+                },
+                radius: 3.202232,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 14.403348,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "inductor",
+        name: "Large Inductor",
+        viewBox: {
+            x: -15,
+            y: -32,
+            width: 30,
+            height: 64,
+        },
+        pins: [
+            {
+                name: "1",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: -30,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "2",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: 30,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "path",
+                data: "M 0 -30 L 0 -29.243 C 0 -29.243 0 -29.243 0 -27.3261 C 0 -25.4114 0 -21.5777 0 -19.663 C 0 -17.7462 0 -17.7462 0 -17.7462 C 0 -17.7462 0 -17.7462 1.86778 -17.3623 C 3.73333 -16.9785 7.46443 -16.2131 9.28089 -14.6801 C 11.0974 -13.147 10.9969 -10.8485 7.26583 -9.31325 C 3.5325 -7.78019 -3.83152 -7.01478 -7.51353 -8.16402 C -11.1955 -9.31325 -11.1955 -12.3816 -7.46443 -13.0801 C -3.7311 -13.7808 3.73333 -12.1138 7.53138 -9.58103 C 11.3317 -7.04826 11.4633 -3.64965 7.73222 -1.4159 C 3.99888 0.815621 -3.59944 1.88229 -7.39749 0.882566 C -11.1955 -0.117155 -11.1955 -3.18326 -7.39749 -3.94868 C -3.59944 -4.71632 3.99888 -3.18326 7.69874 -0.683961 C 11.3986 1.81534 11.1978 5.28089 7.39749 7.58159 C 3.59944 9.88006 -3.79805 11.0137 -7.49791 10.0474 C -11.1955 9.08117 -11.1955 6.01506 -7.49791 5.06443 C -3.79805 4.11604 3.59944 5.28089 7.33277 7.19777 C 11.0639 9.11464 11.1308 11.7813 9.29875 13.4974 C 7.46443 15.2134 3.73333 15.9788 1.86778 16.3626 C 0 16.7464 0 16.7464 0 16.7464 C 0 16.7464 0 16.7464 0 18.8285 C 0 20.9105 0 25.0767 0 27.1609 C 0 29.243 0 29.243 0 29.243 L 0 30",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "inductor-compact",
+        name: "Inductor",
+        viewBox: {
+            x: -10,
+            y: -24,
+            width: 20,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "1",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "2",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "path",
+                data: "M 0 -20 L 0 -19.4953 C 0 -19.4953 0 -19.4953 0 -18.2174 C 0 -16.9409 0 -14.3851 0 -13.1087 C 0 -11.8308 0 -11.8308 0 -11.8308 C 0 -11.8308 0 -11.8308 1.2452 -11.5749 C 2.4889 -11.319 4.9763 -10.8087 6.1873 -9.7867 C 7.3983 -8.7647 7.3313 -7.2323 4.8439 -6.2088 C 2.355 -5.1868 -2.5543 -4.6765 -5.009 -5.4427 C -7.4637 -6.2088 -7.4637 -8.2544 -4.9763 -8.7201 C -2.4874 -9.1872 2.4889 -8.0759 5.0209 -6.3874 C 7.5545 -4.6988 7.6422 -2.4331 5.1548 -0.9439 C 2.6659 0.5437 -2.3996 1.2549 -4.9317 0.5884 C -7.4637 -0.0781 -7.4637 -2.1222 -4.9317 -2.6325 C -2.3996 -3.1442 2.6659 -2.1222 5.1325 -0.456 C 7.5991 1.2102 7.4652 3.5206 4.9317 5.0544 C 2.3996 6.5867 -2.532 7.3425 -4.9986 6.6983 C -7.4637 6.0541 -7.4637 4.01 -4.9986 3.3763 C -2.532 2.744 2.3996 3.5206 4.8885 4.7985 C 7.3759 6.0764 7.4205 7.8542 6.1992 8.9983 C 4.9763 10.1423 2.4889 10.6525 1.2452 10.9084 C 0 11.1643 0 11.1643 0 11.1643 C 0 11.1643 0 11.1643 0 12.5523 C 0 13.9403 0 16.7178 0 18.1073 C 0 19.4953 0 19.4953 0 19.4953 L 0 20",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "tcoil",
+        name: "T-Coil",
+        viewBox: {
+            x: -94,
+            y: -56,
+            width: 188,
+            height: 90,
+        },
+        pins: [
+            {
+                name: "1",
+                role: "passive",
+                at: {
+                    x: -90,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "2",
+                role: "passive",
+                at: {
+                    x: 90,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "3",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -90,
+                    y: 0,
+                },
+                to: {
+                    x: -60.1244,
+                    y: 0,
+                },
+                part: "terminal-1-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -60.6244 0 L -60.1197 0 C -60.1197 0 -60.1197 0 -58.8418 0 C -57.5653 0 -55.0095 0 -53.7331 0 C -52.4552 0 -52.4552 0 -52.4552 0 C -52.4552 0 -52.4552 0 -52.1993 -1.2452 C -51.9434 -2.4889 -51.4331 -4.9763 -50.4111 -6.1873 C -49.3891 -7.3983 -47.8567 -7.3313 -46.8332 -4.8439 C -45.8112 -2.355 -45.3009 2.5543 -46.0671 5.009 C -46.8332 7.4637 -48.8788 7.4637 -49.3445 4.9763 C -49.8116 2.4874 -48.7003 -2.4889 -47.0118 -5.0209 C -45.3232 -7.5545 -43.0575 -7.6422 -41.5683 -5.1548 C -40.0807 -2.6659 -39.3695 2.3996 -40.036 4.9317 C -40.7025 7.4637 -42.7466 7.4637 -43.2569 4.9317 C -43.7686 2.3996 -42.7466 -2.6659 -41.0804 -5.1325 C -39.4142 -7.5991 -37.1038 -7.4652 -35.57 -4.9317 C -34.0377 -2.3996 -33.2819 2.532 -33.9261 4.9986 C -34.5703 7.4637 -36.6144 7.4637 -37.2481 4.9986 C -37.8804 2.532 -37.1038 -2.3996 -35.8259 -4.8885 C -34.548 -7.3759 -32.7702 -7.4205 -31.6261 -6.1992 C -30.4821 -4.9763 -29.9719 -2.4889 -29.716 -1.2452 C -29.4601 0 -29.4601 0 -29.4601 0 C -29.4601 0 -29.4601 0 -28.0721 0 C -26.6841 0 -23.9066 0 -22.5171 0 C -21.1291 0 -21.1291 0 -21.1291 0 L -20.6244 0",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "round",
+                },
+                part: "winding-1",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -21.1244,
+                    y: 0,
+                },
+                to: {
+                    x: 22.3124,
+                    y: 0,
+                },
+                part: "winding-center-link",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 21.8124 0 L 22.3171 0 C 22.3171 0 22.3171 0 23.595 0 C 24.8715 0 27.4273 0 28.7037 0 C 29.9816 0 29.9816 0 29.9816 0 C 29.9816 0 29.9816 0 30.2375 -1.2452 C 30.4934 -2.4889 31.0037 -4.9763 32.0257 -6.1873 C 33.0477 -7.3983 34.5801 -7.3313 35.6036 -4.8439 C 36.6256 -2.355 37.1359 2.5543 36.3697 5.009 C 35.6036 7.4637 33.558 7.4637 33.0923 4.9763 C 32.6252 2.4874 33.7365 -2.4889 35.425 -5.0209 C 37.1136 -7.5545 39.3793 -7.6422 40.8685 -5.1548 C 42.3561 -2.6659 43.0673 2.3996 42.4008 4.9317 C 41.7343 7.4637 39.6902 7.4637 39.1799 4.9317 C 38.6682 2.3996 39.6902 -2.6659 41.3564 -5.1325 C 43.0226 -7.5991 45.333 -7.4652 46.8668 -4.9317 C 48.3991 -2.3996 49.1549 2.532 48.5107 4.9986 C 47.8665 7.4637 45.8224 7.4637 45.1887 4.9986 C 44.5564 2.532 45.333 -2.3996 46.6109 -4.8885 C 47.8888 -7.3759 49.6666 -7.4205 50.8107 -6.1992 C 51.9547 -4.9763 52.4649 -2.4889 52.7208 -1.2452 C 52.9767 0 52.9767 0 52.9767 0 C 52.9767 0 52.9767 0 54.3647 0 C 55.7527 0 58.5302 0 59.9197 0 C 61.3077 0 61.3077 0 61.3077 0 L 61.8124 0",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "round",
+                },
+                part: "winding-2",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 61.3124,
+                    y: 0,
+                },
+                to: {
+                    x: 90,
+                    y: 0,
+                },
+                part: "terminal-2-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -0.5,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                part: "terminal-3-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: -80,
+                        y: 0,
+                    },
+                    {
+                        x: -80,
+                        y: -43.335,
+                    },
+                    {
+                        x: -19.5,
+                        y: -43.335,
+                    },
+                ],
+                part: "bridge-left-route",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -3.2336,
+                    y: -51.3856,
+                },
+                to: {
+                    x: -3.2336,
+                    y: -35.2844,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "bridge-capacitor-1",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 3.2336,
+                    y: -51.3856,
+                },
+                to: {
+                    x: 3.2336,
+                    y: -35.2844,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "bridge-capacitor-2",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -3.2336,
+                    y: -43.335,
+                },
+                to: {
+                    x: -20,
+                    y: -43.335,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "bridge-capacitor-3",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 3.2336,
+                    y: -43.335,
+                },
+                to: {
+                    x: 20,
+                    y: -43.335,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "bridge-capacitor-4",
+            },
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: 19.5,
+                        y: -43.335,
+                    },
+                    {
+                        x: 80,
+                        y: -43.335,
+                    },
+                    {
+                        x: 80,
+                        y: 0,
+                    },
+                ],
+                part: "bridge-right-route",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: -59.2164,
+                    y: -6.0745,
+                },
+                radius: 3.77907,
+                fill: "foreground",
+                stroke: "none",
+                part: "winding-1-polarity",
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 23.2204,
+                    y: -6.0745,
+                },
+                radius: 3.77907,
+                fill: "foreground",
+                stroke: "none",
+                part: "winding-2-polarity",
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: -80,
+                    y: 0,
+                },
+                radius: 3.77907,
+                fill: "foreground",
+                stroke: "none",
+                part: "internal-junction-1",
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 3.77907,
+                fill: "foreground",
+                stroke: "none",
+                part: "internal-junction-2",
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 80,
+                    y: 0,
+                },
+                radius: 3.77907,
+                fill: "foreground",
+                stroke: "none",
+                part: "internal-junction-3",
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "xfmr",
+        name: "XFMR",
+        viewBox: {
+            x: -24,
+            y: -24,
+            width: 48,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "P-",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "P+",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "S-",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "S+",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "path",
+                data: "M -20 -10 L -19.4953 -10 C -19.4953 -10 -19.4953 -10 -18.2174 -10 C -16.9409 -10 -14.3851 -10 -13.1087 -10 C -11.8308 -10 -11.8308 -10 -11.8308 -10 C -11.8308 -10 -11.8308 -10 -11.5749 -11.2452 C -11.319 -12.4889 -10.8087 -14.9763 -9.7867 -16.1873 C -8.7647 -17.3983 -7.2323 -17.3313 -6.2088 -14.8439 C -5.1868 -12.355 -4.6765 -7.4457 -5.4427 -4.991 C -6.2088 -2.5363 -8.2544 -2.5363 -8.7201 -5.0237 C -9.1872 -7.5126 -8.0759 -12.4889 -6.3874 -15.0209 C -4.6988 -17.5545 -2.4331 -17.6422 -0.9439 -15.1548 C 0.5437 -12.6659 1.2549 -7.6004 0.5884 -5.0683 C -0.0781 -2.5363 -2.1222 -2.5363 -2.6325 -5.0683 C -3.1442 -7.6004 -2.1222 -12.6659 -0.456 -15.1325 C 1.2102 -17.5991 3.5206 -17.4652 5.0544 -14.9317 C 6.5867 -12.3996 7.3425 -7.468 6.6983 -5.0014 C 6.0541 -2.5363 4.01 -2.5363 3.3763 -5.0014 C 2.744 -7.468 3.5206 -12.3996 4.7985 -14.8885 C 6.0764 -17.3759 7.8542 -17.4205 8.9983 -16.1992 C 10.1423 -14.9763 10.6525 -12.4889 10.9084 -11.2452 C 11.1643 -10 11.1643 -10 11.1643 -10 C 11.1643 -10 11.1643 -10 12.5523 -10 C 13.9403 -10 16.7178 -10 18.1073 -10 C 19.4953 -10 19.4953 -10 19.4953 -10 L 20 -10",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "round",
+                },
+                part: "primary-winding",
+            },
+            {
+                kind: "path",
+                data: "M -20 10 L -19.4953 10 C -19.4953 10 -19.4953 10 -18.2174 10 C -16.9409 10 -14.3851 10 -13.1087 10 C -11.8308 10 -11.8308 10 -11.8308 10 C -11.8308 10 -11.8308 10 -11.5749 8.7548 C -11.319 7.5111 -10.8087 5.0237 -9.7867 3.8127 C -8.7647 2.6017 -7.2323 2.6687 -6.2088 5.1561 C -5.1868 7.645 -4.6765 12.5543 -5.4427 15.009 C -6.2088 17.4637 -8.2544 17.4637 -8.7201 14.9763 C -9.1872 12.4874 -8.0759 7.5111 -6.3874 4.9791 C -4.6988 2.4455 -2.4331 2.3578 -0.9439 4.8452 C 0.5437 7.3341 1.2549 12.3996 0.5884 14.9317 C -0.0781 17.4637 -2.1222 17.4637 -2.6325 14.9317 C -3.1442 12.3996 -2.1222 7.3341 -0.456 4.8675 C 1.2102 2.4009 3.5206 2.5348 5.0544 5.0683 C 6.5867 7.6004 7.3425 12.532 6.6983 14.9986 C 6.0541 17.4637 4.01 17.4637 3.3763 14.9986 C 2.744 12.532 3.5206 7.6004 4.7985 5.1115 C 6.0764 2.6241 7.8542 2.5795 8.9983 3.8008 C 10.1423 5.0237 10.6525 7.5111 10.9084 8.7548 C 11.1643 10 11.1643 10 11.1643 10 C 11.1643 10 11.1643 10 12.5523 10 C 13.9403 10 16.7178 10 18.1073 10 C 19.4953 10 19.4953 10 19.4953 10 L 20 10",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "round",
+                },
+                part: "secondary-winding",
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 19.1423,
+                    y: -18.9541,
+                },
+                radius: 2.2903,
+                fill: "foreground",
+                stroke: "none",
+                part: "primary-polarity",
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 19.1423,
+                    y: 19.3646,
+                },
+                radius: 2.2903,
+                fill: "foreground",
+                stroke: "none",
+                part: "secondary-polarity",
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "center-tap-inductor",
+        name: "Center-Tap Inductor",
+        viewBox: {
+            x: -54,
+            y: -16,
+            width: 108,
+            height: 40,
+        },
+        pins: [
+            {
+                name: "1",
+                role: "passive",
+                at: {
+                    x: -50,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "2",
+                role: "passive",
+                at: {
+                    x: 50,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "3",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -50,
+                    y: 0,
+                },
+                to: {
+                    x: -44.5,
+                    y: 0,
+                },
+                part: "terminal-1-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -45 0 L -44.4953 0 C -44.4953 0 -44.4953 0 -43.2174 0 C -41.9409 0 -39.3851 0 -38.1087 0 C -36.8308 0 -36.8308 0 -36.8308 0 C -36.8308 0 -36.8308 0 -36.5749 -1.2452 C -36.319 -2.4889 -35.8087 -4.9763 -34.7867 -6.1873 C -33.7647 -7.3983 -32.2323 -7.3313 -31.2088 -4.8439 C -30.1868 -2.355 -29.6765 2.5543 -30.4427 5.009 C -31.2088 7.4637 -33.2544 7.4637 -33.7201 4.9763 C -34.1872 2.4874 -33.0759 -2.4889 -31.3874 -5.0209 C -29.6988 -7.5545 -27.4331 -7.6422 -25.9439 -5.1548 C -24.4563 -2.6659 -23.7451 2.3996 -24.4116 4.9317 C -25.0781 7.4637 -27.1222 7.4637 -27.6325 4.9317 C -28.1442 2.3996 -27.1222 -2.6659 -25.456 -5.1325 C -23.7898 -7.5991 -21.4794 -7.4652 -19.9456 -4.9317 C -18.4133 -2.3996 -17.6575 2.532 -18.3017 4.9986 C -18.9459 7.4637 -20.99 7.4637 -21.6237 4.9986 C -22.256 2.532 -21.4794 -2.3996 -20.2015 -4.8885 C -18.9236 -7.3759 -17.1458 -7.4205 -16.0017 -6.1992 C -14.8577 -4.9763 -14.3475 -2.4889 -14.0916 -1.2452 C -13.8357 0 -13.8357 0 -13.8357 0 C -13.8357 0 -13.8357 0 -12.4477 0 C -11.0597 0 -8.2822 0 -6.8927 0 C -5.5047 0 -5.5047 0 -5.5047 0 L -5 0",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "round",
+                },
+                part: "winding-1",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -5.5,
+                    y: 0,
+                },
+                to: {
+                    x: 5.5,
+                    y: 0,
+                },
+                part: "winding-center-link",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 5 0 L 5.5047 0 C 5.5047 0 5.5047 0 6.7826 0 C 8.0591 0 10.6149 0 11.8913 0 C 13.1692 0 13.1692 0 13.1692 0 C 13.1692 0 13.1692 0 13.4251 -1.2452 C 13.681 -2.4889 14.1913 -4.9763 15.2133 -6.1873 C 16.2353 -7.3983 17.7677 -7.3313 18.7912 -4.8439 C 19.8132 -2.355 20.3235 2.5543 19.5573 5.009 C 18.7912 7.4637 16.7456 7.4637 16.2799 4.9763 C 15.8128 2.4874 16.9241 -2.4889 18.6126 -5.0209 C 20.3012 -7.5545 22.5669 -7.6422 24.0561 -5.1548 C 25.5437 -2.6659 26.2549 2.3996 25.5884 4.9317 C 24.9219 7.4637 22.8778 7.4637 22.3675 4.9317 C 21.8558 2.3996 22.8778 -2.6659 24.544 -5.1325 C 26.2102 -7.5991 28.5206 -7.4652 30.0544 -4.9317 C 31.5867 -2.3996 32.3425 2.532 31.6983 4.9986 C 31.0541 7.4637 29.01 7.4637 28.3763 4.9986 C 27.744 2.532 28.5206 -2.3996 29.7985 -4.8885 C 31.0764 -7.3759 32.8542 -7.4205 33.9983 -6.1992 C 35.1423 -4.9763 35.6525 -2.4889 35.9084 -1.2452 C 36.1643 0 36.1643 0 36.1643 0 C 36.1643 0 36.1643 0 37.5523 0 C 38.9403 0 41.7178 0 43.1073 0 C 44.4953 0 44.4953 0 44.4953 0 L 45 0",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "round",
+                },
+                part: "winding-2",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 44.5,
+                    y: 0,
+                },
+                to: {
+                    x: 50,
+                    y: 0,
+                },
+                part: "terminal-2-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -0.5,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                part: "terminal-3-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 3.77907,
+                fill: "foreground",
+                stroke: "none",
+                part: "center-tap-junction",
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "inverter",
+        name: "Inverter",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 9,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 3.750981 0 L -20 -15.000436 L -20 13.748365 L 3.750981 0",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -15.000436,
+                    width: 23.750981,
+                    height: 28.748801,
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 7.522015,
+                    y: 0.009591,
+                },
+                radius: 3.750109,
+                part: "negation-bubble",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 11.272124,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "nand-gate",
+        name: "NAND Gate",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 7,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -20,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -20,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -1.405528 15.07978 C -1.405528 15.07978 -1.405528 15.07978 -1.236377 15.06583 C -0.988753 15.051879 -0.493505 15.025722 -0.245881 15.013515 C 0.001743 15.001308 0.001743 15.001308 0.67835 14.894934 C 1.354956 14.792048 2.708169 14.582788 3.918388 14.234022 C 5.130351 13.880024 6.199319 13.38652 7.358967 12.591333 C 8.516871 11.79789 9.767198 10.704508 10.729793 9.558811 C 11.692388 8.413114 12.370738 7.213358 12.892144 5.990932 C 13.411805 4.766763 13.77801 3.516436 13.973319 2.213794 C 14.166884 0.911152 14.194786 -0.442061 14.062254 -1.706339 C 13.933211 -2.968873 13.648966 -4.140727 13.111866 -5.429418 C 12.578254 -6.71811 11.797018 -8.125381 10.898945 -9.283285 C 10.000871 -10.442933 8.985962 -11.354957 8.15241 -12.031563 C 7.318859 -12.70817 6.66841 -13.151103 5.979597 -13.503357 C 5.285552 -13.853867 4.560118 -14.115442 3.906181 -14.322958 C 3.257476 -14.530473 2.683756 -14.687418 2.176301 -14.778097 C 1.667102 -14.870521 1.224169 -14.894934 0.769029 -14.908885 C 0.313889 -14.921092 -0.155201 -14.921092 -0.650449 -14.921092 C -1.143954 -14.921092 -1.665359 -14.921092 -1.926934 -14.921092 C -2.108292 -14.921092 -2.108292 -14.921092 -2.108292 -14.921092 L -20 -14.921092 L -20 15.07978 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -14.921092,
+                    width: 34.194786,
+                    height: 30.000872,
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 19.652977,
+                    y: 0.010463,
+                },
+                radius: 3.375185,
+                part: "negation-bubble",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 23.028162,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "nand-gate-3",
+        name: "NAND Gate (3 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 7,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -20,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -20,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -1.405528 15.07978 C -1.405528 15.07978 -1.405528 15.07978 -1.236377 15.06583 C -0.988753 15.051879 -0.493505 15.025722 -0.245881 15.013515 C 0.001743 15.001308 0.001743 15.001308 0.67835 14.894934 C 1.354956 14.792048 2.708169 14.582788 3.918388 14.234022 C 5.130351 13.880024 6.199319 13.38652 7.358967 12.591333 C 8.516871 11.79789 9.767198 10.704508 10.729793 9.558811 C 11.692388 8.413114 12.370738 7.213358 12.892144 5.990932 C 13.411805 4.766763 13.77801 3.516436 13.973319 2.213794 C 14.166884 0.911152 14.194786 -0.442061 14.062254 -1.706339 C 13.933211 -2.968873 13.648966 -4.140727 13.111866 -5.429418 C 12.578254 -6.71811 11.797018 -8.125381 10.898945 -9.283285 C 10.000871 -10.442933 8.985962 -11.354957 8.15241 -12.031563 C 7.318859 -12.70817 6.66841 -13.151103 5.979597 -13.503357 C 5.285552 -13.853867 4.560118 -14.115442 3.906181 -14.322958 C 3.257476 -14.530473 2.683756 -14.687418 2.176301 -14.778097 C 1.667102 -14.870521 1.224169 -14.894934 0.769029 -14.908885 C 0.313889 -14.921092 -0.155201 -14.921092 -0.650449 -14.921092 C -1.143954 -14.921092 -1.665359 -14.921092 -1.926934 -14.921092 C -2.108292 -14.921092 -2.108292 -14.921092 -2.108292 -14.921092 L -20 -14.921092 L -20 15.07978 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -14.921092,
+                    width: 34.194786,
+                    height: 30.000872,
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 19.652977,
+                    y: 0.010463,
+                },
+                radius: 3.375185,
+                part: "negation-bubble",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 23.028162,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "nand-gate-4",
+        name: "NAND Gate (4 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "D",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 7,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -12,
+                },
+                to: {
+                    x: -20,
+                    y: -12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -4,
+                },
+                to: {
+                    x: -20,
+                    y: -4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 4,
+                },
+                to: {
+                    x: -20,
+                    y: 4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 12,
+                },
+                to: {
+                    x: -20,
+                    y: 12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -1.405528 15.07978 C -1.405528 15.07978 -1.405528 15.07978 -1.236377 15.06583 C -0.988753 15.051879 -0.493505 15.025722 -0.245881 15.013515 C 0.001743 15.001308 0.001743 15.001308 0.67835 14.894934 C 1.354956 14.792048 2.708169 14.582788 3.918388 14.234022 C 5.130351 13.880024 6.199319 13.38652 7.358967 12.591333 C 8.516871 11.79789 9.767198 10.704508 10.729793 9.558811 C 11.692388 8.413114 12.370738 7.213358 12.892144 5.990932 C 13.411805 4.766763 13.77801 3.516436 13.973319 2.213794 C 14.166884 0.911152 14.194786 -0.442061 14.062254 -1.706339 C 13.933211 -2.968873 13.648966 -4.140727 13.111866 -5.429418 C 12.578254 -6.71811 11.797018 -8.125381 10.898945 -9.283285 C 10.000871 -10.442933 8.985962 -11.354957 8.15241 -12.031563 C 7.318859 -12.70817 6.66841 -13.151103 5.979597 -13.503357 C 5.285552 -13.853867 4.560118 -14.115442 3.906181 -14.322958 C 3.257476 -14.530473 2.683756 -14.687418 2.176301 -14.778097 C 1.667102 -14.870521 1.224169 -14.894934 0.769029 -14.908885 C 0.313889 -14.921092 -0.155201 -14.921092 -0.650449 -14.921092 C -1.143954 -14.921092 -1.665359 -14.921092 -1.926934 -14.921092 C -2.108292 -14.921092 -2.108292 -14.921092 -2.108292 -14.921092 L -20 -14.921092 L -20 15.07978 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -14.921092,
+                    width: 34.194786,
+                    height: 30.000872,
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 19.652977,
+                    y: 0.010463,
+                },
+                radius: 3.375185,
+                part: "negation-bubble",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 23.028162,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "nmos",
+        name: "NMOS",
+        viewBox: {
+            x: -24,
+            y: -24,
+            width: 48,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "D",
+                role: "drain",
+                at: {
+                    x: 10,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "G",
+                role: "gate",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "S",
+                role: "source",
+                at: {
+                    x: 10,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "bulk",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: -4.244186,
+                        y: -6.976744,
+                    },
+                    {
+                        x: 10,
+                        y: -6.976744,
+                    },
+                    {
+                        x: 10,
+                        y: -20,
+                    },
+                ],
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: -4.244186,
+                        y: 6.976744,
+                    },
+                    {
+                        x: 10,
+                        y: 6.976744,
+                    },
+                    {
+                        x: 10,
+                        y: 20,
+                    },
+                ],
+                part: "source-arrow-host",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -11.802326,
+                        y: -9.593023,
+                    },
+                    {
+                        x: -11.802326,
+                        y: 9.593023,
+                    },
+                    {
+                        x: -8.895349,
+                        y: 9.593023,
+                    },
+                    {
+                        x: -8.895349,
+                        y: -9.593023,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+                part: "gate-bar",
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -6.569767,
+                        y: -12.5,
+                    },
+                    {
+                        x: -6.569767,
+                        y: 12.5,
+                    },
+                    {
+                        x: -3.662791,
+                        y: 12.5,
+                    },
+                    {
+                        x: -3.662791,
+                        y: -12.5,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+                part: "gate-bar",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -8.895349,
+                    y: 0,
+                },
+                to: {
+                    x: -20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -3.662791,
+                    y: 0,
+                },
+                to: {
+                    x: 10,
+                    y: 0,
+                },
+                part: "bulk-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 16.395349,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                part: "bulk-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: 10,
+                        y: 0,
+                    },
+                    {
+                        x: 16.395349,
+                        y: -3.488372,
+                    },
+                    {
+                        x: 16.395349,
+                        y: 3.488372,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+                part: "bulk-lead",
+            },
+        ],
+        variants: [
+            {
+                id: "textbook-3terminal",
+                hiddenPinNames: ["B"],
+                auxiliaryPins: [
+                    {
+                        name: "B",
+                        at: {
+                            x: -4,
+                            y: 0,
+                        },
+                        direction: "east",
+                        routing: {
+                            escape: "outward",
+                            preferredLanding: {
+                                x: 0,
+                                y: 0,
+                            },
+                        },
+                    },
+                ],
+                hiddenPrimitiveParts: ["bulk-lead", "source-arrow-host"],
+                additionalPrimitives: [
+                    {
+                        kind: "polyline",
+                        points: [
+                            {
+                                x: -3.662791,
+                                y: 6.976744,
+                            },
+                            {
+                                x: 10,
+                                y: 6.976744,
+                            },
+                            {
+                                x: 10,
+                                y: 20,
+                            },
+                        ],
+                        part: "source-arrow",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "polygon",
+                        points: [
+                            {
+                                x: 10.581395,
+                                y: 6.976744,
+                            },
+                            {
+                                x: 1.27907,
+                                y: 2.906977,
+                            },
+                            {
+                                x: 1.27907,
+                                y: 11.046512,
+                            },
+                        ],
+                        fill: "foreground",
+                        stroke: "none",
+                        part: "source-arrow",
+                    },
+                ],
+            },
+        ],
+        defaultVariantId: "textbook-3terminal",
+    },
+    {
+        schemaVersion: 1,
+        id: "nor-gate",
+        name: "NOR Gate",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 7,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -15.436394,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -15.748539,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 15.757259 0.002616 C 15.757259 0.002616 15.757259 0.002616 13.373442 2.213794 C 10.989624 4.426715 6.22199 8.849071 0.263319 11.829279 C -5.697096 14.809486 -12.850292 16.345802 -16.425146 17.114831 C -20 17.882117 -20 17.882117 -20 17.882117 C -20 17.882117 -20 17.882117 -18.139332 14.786817 C -16.275176 11.689772 -12.550353 5.497428 -12.550353 -0.438574 C -12.550353 -6.374575 -16.275176 -12.055977 -18.139332 -14.896678 C -20 -17.735635 -20 -17.735635 -20 -17.735635 C -20 -17.735635 -20 -17.735635 -16.425146 -16.991019 C -12.850292 -16.246403 -5.697096 -14.757172 0.263319 -11.799634 C 6.22199 -8.84384 10.989624 -4.41974 13.373442 -2.208562 C 15.757259 0.002616 15.757259 0.002616 15.757259 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 35.757259,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 19.96338,
+                    y: -0.121196,
+                },
+                radius: 3.374313,
+                part: "negation-bubble",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 23.337693,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "nor-gate-3",
+        name: "NOR Gate (3 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 7,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -14.966749,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -12.307069,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -15.215411,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 15.757259 0.002616 C 15.757259 0.002616 15.757259 0.002616 13.373442 2.213794 C 10.989624 4.426715 6.22199 8.849071 0.263319 11.829279 C -5.697096 14.809486 -12.850292 16.345802 -16.425146 17.114831 C -20 17.882117 -20 17.882117 -20 17.882117 C -20 17.882117 -20 17.882117 -18.139332 14.786817 C -16.275176 11.689772 -12.550353 5.497428 -12.550353 -0.438574 C -12.550353 -6.374575 -16.275176 -12.055977 -18.139332 -14.896678 C -20 -17.735635 -20 -17.735635 -20 -17.735635 C -20 -17.735635 -20 -17.735635 -16.425146 -16.991019 C -12.850292 -16.246403 -5.697096 -14.757172 0.263319 -11.799634 C 6.22199 -8.84384 10.989624 -4.41974 13.373442 -2.208562 C 15.757259 0.002616 15.757259 0.002616 15.757259 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 35.757259,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 19.96338,
+                    y: -0.121196,
+                },
+                radius: 3.374313,
+                part: "negation-bubble",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 23.337693,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "nor-gate-4",
+        name: "NOR Gate (4 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "D",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 7,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -12,
+                },
+                to: {
+                    x: -16.06749,
+                    y: -12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -4,
+                },
+                to: {
+                    x: -12.714012,
+                    y: -4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 4,
+                },
+                to: {
+                    x: -12.909141,
+                    y: 4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 12,
+                },
+                to: {
+                    x: -16.264942,
+                    y: 12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 15.757259 0.002616 C 15.757259 0.002616 15.757259 0.002616 13.373442 2.213794 C 10.989624 4.426715 6.22199 8.849071 0.263319 11.829279 C -5.697096 14.809486 -12.850292 16.345802 -16.425146 17.114831 C -20 17.882117 -20 17.882117 -20 17.882117 C -20 17.882117 -20 17.882117 -18.139332 14.786817 C -16.275176 11.689772 -12.550353 5.497428 -12.550353 -0.438574 C -12.550353 -6.374575 -16.275176 -12.055977 -18.139332 -14.896678 C -20 -17.735635 -20 -17.735635 -20 -17.735635 C -20 -17.735635 -20 -17.735635 -16.425146 -16.991019 C -12.850292 -16.246403 -5.697096 -14.757172 0.263319 -11.799634 C 6.22199 -8.84384 10.989624 -4.41974 13.373442 -2.208562 C 15.757259 0.002616 15.757259 0.002616 15.757259 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 35.757259,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 19.96338,
+                    y: -0.121196,
+                },
+                radius: 3.374313,
+                part: "negation-bubble",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 23.337693,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "npn",
+        name: "NPN Bipolar Transistor",
+        viewBox: {
+            x: -34,
+            y: -24,
+            width: 42,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "C",
+                role: "collector",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "base",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "E",
+                role: "emitter",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -16.868887,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.868887,
+                    y: -13.345607,
+                },
+                to: {
+                    x: -16.868887,
+                    y: 13.32954,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: -16.868887,
+                        y: -6.401526,
+                    },
+                    {
+                        x: 0,
+                        y: -13.379732,
+                    },
+                    {
+                        x: 0,
+                        y: -20,
+                    },
+                ],
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.868887,
+                    y: 6.403673,
+                },
+                to: {
+                    x: -7.30071,
+                    y: 10.358712,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: -0.936056,
+                        y: 12.990761,
+                    },
+                    {
+                        x: 0,
+                        y: 13.377859,
+                    },
+                    {
+                        x: 0,
+                        y: 20,
+                    },
+                ],
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -6.635095,
+                        y: 6.792086,
+                    },
+                    {
+                        x: -9.952643,
+                        y: 13.377859,
+                    },
+                    {
+                        x: 0,
+                        y: 13.377859,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp",
+        name: "Operational Amplifier",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-wide",
+        name: "Op Amp Wide",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-lettered",
+        name: "Operational Amplifier (lettered)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-wide-lettered",
+        name: "Op Amp Wide (lettered)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-lettered-inputs-swapped",
+        name: "Operational Amplifier (lettered) (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-wide-lettered-inputs-swapped",
+        name: "Op Amp Wide (lettered) (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-inputs-swapped",
+        name: "Operational Amplifier (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-wide-inputs-swapped",
+        name: "Op Amp Wide (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential",
+        name: "Differential Op Amp",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-wide",
+        name: "FD Amp Wide",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: -20,
+                },
+                to: {
+                    x: 30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: 20,
+                },
+                to: {
+                    x: 30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-lettered",
+        name: "Differential Op Amp (lettered)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-wide-lettered",
+        name: "FD Amp Wide (lettered)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: -20,
+                },
+                to: {
+                    x: 30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: 20,
+                },
+                to: {
+                    x: 30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-lettered-inputs-swapped",
+        name: "Differential Op Amp (lettered) (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-wide-lettered-inputs-swapped",
+        name: "FD Amp Wide (lettered) (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: -20,
+                },
+                to: {
+                    x: 30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: 20,
+                },
+                to: {
+                    x: 30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-inputs-swapped",
+        name: "Differential Op Amp (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-wide-inputs-swapped",
+        name: "FD Amp Wide (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: -20,
+                },
+                to: {
+                    x: 30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: 20,
+                },
+                to: {
+                    x: 30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: 11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: 17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-crossed",
+        name: "Differential Op Amp (crossed outputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: -11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: -17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-wide-crossed",
+        name: "FD Amp Wide (crossed outputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: -20,
+                },
+                to: {
+                    x: 30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: 20,
+                },
+                to: {
+                    x: 30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: -11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: -17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-crossed-lettered",
+        name: "Differential Op Amp (crossed outputs, lettered)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: -11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: -17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-wide-crossed-lettered",
+        name: "FD Amp Wide (crossed outputs, lettered)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: -20,
+                },
+                to: {
+                    x: 30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: 20,
+                },
+                to: {
+                    x: 30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: 11,
+                },
+                to: {
+                    x: -23.75,
+                    y: 17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: -11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: -17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-crossed-lettered-inputs-swapped",
+        name: "Differential Op Amp (crossed outputs, lettered) (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: -11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: -17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-wide-crossed-lettered-inputs-swapped",
+        name: "FD Amp Wide (crossed outputs, lettered) (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: -20,
+                },
+                to: {
+                    x: 30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: 20,
+                },
+                to: {
+                    x: 30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: -11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: -17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-crossed-inputs-swapped",
+        name: "Differential Op Amp (crossed outputs) (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -10,
+                },
+                to: {
+                    x: -30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 10,
+                },
+                to: {
+                    x: -30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: -10,
+                },
+                to: {
+                    x: 30,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: 4.641015999999993,
+                    y: 10,
+                },
+                to: {
+                    x: 30,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: -11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: -17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "opamp-differential-wide-crossed-inputs-swapped",
+        name: "FD Amp Wide (crossed outputs) (swapped inputs)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN+",
+                role: "non-inverting-input",
+                at: {
+                    x: -40,
+                    y: -20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "IN-",
+                role: "inverting-input",
+                at: {
+                    x: -40,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT+",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: -20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT-",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: -20,
+                },
+                to: {
+                    x: -30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "input-lead",
+                from: {
+                    x: -40,
+                    y: 20,
+                },
+                to: {
+                    x: -30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: -20,
+                },
+                to: {
+                    x: 30,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "output-lead",
+                from: {
+                    x: -12.679492,
+                    y: 20,
+                },
+                to: {
+                    x: 30,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -23.75,
+                    y: -11,
+                },
+                to: {
+                    x: -23.75,
+                    y: -17,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: -14,
+                },
+                to: {
+                    x: -20.75,
+                    y: -14,
+                },
+                part: "input-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -26.75,
+                    y: 14,
+                },
+                to: {
+                    x: -20.75,
+                    y: 14,
+                },
+                part: "upright-input-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -13.538476,
+                    y: -11,
+                },
+                to: {
+                    x: -13.538476,
+                    y: -17,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: -14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: -14,
+                },
+                part: "output-polarity",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.538476,
+                    y: 14,
+                },
+                to: {
+                    x: -10.538476,
+                    y: 14,
+                },
+                part: "upright-output-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "round",
+                    lineJoin: "round",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "or-gate",
+        name: "OR Gate",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 4,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -15.436394,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -15.748539,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 15.757259 0.002616 C 15.757259 0.002616 15.757259 0.002616 13.373442 2.213794 C 10.989624 4.426715 6.22199 8.849071 0.263319 11.829279 C -5.697096 14.809486 -12.850292 16.345802 -16.425146 17.114831 C -20 17.882117 -20 17.882117 -20 17.882117 C -20 17.882117 -20 17.882117 -18.139332 14.786817 C -16.275176 11.689772 -12.550353 5.497428 -12.550353 -0.438574 C -12.550353 -6.374575 -16.275176 -12.055977 -18.139332 -14.896678 C -20 -17.735635 -20 -17.735635 -20 -17.735635 C -20 -17.735635 -20 -17.735635 -16.425146 -16.991019 C -12.850292 -16.246403 -5.697096 -14.757172 0.263319 -11.799634 C 6.22199 -8.84384 10.989624 -4.41974 13.373442 -2.208562 C 15.757259 0.002616 15.757259 0.002616 15.757259 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 35.757259,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 15.757259,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "or-gate-3",
+        name: "OR Gate (3 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 4,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -14.966749,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -12.307069,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -15.215411,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 15.757259 0.002616 C 15.757259 0.002616 15.757259 0.002616 13.373442 2.213794 C 10.989624 4.426715 6.22199 8.849071 0.263319 11.829279 C -5.697096 14.809486 -12.850292 16.345802 -16.425146 17.114831 C -20 17.882117 -20 17.882117 -20 17.882117 C -20 17.882117 -20 17.882117 -18.139332 14.786817 C -16.275176 11.689772 -12.550353 5.497428 -12.550353 -0.438574 C -12.550353 -6.374575 -16.275176 -12.055977 -18.139332 -14.896678 C -20 -17.735635 -20 -17.735635 -20 -17.735635 C -20 -17.735635 -20 -17.735635 -16.425146 -16.991019 C -12.850292 -16.246403 -5.697096 -14.757172 0.263319 -11.799634 C 6.22199 -8.84384 10.989624 -4.41974 13.373442 -2.208562 C 15.757259 0.002616 15.757259 0.002616 15.757259 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 35.757259,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 15.757259,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "or-gate-4",
+        name: "OR Gate (4 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "D",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 4,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -12,
+                },
+                to: {
+                    x: -16.06749,
+                    y: -12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -4,
+                },
+                to: {
+                    x: -12.714012,
+                    y: -4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 4,
+                },
+                to: {
+                    x: -12.909141,
+                    y: 4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 12,
+                },
+                to: {
+                    x: -16.264942,
+                    y: 12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 15.757259 0.002616 C 15.757259 0.002616 15.757259 0.002616 13.373442 2.213794 C 10.989624 4.426715 6.22199 8.849071 0.263319 11.829279 C -5.697096 14.809486 -12.850292 16.345802 -16.425146 17.114831 C -20 17.882117 -20 17.882117 -20 17.882117 C -20 17.882117 -20 17.882117 -18.139332 14.786817 C -16.275176 11.689772 -12.550353 5.497428 -12.550353 -0.438574 C -12.550353 -6.374575 -16.275176 -12.055977 -18.139332 -14.896678 C -20 -17.735635 -20 -17.735635 -20 -17.735635 C -20 -17.735635 -20 -17.735635 -16.425146 -16.991019 C -12.850292 -16.246403 -5.697096 -14.757172 0.263319 -11.799634 C 6.22199 -8.84384 10.989624 -4.41974 13.373442 -2.208562 C 15.757259 0.002616 15.757259 0.002616 15.757259 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 35.757259,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 15.757259,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "pmos",
+        name: "PMOS",
+        viewBox: {
+            x: -24,
+            y: -24,
+            width: 48,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "D",
+                role: "drain",
+                at: {
+                    x: 10,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "G",
+                role: "gate",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "S",
+                role: "source",
+                at: {
+                    x: 10,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "bulk",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: -4.244186,
+                        y: 6.976744,
+                    },
+                    {
+                        x: 10,
+                        y: 6.976744,
+                    },
+                    {
+                        x: 10,
+                        y: 20,
+                    },
+                ],
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: -4.244186,
+                        y: -6.976744,
+                    },
+                    {
+                        x: 10,
+                        y: -6.976744,
+                    },
+                    {
+                        x: 10,
+                        y: -20,
+                    },
+                ],
+                part: "source-arrow-host",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -11.802326,
+                        y: -9.593023,
+                    },
+                    {
+                        x: -11.802326,
+                        y: 9.593023,
+                    },
+                    {
+                        x: -8.895349,
+                        y: 9.593023,
+                    },
+                    {
+                        x: -8.895349,
+                        y: -9.593023,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+                part: "gate-bar",
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -6.569767,
+                        y: -12.5,
+                    },
+                    {
+                        x: -6.569767,
+                        y: 12.5,
+                    },
+                    {
+                        x: -3.662791,
+                        y: 12.5,
+                    },
+                    {
+                        x: -3.662791,
+                        y: -12.5,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+                part: "gate-bar",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -8.895349,
+                    y: 0,
+                },
+                to: {
+                    x: -20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -3.662791,
+                    y: 0,
+                },
+                to: {
+                    x: 13.604651,
+                    y: 0,
+                },
+                part: "bulk-lead",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: 20,
+                        y: 0,
+                    },
+                    {
+                        x: 13.604651,
+                        y: -3.77907,
+                    },
+                    {
+                        x: 13.604651,
+                        y: 3.77907,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+                part: "bulk-lead",
+            },
+        ],
+        variants: [
+            {
+                id: "textbook-3terminal",
+                hiddenPinNames: ["B"],
+                auxiliaryPins: [
+                    {
+                        name: "B",
+                        at: {
+                            x: -4,
+                            y: 0,
+                        },
+                        direction: "east",
+                        routing: {
+                            escape: "outward",
+                            preferredLanding: {
+                                x: 0,
+                                y: 0,
+                            },
+                        },
+                    },
+                ],
+                hiddenPrimitiveParts: ["bulk-lead", "source-arrow-host"],
+                additionalPrimitives: [
+                    {
+                        kind: "polyline",
+                        points: [
+                            {
+                                x: 5.639535,
+                                y: -7.122093,
+                            },
+                            {
+                                x: 10,
+                                y: -7.122093,
+                            },
+                            {
+                                x: 10,
+                                y: -20,
+                            },
+                        ],
+                        part: "source-arrow",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "polygon",
+                        points: [
+                            {
+                                x: -3.662791,
+                                y: -7.122093,
+                            },
+                            {
+                                x: 5.639535,
+                                y: -11.19186,
+                            },
+                            {
+                                x: 5.639535,
+                                y: -3.052326,
+                            },
+                        ],
+                        fill: "foreground",
+                        stroke: "none",
+                        part: "source-arrow",
+                    },
+                ],
+            },
+        ],
+        defaultVariantId: "textbook-3terminal",
+    },
+    {
+        schemaVersion: 1,
+        id: "pnp",
+        name: "PNP Bipolar Transistor",
+        viewBox: {
+            x: -34,
+            y: -24,
+            width: 42,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "C",
+                role: "collector",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "base",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "E",
+                role: "emitter",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -16.868887,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -16.868887,
+                    y: -13.333557,
+                },
+                to: {
+                    x: -16.868887,
+                    y: 13.34159,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: -8.575018,
+                        y: -9.694413,
+                    },
+                    {
+                        x: 0,
+                        y: -13.379732,
+                    },
+                    {
+                        x: 0,
+                        y: -20,
+                    },
+                ],
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: -16.868887,
+                        y: 6.401526,
+                    },
+                    {
+                        x: 0,
+                        y: 13.377859,
+                    },
+                    {
+                        x: 0,
+                        y: 20,
+                    },
+                ],
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -10.233792,
+                        y: -12.987299,
+                    },
+                    {
+                        x: -6.916244,
+                        y: -6.401526,
+                    },
+                    {
+                        x: -16.868887,
+                        y: -6.401526,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "port",
+        name: "Port",
+        viewBox: {
+            x: -14,
+            y: -7,
+            width: 18,
+            height: 14,
+        },
+        pins: [
+            {
+                name: "P",
+                role: "port",
+                at: {
+                    x: 0,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "circle",
+                center: {
+                    x: -7.086614,
+                    y: 0,
+                },
+                radius: 2.47907,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 0,
+                },
+                to: {
+                    x: -4.607544,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "port-filled",
+        name: "Bias Voltage Port",
+        viewBox: {
+            x: -14,
+            y: -7,
+            width: 18,
+            height: 14,
+        },
+        pins: [
+            {
+                name: "P",
+                role: "port",
+                at: {
+                    x: 0,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "circle",
+                center: {
+                    x: -7.086614,
+                    y: 0,
+                },
+                radius: 2.47907,
+                fill: "foreground",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 0,
+                },
+                to: {
+                    x: -4.607544,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "resistor",
+        name: "Resistor",
+        viewBox: {
+            x: -10,
+            y: -24,
+            width: 20,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "1",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "2",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "path",
+                data: "M 0 -20 L 0 -8.72093 L 5.372093 -6.395349 L -4.604651 -4.069767 L 5.372093 -1.162791 L -4.988372 1.744186 L 5.372093 4.651163 L -4.604651 7.55814 L 0 8.72093 L 0 20",
+                bounds: {
+                    x: -4.988372,
+                    y: -20,
+                    width: 10.360465,
+                    height: 40,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 12,
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "simple-spdt-switch",
+        name: "Simple SPDT Switch",
+        viewBox: {
+            x: -34,
+            y: -20,
+            width: 68,
+            height: 40,
+        },
+        pins: [
+            {
+                name: "COM",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "A",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 0,
+                },
+                to: {
+                    x: -10,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -10,
+                    y: 0,
+                },
+                to: {
+                    x: 8,
+                    y: -9,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 10,
+                    y: -10,
+                },
+                to: {
+                    x: 20,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 10,
+                    y: 10,
+                },
+                to: {
+                    x: 20,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "simple-switch",
+        name: "Simple Switch",
+        viewBox: {
+            x: -34,
+            y: -18,
+            width: 68,
+            height: 30,
+        },
+        pins: [
+            {
+                name: "1",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "2",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 0,
+                },
+                to: {
+                    x: -10,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -10,
+                    y: 0,
+                },
+                to: {
+                    x: 6,
+                    y: -11,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 10,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "spdt-switch",
+        name: "SPDT Switch",
+        viewBox: {
+            x: -34,
+            y: -20,
+            width: 68,
+            height: 40,
+        },
+        pins: [
+            {
+                name: "COM",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "A",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "B",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 0,
+                },
+                to: {
+                    x: -13,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: -10,
+                    y: 0,
+                },
+                radius: 3,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -7.32,
+                    y: -1.34,
+                },
+                to: {
+                    x: 7.32,
+                    y: -8.66,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 10,
+                    y: -10,
+                },
+                radius: 3,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 13,
+                    y: -10,
+                },
+                to: {
+                    x: 20,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 10,
+                    y: 10,
+                },
+                radius: 3,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 13,
+                    y: 10,
+                },
+                to: {
+                    x: 20,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "chopper",
+        name: "Chopper",
+        viewBox: {
+            x: -24,
+            y: -34,
+            width: 48,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "INP",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "INN",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUTP",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUTN",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: 10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: -10,
+                },
+                to: {
+                    x: -8,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 10,
+                },
+                to: {
+                    x: -8,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 8,
+                    y: -10,
+                },
+                to: {
+                    x: 20,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 8,
+                    y: 10,
+                },
+                to: {
+                    x: 20,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -8 -30 L 8 -30 L 8 30 L -8 30 Z",
+                bounds: {
+                    x: -8,
+                    y: -30,
+                    width: 16,
+                    height: 60,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -8,
+                    y: -30,
+                },
+                to: {
+                    x: 8,
+                    y: 30,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 8,
+                    y: -30,
+                },
+                to: {
+                    x: -8,
+                    y: 30,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "variable-capacitor",
+        name: "Variable Capacitor",
+        viewBox: {
+            x: -16,
+            y: -24,
+            width: 32,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "P1",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "P2",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: 8.05064,
+                    y: -3.233605,
+                },
+                to: {
+                    x: -8.05064,
+                    y: -3.233605,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 8.05064,
+                    y: 3.233605,
+                },
+                to: {
+                    x: -8.05064,
+                    y: 3.233605,
+                },
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -3.233605,
+                },
+                to: {
+                    x: 0,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 3.233605,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -12,
+                    y: 12,
+                },
+                to: {
+                    x: 9,
+                    y: -9,
+                },
+                part: "adjustment-arrow-shaft",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: 12,
+                        y: -12,
+                    },
+                    {
+                        x: 6,
+                        y: -10,
+                    },
+                    {
+                        x: 10,
+                        y: -6,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+                part: "adjustment-arrow-head",
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "variable-inductor",
+        name: "Variable Inductor",
+        viewBox: {
+            x: -16,
+            y: -24,
+            width: 32,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "P1",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "P2",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "path",
+                data: "M 0 -20 L 0 -19.4953 C 0 -19.4953 0 -19.4953 0 -18.2174 C 0 -16.9409 0 -14.3851 0 -13.1087 C 0 -11.8308 0 -11.8308 0 -11.8308 C 0 -11.8308 0 -11.8308 1.2452 -11.5749 C 2.4889 -11.319 4.9763 -10.8087 6.1873 -9.7867 C 7.3983 -8.7647 7.3313 -7.2323 4.8439 -6.2088 C 2.355 -5.1868 -2.5543 -4.6765 -5.009 -5.4427 C -7.4637 -6.2088 -7.4637 -8.2544 -4.9763 -8.7201 C -2.4874 -9.1872 2.4889 -8.0759 5.0209 -6.3874 C 7.5545 -4.6988 7.6422 -2.4331 5.1548 -0.9439 C 2.6659 0.5437 -2.3996 1.2549 -4.9317 0.5884 C -7.4637 -0.0781 -7.4637 -2.1222 -4.9317 -2.6325 C -2.3996 -3.1442 2.6659 -2.1222 5.1325 -0.456 C 7.5991 1.2102 7.4652 3.5206 4.9317 5.0544 C 2.3996 6.5867 -2.532 7.3425 -4.9986 6.6983 C -7.4637 6.0541 -7.4637 4.01 -4.9986 3.3763 C -2.532 2.744 2.3996 3.5206 4.8885 4.7985 C 7.3759 6.0764 7.4205 7.8542 6.1992 8.9983 C 4.9763 10.1423 2.4889 10.6525 1.2452 10.9084 C 0 11.1643 0 11.1643 0 11.1643 C 0 11.1643 0 11.1643 0 12.5523 C 0 13.9403 0 16.7178 0 18.1073 C 0 19.4953 0 19.4953 0 19.4953 L 0 20",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "round",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -12,
+                    y: 12,
+                },
+                to: {
+                    x: 9,
+                    y: -9,
+                },
+                part: "adjustment-arrow-shaft",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: 12,
+                        y: -12,
+                    },
+                    {
+                        x: 6,
+                        y: -10,
+                    },
+                    {
+                        x: 10,
+                        y: -6,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+                part: "adjustment-arrow-head",
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "variable-resistor",
+        name: "Variable Resistor",
+        viewBox: {
+            x: -16,
+            y: -24,
+            width: 32,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "P1",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "P2",
+                role: "passive",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "path",
+                data: "M 0 -20 L 0 -8.72093 L 5.372093 -6.395349 L -4.604651 -4.069767 L 5.372093 -1.162791 L -4.988372 1.744186 L 5.372093 4.651163 L -4.604651 7.55814 L 0 8.72093 L 0 20",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 12,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -12,
+                    y: 12,
+                },
+                to: {
+                    x: 9,
+                    y: -9,
+                },
+                part: "adjustment-arrow-shaft",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: 12,
+                        y: -12,
+                    },
+                    {
+                        x: 6,
+                        y: -10,
+                    },
+                    {
+                        x: 10,
+                        y: -6,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+                part: "adjustment-arrow-head",
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "vdd-port",
+        name: "VDD Power Port",
+        viewBox: {
+            x: -12,
+            y: -2,
+            width: 24,
+            height: 26,
+        },
+        pins: [
+            {
+                name: "P",
+                role: "power",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 20,
+                },
+                to: {
+                    x: 0,
+                    y: 1.5,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -10,
+                        y: -0.88,
+                    },
+                    {
+                        x: 10,
+                        y: -0.88,
+                    },
+                    {
+                        x: 10,
+                        y: 2.36,
+                    },
+                    {
+                        x: -10,
+                        y: 2.36,
+                    },
+                ],
+                fill: "foreground",
+                stroke: "none",
+            },
+        ],
+        variants: [],
+        labelVisibility: "hidden",
+    },
+    {
+        schemaVersion: 1,
+        id: "voltage-amplifier",
+        name: "Voltage Amplifier",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN",
+                role: "input",
+                at: {
+                    x: -40,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 0,
+                },
+                to: {
+                    x: -30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "voltage-amplifier-lettered",
+        name: "Voltage Amplifier (lettered)",
+        viewBox: {
+            x: -44,
+            y: -34,
+            width: 88,
+            height: 68,
+        },
+        pins: [
+            {
+                name: "IN",
+                role: "input",
+                at: {
+                    x: -40,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 0,
+                },
+                to: {
+                    x: -30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M -30 -30 L -30 30 L 21.961524 0 Z",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -30,
+                    y: -30,
+                    width: 51.961524,
+                    height: 60,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 21.961524,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "A",
+            supportsCoefficient: false,
+            center: {
+                x: -12.68,
+                y: 0,
+            },
+            fontSize: 16,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "pulse-voltage-source",
+        name: "Digital Clock",
+        viewBox: {
+            x: -24,
+            y: -24,
+            width: 39,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "+",
+                role: "positive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "-",
+                role: "negative",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 10.755814,
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: 4,
+                        y: 7,
+                    },
+                    {
+                        x: 4,
+                        y: 4,
+                    },
+                    {
+                        x: -4,
+                        y: 4,
+                    },
+                    {
+                        x: -4,
+                        y: -4,
+                    },
+                    {
+                        x: 4,
+                        y: -4,
+                    },
+                    {
+                        x: 4,
+                        y: -7,
+                    },
+                ],
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "voltage-controlled-switch",
+        name: "Voltage-Controlled Switch",
+        viewBox: {
+            x: -34,
+            y: -27,
+            width: 68,
+            height: 55,
+        },
+        pins: [
+            {
+                name: "P",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "N",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: -10,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "CP",
+                role: "passive",
+                at: {
+                    x: -20,
+                    y: 20,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "CN",
+                role: "passive",
+                at: {
+                    x: 20,
+                    y: 20,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: -10,
+                },
+                to: {
+                    x: -13,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: -10,
+                    y: -10,
+                },
+                radius: 3,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -7,
+                    y: -12.4,
+                },
+                to: {
+                    x: 6.4,
+                    y: -22.8,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 11,
+                    y: -10,
+                },
+                radius: 3,
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 14,
+                    y: -10,
+                },
+                to: {
+                    x: 20,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "control-positive-lead",
+                from: {
+                    x: -20,
+                    y: 20,
+                },
+                to: {
+                    x: -10,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "control-negative-lead",
+                from: {
+                    x: 10,
+                    y: 20,
+                },
+                to: {
+                    x: 20,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                part: "control-body",
+                data: "M -10 14 L 10 14 L 10 26 L -10 26 Z",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                part: "control-polarity-positive",
+                data: "M -8 20 L -2 20 M -5 17 L -5 23",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "control-polarity-negative",
+                from: {
+                    x: 2,
+                    y: 20,
+                },
+                to: {
+                    x: 8,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "control-coupling",
+                from: {
+                    x: 0,
+                    y: 14,
+                },
+                to: {
+                    x: 0,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "control-coupling",
+                from: {
+                    x: 0,
+                    y: 6,
+                },
+                to: {
+                    x: 0,
+                    y: 2,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                part: "control-coupling",
+                from: {
+                    x: 0,
+                    y: -2,
+                },
+                to: {
+                    x: 0,
+                    y: -4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "voltage-source",
+        name: "Independent Voltage Source",
+        viewBox: {
+            x: -24,
+            y: -24,
+            width: 39,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "+",
+                role: "positive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "-",
+                role: "negative",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 10.755814,
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -20.058139,
+                    y: -14.534884,
+                },
+                to: {
+                    x: -11.918605,
+                    y: -14.534884,
+                },
+                part: "upright-polarity-positive-horizontal",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -15.988372,
+                    y: -18.604651,
+                },
+                to: {
+                    x: -15.988372,
+                    y: -10.465117,
+                },
+                part: "upright-polarity-positive-vertical",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -20.058139,
+                    y: 13.372093,
+                },
+                to: {
+                    x: -11.918605,
+                    y: 13.372093,
+                },
+                part: "upright-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "vcvs",
+        name: "Voltage-Controlled Voltage Source",
+        viewBox: {
+            x: -24,
+            y: -24,
+            width: 39,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "+",
+                role: "positive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "-",
+                role: "negative",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 10.755814,
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "body",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -20.058139,
+                    y: -14.534884,
+                },
+                to: {
+                    x: -11.918605,
+                    y: -14.534884,
+                },
+                part: "upright-polarity-positive-horizontal",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -15.988372,
+                    y: -18.604651,
+                },
+                to: {
+                    x: -15.988372,
+                    y: -10.465117,
+                },
+                part: "upright-polarity-positive-vertical",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -20.058139,
+                    y: 13.372093,
+                },
+                to: {
+                    x: -11.918605,
+                    y: 13.372093,
+                },
+                part: "upright-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "lead-positive",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "lead-negative",
+            },
+        ],
+        variants: [
+            {
+                id: "diamond",
+                hiddenPinNames: [],
+                hiddenPrimitiveParts: ["body", "lead-positive", "lead-negative"],
+                additionalPrimitives: [
+                    {
+                        kind: "polygon",
+                        points: [
+                            {
+                                x: 0,
+                                y: -12.5,
+                            },
+                            {
+                                x: 12.5,
+                                y: 0,
+                            },
+                            {
+                                x: 0,
+                                y: 12.5,
+                            },
+                            {
+                                x: -12.5,
+                                y: 0,
+                            },
+                        ],
+                        fill: "none",
+                        stroke: "foreground",
+                        part: "diamond-body",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "line",
+                        from: {
+                            x: 0,
+                            y: -12.5,
+                        },
+                        to: {
+                            x: 0,
+                            y: -20,
+                        },
+                        part: "diamond-lead-positive",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "line",
+                        from: {
+                            x: 0,
+                            y: 12.5,
+                        },
+                        to: {
+                            x: 0,
+                            y: 20,
+                        },
+                        part: "diamond-lead-negative",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        schemaVersion: 1,
+        id: "ccvs",
+        name: "Current-Controlled Voltage Source",
+        viewBox: {
+            x: -24,
+            y: -24,
+            width: 39,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "+",
+                role: "positive",
+                at: {
+                    x: 0,
+                    y: -20,
+                },
+                direction: "north",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "-",
+                role: "negative",
+                at: {
+                    x: 0,
+                    y: 20,
+                },
+                direction: "south",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "circle",
+                center: {
+                    x: 0,
+                    y: 0,
+                },
+                radius: 10.755814,
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "body",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -20.058139,
+                    y: -14.534884,
+                },
+                to: {
+                    x: -11.918605,
+                    y: -14.534884,
+                },
+                part: "upright-polarity-positive-horizontal",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -15.988372,
+                    y: -18.604651,
+                },
+                to: {
+                    x: -15.988372,
+                    y: -10.465117,
+                },
+                part: "upright-polarity-positive-vertical",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -20.058139,
+                    y: 13.372093,
+                },
+                to: {
+                    x: -11.918605,
+                    y: 13.372093,
+                },
+                part: "upright-polarity-negative",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: -10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: -20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "lead-positive",
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 0,
+                    y: 10.755814,
+                },
+                to: {
+                    x: 0,
+                    y: 20,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+                part: "lead-negative",
+            },
+        ],
+        variants: [
+            {
+                id: "diamond",
+                hiddenPinNames: [],
+                hiddenPrimitiveParts: ["body", "lead-positive", "lead-negative"],
+                additionalPrimitives: [
+                    {
+                        kind: "polygon",
+                        points: [
+                            {
+                                x: 0,
+                                y: -12.5,
+                            },
+                            {
+                                x: 12.5,
+                                y: 0,
+                            },
+                            {
+                                x: 0,
+                                y: 12.5,
+                            },
+                            {
+                                x: -12.5,
+                                y: 0,
+                            },
+                        ],
+                        fill: "none",
+                        stroke: "foreground",
+                        part: "diamond-body",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "line",
+                        from: {
+                            x: 0,
+                            y: -12.5,
+                        },
+                        to: {
+                            x: 0,
+                            y: -20,
+                        },
+                        part: "diamond-lead-positive",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                    {
+                        kind: "line",
+                        from: {
+                            x: 0,
+                            y: 12.5,
+                        },
+                        to: {
+                            x: 0,
+                            y: 20,
+                        },
+                        part: "diamond-lead-negative",
+                        style: {
+                            strokeRole: "normal",
+                            lineCap: "butt",
+                            lineJoin: "miter",
+                        },
+                    },
+                ],
+            },
+        ],
+    },
+    {
+        schemaVersion: 1,
+        id: "xnor-gate",
+        name: "XNOR Gate",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 40,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -15.769465,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -15.455575,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 22.287907 0.002616 C 22.287907 0.002616 22.287907 0.002616 19.90409 2.213794 C 17.520272 4.424972 12.752638 8.849071 6.792223 11.829279 C 0.833552 14.807743 -6.3179 16.344058 -9.894498 17.113087 C -13.471096 17.880373 -13.471096 17.880373 -13.471096 17.880373 C -13.471096 17.880373 -13.471096 17.880373 -11.608684 14.785073 C -9.746272 11.689772 -6.021449 5.497428 -6.021449 -0.440317 C -6.021449 -6.376319 -9.746272 -12.057721 -11.608684 -14.896678 C -13.471096 -17.737379 -13.471096 -17.737379 -13.471096 -17.737379 C -13.471096 -17.737379 -13.471096 -17.737379 -9.894498 -16.992763 C -6.3179 -16.248147 0.833552 -14.757172 6.792223 -11.801378 C 12.752638 -8.84384 17.520272 -4.421484 19.90409 -2.210306 C 22.287907 0.002616 22.287907 0.002616 22.287907 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -13.471096,
+                    y: -17.737379,
+                    width: 35.759003,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "path",
+                data: "M -20 -17.735635 C -20 -17.735635 -20 -17.735635 -18.177696 -14.910629 C -16.353649 -12.083878 -12.709041 -6.432121 -12.695091 -0.482169 C -12.682884 5.467783 -16.303077 11.717674 -18.11143 14.842619 C -19.921527 17.969309 -19.921527 17.969309 -19.921527 17.969309",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 7.317116,
+                    height: 35.704944,
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 26.494028,
+                    y: 0.002616,
+                },
+                radius: 3.374313,
+                part: "negation-bubble",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 29.868341,
+                    y: 0,
+                },
+                to: {
+                    x: 40,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "xnor-gate-3",
+        name: "XNOR Gate (3 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 40,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -15.049176,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -12.451942,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -15.259133,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 22.287907 0.002616 C 22.287907 0.002616 22.287907 0.002616 19.90409 2.213794 C 17.520272 4.424972 12.752638 8.849071 6.792223 11.829279 C 0.833552 14.807743 -6.3179 16.344058 -9.894498 17.113087 C -13.471096 17.880373 -13.471096 17.880373 -13.471096 17.880373 C -13.471096 17.880373 -13.471096 17.880373 -11.608684 14.785073 C -9.746272 11.689772 -6.021449 5.497428 -6.021449 -0.440317 C -6.021449 -6.376319 -9.746272 -12.057721 -11.608684 -14.896678 C -13.471096 -17.737379 -13.471096 -17.737379 -13.471096 -17.737379 C -13.471096 -17.737379 -13.471096 -17.737379 -9.894498 -16.992763 C -6.3179 -16.248147 0.833552 -14.757172 6.792223 -11.801378 C 12.752638 -8.84384 17.520272 -4.421484 19.90409 -2.210306 C 22.287907 0.002616 22.287907 0.002616 22.287907 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -13.471096,
+                    y: -17.737379,
+                    width: 35.759003,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "path",
+                data: "M -20 -17.735635 C -20 -17.735635 -20 -17.735635 -18.177696 -14.910629 C -16.353649 -12.083878 -12.709041 -6.432121 -12.695091 -0.482169 C -12.682884 5.467783 -16.303077 11.717674 -18.11143 14.842619 C -19.921527 17.969309 -19.921527 17.969309 -19.921527 17.969309",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 7.317116,
+                    height: 35.704944,
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 26.494028,
+                    y: 0.002616,
+                },
+                radius: 3.374313,
+                part: "negation-bubble",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 29.868341,
+                    y: 0,
+                },
+                to: {
+                    x: 40,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "xnor-gate-4",
+        name: "XNOR Gate (4 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "D",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 40,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -12,
+                },
+                to: {
+                    x: -16.128847,
+                    y: -12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -4,
+                },
+                to: {
+                    x: -12.846395,
+                    y: -4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 4,
+                },
+                to: {
+                    x: -13.036194,
+                    y: 4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 12,
+                },
+                to: {
+                    x: -16.268314,
+                    y: 12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 22.287907 0.002616 C 22.287907 0.002616 22.287907 0.002616 19.90409 2.213794 C 17.520272 4.424972 12.752638 8.849071 6.792223 11.829279 C 0.833552 14.807743 -6.3179 16.344058 -9.894498 17.113087 C -13.471096 17.880373 -13.471096 17.880373 -13.471096 17.880373 C -13.471096 17.880373 -13.471096 17.880373 -11.608684 14.785073 C -9.746272 11.689772 -6.021449 5.497428 -6.021449 -0.440317 C -6.021449 -6.376319 -9.746272 -12.057721 -11.608684 -14.896678 C -13.471096 -17.737379 -13.471096 -17.737379 -13.471096 -17.737379 C -13.471096 -17.737379 -13.471096 -17.737379 -9.894498 -16.992763 C -6.3179 -16.248147 0.833552 -14.757172 6.792223 -11.801378 C 12.752638 -8.84384 17.520272 -4.421484 19.90409 -2.210306 C 22.287907 0.002616 22.287907 0.002616 22.287907 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -13.471096,
+                    y: -17.737379,
+                    width: 35.759003,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "path",
+                data: "M -20 -17.735635 C -20 -17.735635 -20 -17.735635 -18.177696 -14.910629 C -16.353649 -12.083878 -12.709041 -6.432121 -12.695091 -0.482169 C -12.682884 5.467783 -16.303077 11.717674 -18.11143 14.842619 C -19.921527 17.969309 -19.921527 17.969309 -19.921527 17.969309",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 7.317116,
+                    height: 35.704944,
+                },
+            },
+            {
+                kind: "circle",
+                center: {
+                    x: 26.494028,
+                    y: 0.002616,
+                },
+                radius: 3.374313,
+                part: "negation-bubble",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 29.868341,
+                    y: 0,
+                },
+                to: {
+                    x: 40,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "xor-gate",
+        name: "XOR Gate",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 15,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 8,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -15.769465,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -15.455575,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 22.287907 0.002616 C 22.287907 0.002616 22.287907 0.002616 19.90409 2.213794 C 17.520272 4.424972 12.752638 8.849071 6.792223 11.829279 C 0.833552 14.807743 -6.3179 16.344058 -9.894498 17.113087 C -13.471096 17.880373 -13.471096 17.880373 -13.471096 17.880373 C -13.471096 17.880373 -13.471096 17.880373 -11.608684 14.785073 C -9.746272 11.689772 -6.021449 5.497428 -6.021449 -0.440317 C -6.021449 -6.376319 -9.746272 -12.057721 -11.608684 -14.896678 C -13.471096 -17.737379 -13.471096 -17.737379 -13.471096 -17.737379 C -13.471096 -17.737379 -13.471096 -17.737379 -9.894498 -16.992763 C -6.3179 -16.248147 0.833552 -14.757172 6.792223 -11.801378 C 12.752638 -8.84384 17.520272 -4.421484 19.90409 -2.210306 C 22.287907 0.002616 22.287907 0.002616 22.287907 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -13.471096,
+                    y: -17.737379,
+                    width: 35.759003,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "path",
+                data: "M -20 -17.735635 C -20 -17.735635 -20 -17.735635 -18.177696 -14.910629 C -16.353649 -12.083878 -12.709041 -6.432121 -12.695091 -0.482169 C -12.682884 5.467783 -16.303077 11.717674 -18.11143 14.842619 C -19.921527 17.969309 -19.921527 17.969309 -19.921527 17.969309",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 7.317116,
+                    height: 35.704944,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 22.287907,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "xor-gate-3",
+        name: "XOR Gate (3 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 10,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 8,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -10,
+                },
+                to: {
+                    x: -15.049176,
+                    y: -10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 0,
+                },
+                to: {
+                    x: -12.451942,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 10,
+                },
+                to: {
+                    x: -15.259133,
+                    y: 10,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 22.287907 0.002616 C 22.287907 0.002616 22.287907 0.002616 19.90409 2.213794 C 17.520272 4.424972 12.752638 8.849071 6.792223 11.829279 C 0.833552 14.807743 -6.3179 16.344058 -9.894498 17.113087 C -13.471096 17.880373 -13.471096 17.880373 -13.471096 17.880373 C -13.471096 17.880373 -13.471096 17.880373 -11.608684 14.785073 C -9.746272 11.689772 -6.021449 5.497428 -6.021449 -0.440317 C -6.021449 -6.376319 -9.746272 -12.057721 -11.608684 -14.896678 C -13.471096 -17.737379 -13.471096 -17.737379 -13.471096 -17.737379 C -13.471096 -17.737379 -13.471096 -17.737379 -9.894498 -16.992763 C -6.3179 -16.248147 0.833552 -14.757172 6.792223 -11.801378 C 12.752638 -8.84384 17.520272 -4.421484 19.90409 -2.210306 C 22.287907 0.002616 22.287907 0.002616 22.287907 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -13.471096,
+                    y: -17.737379,
+                    width: 35.759003,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "path",
+                data: "M -20 -17.735635 C -20 -17.735635 -20 -17.735635 -18.177696 -14.910629 C -16.353649 -12.083878 -12.709041 -6.432121 -12.695091 -0.482169 C -12.682884 5.467783 -16.303077 11.717674 -18.11143 14.842619 C -19.921527 17.969309 -19.921527 17.969309 -19.921527 17.969309",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 7.317116,
+                    height: 35.704944,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 22.287907,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "xor-gate-4",
+        name: "XOR Gate (4 inputs)",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 88,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "B",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: -4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "C",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 4,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "D",
+                role: "input",
+                at: {
+                    x: -30,
+                    y: 12,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 14,
+                },
+            },
+            {
+                name: "Y",
+                role: "output",
+                at: {
+                    x: 30,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 8,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -12,
+                },
+                to: {
+                    x: -16.128847,
+                    y: -12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: -4,
+                },
+                to: {
+                    x: -12.846395,
+                    y: -4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 4,
+                },
+                to: {
+                    x: -13.036194,
+                    y: 4,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: -30,
+                    y: 12,
+                },
+                to: {
+                    x: -16.268314,
+                    y: 12,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "path",
+                data: "M 22.287907 0.002616 C 22.287907 0.002616 22.287907 0.002616 19.90409 2.213794 C 17.520272 4.424972 12.752638 8.849071 6.792223 11.829279 C 0.833552 14.807743 -6.3179 16.344058 -9.894498 17.113087 C -13.471096 17.880373 -13.471096 17.880373 -13.471096 17.880373 C -13.471096 17.880373 -13.471096 17.880373 -11.608684 14.785073 C -9.746272 11.689772 -6.021449 5.497428 -6.021449 -0.440317 C -6.021449 -6.376319 -9.746272 -12.057721 -11.608684 -14.896678 C -13.471096 -17.737379 -13.471096 -17.737379 -13.471096 -17.737379 C -13.471096 -17.737379 -13.471096 -17.737379 -9.894498 -16.992763 C -6.3179 -16.248147 0.833552 -14.757172 6.792223 -11.801378 C 12.752638 -8.84384 17.520272 -4.421484 19.90409 -2.210306 C 22.287907 0.002616 22.287907 0.002616 22.287907 0.002616",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -13.471096,
+                    y: -17.737379,
+                    width: 35.759003,
+                    height: 35.617752,
+                },
+            },
+            {
+                kind: "path",
+                data: "M -20 -17.735635 C -20 -17.735635 -20 -17.735635 -18.177696 -14.910629 C -16.353649 -12.083878 -12.709041 -6.432121 -12.695091 -0.482169 C -12.682884 5.467783 -16.303077 11.717674 -18.11143 14.842619 C -19.921527 17.969309 -19.921527 17.969309 -19.921527 17.969309",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                    miterLimit: 4,
+                },
+                bounds: {
+                    x: -20,
+                    y: -17.735635,
+                    width: 7.317116,
+                    height: 35.704944,
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 22.287907,
+                    y: 0,
+                },
+                to: {
+                    x: 30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "zener-diode",
+        name: "Zener Diode",
+        viewBox: {
+            x: -24,
+            y: -10,
+            width: 48,
+            height: 20,
+        },
+        pins: [
+            {
+                name: "A",
+                role: "anode",
+                at: {
+                    x: -20,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "K",
+                role: "cathode",
+                at: {
+                    x: 20,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -20,
+                    y: 0,
+                },
+                to: {
+                    x: -7.802511,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -7.802511,
+                        y: -6.404463,
+                    },
+                    {
+                        x: -7.802511,
+                        y: 6.404463,
+                    },
+                    {
+                        x: 6.606415,
+                        y: 0,
+                    },
+                ],
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polyline",
+                points: [
+                    {
+                        x: -0.639331,
+                        y: -8.506555,
+                    },
+                    {
+                        x: 6.666666,
+                        y: -8.406137,
+                    },
+                    {
+                        x: 6.666666,
+                        y: 8.2053,
+                    },
+                    {
+                        x: 13.870013,
+                        y: 8.2053,
+                    },
+                ],
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 6.666666,
+                    y: 0,
+                },
+                to: {
+                    x: 20,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+    },
+    {
+        schemaVersion: 1,
+        id: "adc",
+        name: "Analog-to-Digital Converter",
+        viewBox: {
+            x: -54,
+            y: -24,
+            width: 98,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "IN",
+                role: "input",
+                at: {
+                    x: -50,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 40,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -50,
+                    y: 0,
+                },
+                to: {
+                    x: -40,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: 30,
+                        y: -20,
+                    },
+                    {
+                        x: -20,
+                        y: -20,
+                    },
+                    {
+                        x: -40,
+                        y: 0,
+                    },
+                    {
+                        x: -20,
+                        y: 20,
+                    },
+                    {
+                        x: 30,
+                        y: 20,
+                    },
+                ],
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 30,
+                    y: 0,
+                },
+                to: {
+                    x: 40,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "ADC",
+            supportsCoefficient: false,
+            center: {
+                x: -0.28,
+                y: 0,
+            },
+            fontSize: 12,
+        },
+    },
+    {
+        schemaVersion: 1,
+        id: "dac",
+        name: "Digital-to-Analog Converter",
+        viewBox: {
+            x: -44,
+            y: -24,
+            width: 98,
+            height: 48,
+        },
+        pins: [
+            {
+                name: "IN",
+                role: "input",
+                at: {
+                    x: -40,
+                    y: 0,
+                },
+                direction: "west",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+            {
+                name: "OUT",
+                role: "output",
+                at: {
+                    x: 50,
+                    y: 0,
+                },
+                direction: "east",
+                presentation: {
+                    visibility: "visible",
+                    leadLength: 10,
+                },
+            },
+        ],
+        primitives: [
+            {
+                kind: "line",
+                from: {
+                    x: -40,
+                    y: 0,
+                },
+                to: {
+                    x: -30,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "polygon",
+                points: [
+                    {
+                        x: -30,
+                        y: -20,
+                    },
+                    {
+                        x: 20,
+                        y: -20,
+                    },
+                    {
+                        x: 40,
+                        y: 0,
+                    },
+                    {
+                        x: 20,
+                        y: 20,
+                    },
+                    {
+                        x: -30,
+                        y: 20,
+                    },
+                ],
+                fill: "none",
+                stroke: "foreground",
+                style: {
+                    strokeRole: "emphasis",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+            {
+                kind: "line",
+                from: {
+                    x: 40,
+                    y: 0,
+                },
+                to: {
+                    x: 50,
+                    y: 0,
+                },
+                style: {
+                    strokeRole: "normal",
+                    lineCap: "butt",
+                    lineJoin: "miter",
+                },
+            },
+        ],
+        variants: [],
+        formulaPresentation: {
+            defaultFormula: "DAC",
+            supportsCoefficient: false,
+            center: {
+                x: 0.28,
+                y: 0,
+            },
+            fontSize: 12,
+        },
+    },
+];

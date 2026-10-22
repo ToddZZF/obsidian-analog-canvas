@@ -1,0 +1,916 @@
+/*! @license
+MIT License
+
+Copyright (c) 2026 Token Zhang
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+/**
+ * Adapted from netlist-crawler (MIT, Copyright 2026 Token Zhang).
+ * See ../third-party/netlist-crawler/LICENSE and README.md.
+ * Pure strict-subset translation: no file access, model discovery or execution.
+ */
+import { reviewedExternalBindingForMaster } from "@icm/devices";
+export const MAX_CONVERSION_BYTES = 512 * 1024;
+export const isNetlistDialect = (value) => value === "spice" || value === "ngspice" || value === "spectre";
+class ConversionError extends Error {
+    issue;
+    constructor(issue) {
+        super(issue.message);
+        this.issue = issue;
+    }
+}
+function refuse(s, message, code = "UNSUPPORTED_SYNTAX") {
+    throw new ConversionError({ line: s.line, code, message, statement: s.text });
+}
+/** Keep nested expressions and quoted paths together; malformed grouping is fatal. */
+function fields(text, s) {
+    const result = [];
+    let buffer = "", quote = "", escaped = false;
+    const stack = [];
+    const pairs = { "(": ")", "[": "]", "{": "}" };
+    for (const char of text.trim()) {
+        if (quote) {
+            buffer += char;
+            if (escaped)
+                escaped = false;
+            else if (char === "\\")
+                escaped = true;
+            else if (char === quote)
+                quote = "";
+        }
+        else if (char === '"' || char === "'") {
+            quote = char;
+            buffer += char;
+        }
+        else if (pairs[char]) {
+            stack.push(pairs[char]);
+            buffer += char;
+        }
+        else if (")]}".includes(char)) {
+            if (stack.pop() !== char)
+                refuse(s, "Unbalanced expression or node list.");
+            buffer += char;
+        }
+        else if (/\s/u.test(char) && !stack.length) {
+            if (buffer) {
+                result.push(buffer);
+                buffer = "";
+            }
+        }
+        else
+            buffer += char;
+    }
+    if (stack.length || quote)
+        refuse(s, "Unclosed expression or quoted value.");
+    if (buffer)
+        result.push(buffer);
+    return result;
+}
+/**
+ * A Spectre name with its escapes read: `\+` is the character `+`, as in
+ * `Vin\+` or `D\<3\>`. Spectre escapes a character a name could not hold
+ * with a backslash, and SPICE has no such escape, so the SPICE the statement
+ * becomes names the net `Vin+`. Quoted text (an include path, a string) is
+ * left as written, and so is a backslash before a space or the end of the
+ * line, which escapes no name, and one before a character that shapes the
+ * statement (a parenthesis, a brace, a quote, another backslash).
+ */
+const KEPT = /[\s(){}"'\\]/u;
+function unescapeSpectreNames(text) {
+    const chars = [...text];
+    let out = "", quote = "";
+    for (let i = 0; i < chars.length; i++) {
+        const c = chars[i] ?? "";
+        const next = chars[i + 1];
+        if (quote) {
+            out += c;
+            if (c === "\\" && next !== undefined) {
+                out += next;
+                i++;
+            }
+            else if (c === quote)
+                quote = "";
+        }
+        else if (c === '"' || c === "'") {
+            quote = c;
+            out += c;
+        }
+        else if (c === "\\" && next !== undefined && !KEPT.test(next)) {
+            out += next;
+            i++;
+        }
+        else
+            out += c;
+    }
+    return out;
+}
+function uncomment(text, dialect) {
+    let quote = "", depth = 0;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (quote) {
+            if (c === "\\")
+                i++;
+            else if (c === quote)
+                quote = "";
+            continue;
+        }
+        if (c === '"' || c === "'") {
+            quote = c;
+            continue;
+        }
+        if ("({[".includes(c))
+            depth++;
+        if (")}]".includes(c))
+            depth--;
+        if (depth === 0 &&
+            (dialect === "spectre"
+                ? text.slice(i, i + 2) === "//"
+                : c === ";" || c === "$"))
+            return text.slice(0, i).trimEnd();
+    }
+    return text;
+}
+function statements(text, source) {
+    const result = [];
+    let dialect = source === "spectre" ? "spectre" : "spice";
+    let pending;
+    for (const [index, raw] of text
+        .replace(/^\uFEFF/u, "")
+        .split(/\r\n?|\n/u)
+        .entries()) {
+        const line = index + 1, trimmed = raw.trim();
+        const language = /^simulator\s+lang\s*=\s*(\w+)$/iu.exec(trimmed);
+        if (language) {
+            if (source !== "spectre" || pending)
+                refuse({ line, text: raw, dialect }, "Unexpected simulator language declaration.");
+            if (!["spice", "spectre"].includes(language[1].toLowerCase()))
+                refuse({ line, text: raw, dialect }, "Unsupported simulator language.");
+            dialect = language[1].toLowerCase();
+            continue;
+        }
+        if (!trimmed ||
+            trimmed.startsWith("//") ||
+            (dialect === "spice" && trimmed.startsWith("*")))
+            continue;
+        const code = uncomment(trimmed, dialect);
+        if (!code)
+            continue;
+        if (dialect === "spice" && code.startsWith("+")) {
+            const previous = result.at(-1);
+            if (!previous || previous.dialect !== "spice")
+                refuse({ line, text: raw, dialect }, "Orphan continuation line.");
+            previous.text += " " + code.slice(1).trim();
+            continue;
+        }
+        const continued = dialect === "spectre" && code.endsWith("\\");
+        const joined = continued ? code.slice(0, -1).trimEnd() : code;
+        const next = dialect === "spectre" ? unescapeSpectreNames(joined) : joined;
+        if (pending)
+            pending.text += " " + next;
+        else
+            pending = { line, text: next, dialect };
+        if (!continued) {
+            result.push(pending);
+            pending = undefined;
+        }
+    }
+    if (pending)
+        refuse(pending, "Unfinished continuation line.");
+    if (result.length > 10000)
+        refuse(result[10000], "Conversion is limited to 10,000 statements.", "RESOURCE_LIMIT");
+    return result;
+}
+/**
+ * How SPICE spells a Spectre scale suffix, so a number keeps the digits and
+ * the suffix it was written with (96u stays 96u, not 0.000096). The two
+ * dialects spell some scales differently: Spectre's M is mega and its m
+ * milli, where SPICE reads both m and M as milli and writes mega as Meg. A
+ * suffix SPICE has no spelling for (atto, `a`) is not listed: that number
+ * is written out as a plain decimal (1a as 1e-18) instead.
+ */
+const SPICE_SUFFIX = {
+    "": "",
+    T: "T",
+    G: "G",
+    M: "Meg",
+    K: "k",
+    k: "k",
+    m: "m",
+    u: "u",
+    n: "n",
+    p: "p",
+    f: "f",
+};
+function value(raw, source, s) {
+    const body = raw
+        .trim()
+        .replace(/^\{([\s\S]*)\}$/u, "$1")
+        .replace(/^'([\s\S]*)'$/u, "$1");
+    const number = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)([A-Za-z]*)$/iu.exec(body);
+    const numeric = (base, suffix) => {
+        const factors = source === "spice"
+            ? {
+                "": 1,
+                t: 1e12,
+                g: 1e9,
+                meg: 1e6,
+                k: 1e3,
+                m: 1e-3,
+                u: 1e-6,
+                n: 1e-9,
+                p: 1e-12,
+                f: 1e-15,
+                a: 1e-18,
+            }
+            : {
+                "": 1,
+                T: 1e12,
+                G: 1e9,
+                M: 1e6,
+                K: 1e3,
+                k: 1e3,
+                m: 1e-3,
+                u: 1e-6,
+                n: 1e-9,
+                p: 1e-12,
+                f: 1e-15,
+                a: 1e-18,
+            };
+        const factor = factors[source === "spice" ? suffix.toLowerCase() : suffix];
+        if (factor === undefined)
+            refuse(s, `Unsupported numeric suffix in ${raw}.`, "UNSUPPORTED_VALUE");
+        const n = Number(base) * factor;
+        if (!Number.isFinite(n))
+            refuse(s, `Non-finite numeric value ${raw}.`);
+        const spelled = source === "spectre" ? SPICE_SUFFIX[suffix] : undefined;
+        if (spelled !== undefined)
+            return `${base}${spelled}`;
+        return Number(n.toPrecision(15)).toString();
+    };
+    if (number)
+        return numeric(number[1], number[2]);
+    // This common arithmetic subset has the same meaning in both dialects.
+    // Function calls, vectors, strings and simulator-specific expressions require
+    // an explicit extension instead of being passed through as apparently valid.
+    if (!body ||
+        !/^[A-Za-z0-9_+*/().\s-]+$/u.test(body) ||
+        /[A-Za-z_]\w*\s*\(/u.test(body))
+        refuse(s, `Unsupported expression ${raw}.`, "UNSUPPORTED_VALUE");
+    const converted = body.replace(/(?<![A-Za-z0-9_.])((?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)([A-Za-z]*)/giu, (_match, base, suffix) => numeric(base, suffix));
+    fields(converted, s);
+    if (source === "spice") {
+        const expression = converted.replace(/(?<![A-Za-z0-9_])(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?/giu, " ");
+        for (const name of expression.match(/[A-Za-z_]\w*/gu) ?? [])
+            (s.parameterReferences ??= new Set()).add(name);
+    }
+    return source === "spectre" ? `{${converted}}` : `(${converted})`;
+}
+function parameters(tokens, s) {
+    const result = new Map();
+    for (const token of tokens) {
+        const match = /^([A-Za-z_]\w*)=(.+)$/u.exec(token);
+        if (!match)
+            refuse(s, `Expected name=value; received ${token}.`, "UNSUPPORTED_PARAMETER");
+        const key = match[1].toLowerCase();
+        if (result.has(key))
+            refuse(s, `Duplicate parameter ${match[1]}.`, "DUPLICATE_PARAMETER");
+        result.set(key, { name: match[1], raw: match[2] });
+    }
+    return result;
+}
+function emitParameters(p, s) {
+    return [...p.values()]
+        .map(({ name, raw }) => `${name}=${value(raw, s.dialect, s)}`)
+        .join(" ");
+}
+function take(p, key, s, fallback) {
+    const entry = p.get(key);
+    p.delete(key);
+    if (!entry && fallback === undefined)
+        refuse(s, `Missing required parameter ${key}.`, "MISSING_PARAMETER");
+    return entry?.raw ?? fallback;
+}
+function noParameters(p, s) {
+    if (p.size)
+        refuse(s, `Unsupported parameters: ${[...p.values()].map((p) => p.name).join(", ")}.`, "UNSUPPORTED_PARAMETER");
+}
+function prefix(name, wanted) {
+    return name.toUpperCase().startsWith(wanted) ? name : wanted + name;
+}
+function spectreInstance(s, ctx) {
+    const match = /^(\S+)\s*\(([^()]*)\)\s+(\S+)(?:\s+(.*))?$/u.exec(s.text);
+    if (!match)
+        refuse(s, "Expected an instance with a parenthesized node list.");
+    const [, name, nodeText, master, rest] = match;
+    const nodes = fields(nodeText, s), kind = master.toLowerCase();
+    const p = parameters(fields(rest ?? "", s), s);
+    const arity = (n) => {
+        if (nodes.length !== n)
+            refuse(s, `${master} requires ${n} nodes.`, "PIN_ARITY");
+    };
+    const output = (designator, tail) => [prefix(name, designator), ...nodes, tail].join(" ").trimEnd();
+    if (["resistor", "capacitor", "inductor"].includes(kind)) {
+        arity(2);
+        // r, c and l: an inductor's value is l, not its master's first letter.
+        const key = kind === "inductor" ? "l" : kind[0];
+        const raw = take(p, key, s);
+        noParameters(p, s);
+        return output(key.toUpperCase(), value(raw, "spectre", s));
+    }
+    if (["vcvs", "vccs"].includes(kind)) {
+        arity(4);
+        const gain = take(p, kind === "vcvs" ? "gain" : "gm", s);
+        noParameters(p, s);
+        return output(kind === "vcvs" ? "E" : "G", value(gain, "spectre", s));
+    }
+    if (kind === "vsource" || kind === "isource") {
+        arity(2);
+        const type = take(p, "type", s, "dc").toLowerCase();
+        if (!["dc", "pulse", "sine", "pwl"].includes(type))
+            refuse(s, `Unsupported source type ${type}.`);
+        const pieces = [];
+        const sineOffset = p.get("dc")?.raw ?? "0";
+        if (p.has("dc"))
+            pieces.push("DC", value(take(p, "dc", s), "spectre", s));
+        if (p.has("mag")) {
+            pieces.push("AC", value(take(p, "mag", s), "spectre", s));
+            if (p.has("phase"))
+                pieces.push(value(take(p, "phase", s), "spectre", s));
+        }
+        if (type === "pulse" || type === "sine") {
+            const keys = type === "pulse"
+                ? ["val0", "val1", "delay", "rise", "fall", "width", "period"]
+                : ["sinedc", "ampl", "freq", "delay", "damp", "sinephase"];
+            const defaults = type === "pulse"
+                ? [
+                    undefined,
+                    undefined,
+                    "0",
+                    undefined,
+                    undefined,
+                    undefined,
+                    undefined,
+                ]
+                : [sineOffset, undefined, undefined, "0", "0", "0"];
+            const vals = keys.map((key, i) => value(take(p, key, s, defaults[i]), "spectre", s));
+            pieces.push(`${type === "pulse" ? "PULSE" : "SIN"}(${vals.join(" ")})`);
+        }
+        else if (type === "pwl") {
+            const wave = take(p, "wave", s);
+            if (!wave.startsWith("[") || !wave.endsWith("]"))
+                refuse(s, "PWL wave must be a bracketed time/value list.");
+            const vals = fields(wave.slice(1, -1), s);
+            if (vals.length < 4 || vals.length % 2)
+                refuse(s, "PWL requires complete time/value pairs.");
+            pieces.push(`PWL(${vals.map((v) => value(v, "spectre", s)).join(" ")})`);
+        }
+        noParameters(p, s);
+        if (!pieces.length)
+            refuse(s, "A source needs an explicit DC, AC or waveform value.", "MISSING_PARAMETER");
+        return output(kind === "vsource" ? "V" : "I", pieces.join(" "));
+    }
+    if ([
+        "bsource",
+        "cccs",
+        "ccvs",
+        "iprobe",
+        "port",
+        "nport",
+        "tline",
+        "switch",
+        "relay",
+        "transformer",
+        "mutual_inductor",
+    ].includes(kind))
+        refuse(s, `Unsupported native Spectre primitive ${master}.`);
+    const declared = ctx.models.get(kind);
+    const isSubckt = ctx.subckts.has(kind) || !!reviewedExternalBindingForMaster(master);
+    const conventional = /^[MDQ]/iu.test(name) ? name[0].toUpperCase() : "X";
+    if (!isSubckt && !declared && !/^[MDQX]/iu.test(name))
+        refuse(s, `Declare the external subcircuit ${master} or use an explicit X reference before conversion.`, "TARGET_KIND_REQUIRED");
+    const designator = isSubckt ? "X" : (declared ?? conventional);
+    if (designator === "M")
+        arity(4);
+    else if (designator === "D")
+        arity(2);
+    else if (designator === "Q" && ![3, 4].includes(nodes.length))
+        refuse(s, "BJT requires three or four nodes.", "PIN_ARITY");
+    return output(designator, `${master} ${emitParameters(p, s)}`);
+}
+function spiceInstance(s) {
+    const f = fields(s.text, s), name = f[0], kind = name[0].toUpperCase();
+    const output = (nodes, master, params) => `${name} (${nodes.join(" ")}) ${master}${params ? " " + params : ""}`;
+    if (["R", "C", "L"].includes(kind)) {
+        if (f.length !== 4)
+            refuse(s, "Only two-terminal ideal R/C/L values are supported; extra parameters are not dropped.", "UNSUPPORTED_PARAMETER");
+        const masters = {
+            R: "resistor",
+            C: "capacitor",
+            L: "inductor",
+        };
+        return output(f.slice(1, 3), masters[kind], `${kind.toLowerCase()}=${value(f[3], "spice", s)}`);
+    }
+    if (kind === "K") {
+        // A coupling names two inductors, not nodes; Spectre writes it the same
+        // way, with the inductors' own instance names.
+        if (f.length !== 4)
+            refuse(s, "Only a coupling between two inductors is supported.", "UNSUPPORTED_PARAMETER");
+        return `${name} mutual_inductor coupling=${value(f[3], "spice", s)} ind1=${f[1]} ind2=${f[2]}`;
+    }
+    if (kind === "E" || kind === "G") {
+        if (f.length !== 6)
+            refuse(s, "Only linear four-node controlled sources are supported.");
+        return output(f.slice(1, 5), kind === "E" ? "vcvs" : "vccs", `${kind === "E" ? "gain" : "gm"}=${value(f[5], "spice", s)}`);
+    }
+    if (kind === "V" || kind === "I") {
+        if (f.length < 4)
+            refuse(s, "Source value is missing.");
+        const p = [];
+        let i = 3;
+        if (!/^(?:dc|ac|pulse\(|sin\(|pwl\()/iu.test(f[i]))
+            p.push(`dc=${value(f[i++], "spice", s)}`);
+        if (f[i]?.toLowerCase() === "dc") {
+            i++;
+            if (!f[i])
+                refuse(s, "Missing DC value.");
+            p.push(`dc=${value(f[i++], "spice", s)}`);
+        }
+        if (f[i]?.toLowerCase() === "ac") {
+            i++;
+            if (!f[i])
+                refuse(s, "Missing AC magnitude.");
+            p.push(`mag=${value(f[i++], "spice", s)}`);
+            if (f[i] && !/^(?:pulse|sin|pwl)\(/iu.test(f[i]))
+                p.push(`phase=${value(f[i++], "spice", s)}`);
+        }
+        if (f[i]) {
+            const match = /^(pulse|sin|pwl)\((.*)\)$/iu.exec(f[i++]);
+            if (!match)
+                refuse(s, "Unsupported source waveform.");
+            const type = match[1].toLowerCase();
+            const vals = fields(match[2], s);
+            if (type === "pwl") {
+                if (vals.length < 4 || vals.length % 2)
+                    refuse(s, "PWL requires complete pairs.");
+                p.push("type=pwl", `wave=[${vals.map((v) => value(v, "spice", s)).join(" ")}]`);
+            }
+            else {
+                const keys = type === "pulse"
+                    ? ["val0", "val1", "delay", "rise", "fall", "width", "period"]
+                    : ["sinedc", "ampl", "freq", "delay", "damp", "sinephase"];
+                if ((type === "pulse" && vals.length !== 7) ||
+                    (type === "sin" && (vals.length < 3 || vals.length > 6)))
+                    refuse(s, "Supply the supported waveform parameters explicitly.");
+                p.push(`type=${type === "sin" ? "sine" : type}`, ...vals.map((v, j) => `${keys[j]}=${value(v, "spice", s)}`));
+            }
+        }
+        if (i !== f.length)
+            refuse(s, "Extra source parameters are unsupported.");
+        return output(f.slice(1, 3), kind === "V" ? "vsource" : "isource", p.join(" "));
+    }
+    if (kind === "X") {
+        let pos = f.findIndex((t) => t.includes("="));
+        if (pos < 0)
+            pos = f.length;
+        if (f[pos - 1]?.toLowerCase() === "params:")
+            pos--;
+        if (pos < 2)
+            refuse(s, "Cannot locate subcircuit master and nodes.");
+        const rest = f.slice(pos).filter((t) => t.toLowerCase() !== "params:");
+        return output(f.slice(1, pos - 1), f[pos - 1], emitParameters(parameters(rest, s), s));
+    }
+    const nodeCount = kind === "M" ? 4 : kind === "D" ? 2 : kind === "Q" ? 3 : 0;
+    if (nodeCount && f.length >= nodeCount + 2) {
+        // Four-terminal BJTs are not distinguishable from an optional area without
+        // consulting model declarations. Reject that ambiguous shape here.
+        return output(f.slice(1, nodeCount + 1), f[nodeCount + 1], emitParameters(parameters(f.slice(nodeCount + 2), s), s));
+    }
+    refuse(s, `Unsupported SPICE instance ${name}.`);
+}
+function translate(s, ctx) {
+    // Normalize assignment whitespace, while preserving quoted paths/expressions.
+    const f = fields(s.text, s), head = f[0].toLowerCase();
+    if (s.dialect === "spectre") {
+        if (head === "subckt") {
+            const match = /^subckt\s+(\S+)(?:\s+\(([^()]*)\)|\s+([^=]*?))?(?:\s+(\w+=.*))?$/iu.exec(s.text);
+            if (!match)
+                refuse(s, "Invalid subcircuit declaration.");
+            const ports = fields(match[2] ?? match[3] ?? "", s);
+            const p = parameters(fields(match[4] ?? "", s), s);
+            return [
+                `.subckt ${match[1]}${ports.length ? " " + ports.join(" ") : ""}${p.size ? " params: " + emitParameters(p, s) : ""}`,
+            ];
+        }
+        if (head === "ends") {
+            if (f.length > 2)
+                refuse(s, "Unexpected ends arguments.");
+            return [".ends" + (f[1] ? " " + f[1] : "")];
+        }
+        if (head === "global")
+            return [".global " + f.slice(1).join(" ")];
+        if (head === "parameters")
+            return [".param " + emitParameters(parameters(f.slice(1), s), s)];
+        if (head === "include") {
+            if (f.length < 2 || f.length > 3 || !/^"[^"\r\n]+"$/u.test(f[1]))
+                refuse(s, "Include requires a quoted path and optional section.");
+            if (f[2] && !/^section=[A-Za-z_]\w*$/u.test(f[2]))
+                refuse(s, "Unsupported include option.");
+            return [f[2] ? `.lib ${f[1]} ${f[2].slice(8)}` : `.include ${f[1]}`];
+        }
+        if (f[1]?.toLowerCase() === "op") {
+            noParameters(parameters(f.slice(2), s), s);
+            return [".op"];
+        }
+        if (["ac", "dc", "tran"].includes(f[1]?.toLowerCase() ?? "")) {
+            const analysis = f[1].toLowerCase(), p = parameters(f.slice(2), s);
+            let out;
+            const get = (k, def) => value(take(p, k, s, def), "spectre", s);
+            if (analysis === "ac") {
+                const sweep = ["dec", "oct", "lin"].find((k) => p.has(k));
+                if (!sweep)
+                    refuse(s, "AC requires dec, oct or lin.");
+                out = `.ac ${sweep} ${get(sweep)} ${get("start")} ${get("stop")}`;
+            }
+            else if (analysis === "dc")
+                out = `.dc ${take(p, "source", s)} ${get("start")} ${get("stop")} ${get("step")}`;
+            else
+                out = `.tran ${get("step")} ${get("stop")}${p.has("start") || p.has("maxstep") ? " " + get("start", "0") : ""}${p.has("maxstep") ? " " + get("maxstep") : ""}`;
+            noParameters(p, s);
+            return [out];
+        }
+        if (head === "model") {
+            const native = f[2]?.toLowerCase();
+            if (native === "bjt" || native === "diode") {
+                // Reviewed export subset: the classical junction (IS, N) and
+                // Gummel-Poon bipolar (IS, BF, VAF) parameters have the same names
+                // and units in SPICE. Other native model options remain unreviewed.
+                const p = parameters(f.slice(3), s);
+                const type = native === "diode" ? "d" : take(p, "type", s).toLowerCase();
+                if (native === "bjt" && type !== "npn" && type !== "pnp")
+                    refuse(s, "A bjt model needs type=npn or type=pnp.");
+                const allowed = native === "diode" ? ["is", "n"] : ["is", "bf", "vaf"];
+                const mapped = new Map();
+                for (const key of allowed) {
+                    const entry = p.get(key);
+                    if (entry) {
+                        mapped.set(key, entry);
+                        p.delete(key);
+                    }
+                }
+                noParameters(p, s);
+                return [
+                    `.model ${f[1]} ${type}${mapped.size ? " " + emitParameters(mapped, s) : ""}`,
+                ];
+            }
+            // Spectre's BSIM4, as a netlist this editor hands out defines a MOS
+            // stand-in: SPICE's BSIM4 is level 54. Other native models remain unreviewed.
+            if (f[2]?.toLowerCase() !== "bsim4")
+                refuse(s, `Unsupported native Spectre model ${f[2] ?? ""}.`);
+            const p = parameters(f.slice(3), s);
+            const type = take(p, "type", s).toLowerCase();
+            if (type !== "n" && type !== "p")
+                refuse(s, "A bsim4 model needs type=n or type=p.");
+            return [
+                `.model ${f[1]} ${type === "n" ? "nmos" : "pmos"} level=54${p.size ? " " + emitParameters(p, s) : ""}`,
+            ];
+        }
+        if (f[1]?.toLowerCase() === "mutual_inductor") {
+            // A coupling has no terminals: it names two inductor instances, which
+            // SPICE spells with their L-prefixed names.
+            const p = parameters(f.slice(2), s);
+            const coupling = take(p, "coupling", s);
+            const first = take(p, "ind1", s);
+            const second = take(p, "ind2", s);
+            noParameters(p, s);
+            return [
+                `${prefix(f[0], "K")} ${prefix(first, "L")} ${prefix(second, "L")} ${value(coupling, "spectre", s)}`,
+            ];
+        }
+        return [spectreInstance(s, ctx)];
+    }
+    if (head === ".end") {
+        if (f.length !== 1)
+            refuse(s, "Unexpected .end arguments.");
+        return [];
+    }
+    if (head === ".subckt") {
+        let pos = f.findIndex((t) => t.includes("=") || t.toLowerCase() === "params:");
+        if (pos < 0)
+            pos = f.length;
+        const p = parameters(f.slice(pos).filter((t) => t.toLowerCase() !== "params:"), s);
+        return [
+            `subckt ${f[1]} (${f.slice(2, pos).join(" ")})`,
+            ...(p.size ? ["parameters " + emitParameters(p, s)] : []),
+        ];
+    }
+    if (head === ".ends") {
+        if (f.length > 2)
+            refuse(s, "Unexpected .ends arguments.");
+        return ["ends" + (f[1] ? " " + f[1] : "")];
+    }
+    if (head === ".global")
+        return ["global " + f.slice(1).join(" ")];
+    if (head === ".param")
+        return ["parameters " + emitParameters(parameters(f.slice(1), s), s)];
+    if ([".include", ".inc", ".lib", ".model"].includes(head)) {
+        if ((head === ".lib" && f.length !== 3) ||
+            ([".include", ".inc"].includes(head) && f.length !== 2) ||
+            (head === ".model" && f.length < 3))
+            refuse(s, "Unsupported library or model declaration.");
+        if (head !== ".model" && ctx.ownedIncludes.has(f[1].replace(/^"|"$/g, "")))
+            return [`include ${f[1]}${head === ".lib" ? " section=" + f[2] : ""}`];
+        // An included SPICE library remains SPICE. Native Spectre include syntax
+        // would incorrectly reinterpret the model file's dialect.
+        return ["simulator lang=spice", s.text, "simulator lang=spectre"];
+    }
+    if (head === ".op" && f.length === 1)
+        return ["op1 op"];
+    if (head === ".ac" && f.length === 5 && /^(dec|oct|lin)$/iu.test(f[1]))
+        return [
+            `ac1 ac ${f[1].toLowerCase()}=${value(f[2], "spice", s)} start=${value(f[3], "spice", s)} stop=${value(f[4], "spice", s)}`,
+        ];
+    if (head === ".dc" && f.length === 5)
+        return [
+            `dc1 dc source=${f[1]} start=${value(f[2], "spice", s)} stop=${value(f[3], "spice", s)} step=${value(f[4], "spice", s)}`,
+        ];
+    if (head === ".tran" &&
+        f.length >= 3 &&
+        f.length <= 5 &&
+        !f.some((t) => t.toLowerCase() === "uic"))
+        return [
+            `tran1 tran step=${value(f[1], "spice", s)} stop=${value(f[2], "spice", s)}${f[3] ? " start=" + value(f[3], "spice", s) : ""}${f[4] ? " maxstep=" + value(f[4], "spice", s) : ""}`,
+        ];
+    if (head.startsWith("."))
+        refuse(s, `Unsupported SPICE directive ${head}; it has not been omitted.`);
+    return [spiceInstance(s)];
+}
+/** SPICE folds node names; native Spectre distinguishes their case. Refuse
+ * aliases whose meaning would change, instead of silently shorting/splitting. */
+function checkNodeCase(s, scope, names, globals) {
+    const f = fields(s.text, s), head = f[0].toLowerCase();
+    let nodes = [];
+    if (head === "subckt" || head === ".subckt") {
+        const end = f.findIndex((t) => t.includes("=") || t.toLowerCase() === "params:");
+        nodes = f
+            .slice(2, end < 0 ? undefined : end)
+            .flatMap((t) => fields(t.replace(/^\((.*)\)$/u, "$1"), s));
+    }
+    else if (s.dialect === "spectre") {
+        const match = /^\S+\s*\(([^()]*)\)\s+/u.exec(s.text);
+        if (match)
+            nodes = fields(match[1], s);
+    }
+    else if (!head.startsWith(".")) {
+        const kind = head[0];
+        // A K card names inductors, not nodes.
+        if (kind === "k") {
+            nodes = [];
+        }
+        else if (kind === "x") {
+            let end = f.findIndex((t) => t.includes("=") || t.toLowerCase() === "params:");
+            if (end < 0)
+                end = f.length;
+            nodes = f.slice(1, end - 1);
+        }
+        else {
+            const count = kind === "m" || kind === "e" || kind === "g" ? 4 : kind === "q" ? 3 : 2;
+            nodes = f.slice(1, count + 1);
+        }
+    }
+    for (const node of nodes) {
+        const key = `${scope}/${node.toLowerCase()}`, prior = globals.get(node.toLowerCase()) ?? names.get(key);
+        if (prior && prior !== node)
+            refuse(s, `Node names ${prior} and ${node} differ only in case; use one spelling before changing dialect.`, "NODE_CASE_COLLISION");
+        names.set(key, node);
+    }
+}
+/** Check native names after structural translation, when values have already
+ * been tokenized and numeric suffixes converted. Never case-fold raw source:
+ * paths, model cards and case-sensitive native libraries must stay untouched. */
+function checkSpiceReferenceCase(records, externalSubckts) {
+    const subckts = new Map(externalSubckts.map((name) => [name.toLowerCase(), name]));
+    const defaults = new Map();
+    for (const { statement, scope, lines } of records) {
+        for (const line of lines) {
+            const f = fields(line, statement);
+            if (f[0] === "subckt")
+                subckts.set(f[1].toLowerCase(), f[1]);
+            if (f[0] === "parameters") {
+                const names = defaults.get(scope) ?? new Map();
+                for (const { name } of parameters(f.slice(1), statement).values())
+                    names.set(name.toLowerCase(), name);
+                defaults.set(scope, names);
+            }
+        }
+    }
+    const check = (name, declared, s) => {
+        if (declared && declared !== name)
+            refuse(s, `Identifiers ${declared} and ${name} differ only in case; use the declaration's spelling before converting to Spectre.`, "IDENTIFIER_CASE_COLLISION");
+    };
+    for (const { statement, scope, lines } of records) {
+        for (const line of lines) {
+            const f = fields(line, statement);
+            if (f[0] === "ends" && f[1])
+                check(f[1], subckts.get(f[1].toLowerCase()), statement);
+            if (f[0] !== "parameters") {
+                // Native instance parameters evaluate in the caller, but override names
+                // belong to the callee's interface (not to the caller's local scope).
+                if (!/^x/iu.test(statement.text) || !f[1]?.startsWith("("))
+                    continue;
+                const master = f[2];
+                check(master, subckts.get(master.toLowerCase()), statement);
+                const values = parameters(f.slice(3), statement);
+                const formal = defaults.get(master.toLowerCase());
+                if (subckts.has(master.toLowerCase()))
+                    for (const { name } of values.values())
+                        check(name, formal?.get(name.toLowerCase()), statement);
+            }
+        }
+        // Only authored values carry references. Generated enums such as type=pulse
+        // and K's inductor names are not parameters; K/analysis expressions are.
+        for (const name of statement.parameterReferences ?? [])
+            check(name, defaults.get(scope)?.get(name.toLowerCase()) ??
+                defaults.get("")?.get(name.toLowerCase()), statement);
+    }
+}
+export function convertNetlist(options) {
+    const { text, source, target } = options;
+    try {
+        const root = {
+            line: 0,
+            text: "",
+            dialect: source === "spectre" ? "spectre" : "spice",
+        };
+        if (!isNetlistDialect(source) ||
+            !isNetlistDialect(target) ||
+            typeof text !== "string")
+            refuse(root, "Supply text and supported source/target dialects.", "INVALID_REQUEST");
+        if (new TextEncoder().encode(text).length > MAX_CONVERSION_BYTES)
+            refuse(root, "Netlist exceeds the 512 KiB conversion limit.", "RESOURCE_LIMIT");
+        if (source === target || (source !== "spectre" && target !== "spectre"))
+            return { status: "converted", text, source, target, issues: [] };
+        // In an explicitly complete SPICE deck, the first physical line is a
+        // simulator title. Structural fragments do not have that special rule.
+        const inputText = source !== "spectre" && options.fragment === false
+            ? text.replace(/^[^\r\n]*/u, "")
+            : text;
+        const input = statements(inputText, source);
+        const ctx = {
+            subckts: new Set(options.subcircuitNames?.map((name) => name.toLowerCase())),
+            models: new Map(),
+            ownedIncludes: new Set(options.ownedIncludes),
+        };
+        const declared = new Set();
+        const globals = new Map();
+        for (const s of input) {
+            const f = fields(s.text, s);
+            if (["global", ".global"].includes(f[0].toLowerCase()))
+                for (const node of f.slice(1)) {
+                    const prior = globals.get(node.toLowerCase());
+                    if (prior && prior !== node)
+                        refuse(s, "Global nodes differ only in case.", "NODE_CASE_COLLISION");
+                    globals.set(node.toLowerCase(), node);
+                }
+            if (["subckt", ".subckt"].includes(f[0].toLowerCase()) && !f[1])
+                refuse(s, "Subcircuit name is missing.");
+            if (["subckt", ".subckt"].includes(f[0].toLowerCase()) && f[1]) {
+                if (declared.has(f[1].toLowerCase()))
+                    refuse(s, "Duplicate subcircuit name.", "REFERENCE_COLLISION");
+                declared.add(f[1].toLowerCase());
+                ctx.subckts.add(f[1].toLowerCase());
+            }
+            if (s.dialect === "spice" &&
+                f[0]?.toLowerCase() === ".model" &&
+                f[1] &&
+                f[2]) {
+                const modelClass = f[2].split("(")[0].toLowerCase();
+                const designator = ["nmos", "pmos"].includes(modelClass)
+                    ? "M"
+                    : ["npn", "pnp"].includes(modelClass)
+                        ? "Q"
+                        : modelClass === "d"
+                            ? "D"
+                            : undefined;
+                if (designator)
+                    ctx.models.set(f[1].toLowerCase(), designator);
+            }
+            if (s.dialect === "spectre" &&
+                f[0]?.toLowerCase() === "model" &&
+                f[1] &&
+                f[2]) {
+                const designator = { bsim4: "M", bjt: "Q", diode: "D" }[f[2].toLowerCase()];
+                if (designator)
+                    ctx.models.set(f[1].toLowerCase(), designator);
+            }
+        }
+        const out = [
+            target === "spectre"
+                ? "simulator lang=spectre"
+                : "* Converted by Analog Canvas / netlist-crawler",
+        ];
+        const lineOrigins = [0];
+        const names = new Set();
+        const nodeNames = new Map();
+        const caseRecords = [];
+        let scope = "", depth = 0, subcircuitOutput = -1;
+        for (const s of input) {
+            const head = s.text.split(/\s+/u)[0].toLowerCase();
+            if (head === "subckt" || head === ".subckt") {
+                if (depth)
+                    refuse(s, "Nested subcircuit definitions are unsupported.");
+                depth++;
+                scope = fields(s.text, s)[1].toLowerCase();
+                subcircuitOutput = out.length;
+            }
+            if (head === "ends" || head === ".ends") {
+                if (!depth)
+                    refuse(s, "Unmatched subcircuit end.");
+                if (fields(s.text, s)[1] &&
+                    fields(s.text, s)[1].toLowerCase() !== scope)
+                    refuse(s, "Subcircuit end name does not match.");
+                depth--;
+            }
+            if (!(s.dialect === "spice" && target !== "spectre"))
+                checkNodeCase(s, scope, nodeNames, globals);
+            const translated = s.dialect === "spice" && target !== "spectre"
+                ? [s.text]
+                : translate(s, ctx);
+            if (source !== "spectre" && target === "spectre")
+                caseRecords.push({ statement: s, scope, lines: translated });
+            // Spectre subcircuit parameters are callable defaults, not a SPICE
+            // local .param body that could overwrite an instance override.
+            if (s.dialect === "spectre" &&
+                target !== "spectre" &&
+                head === "parameters" &&
+                depth) {
+                const defaults = translated[0].slice(".param ".length);
+                out[subcircuitOutput] +=
+                    `${out[subcircuitOutput].includes(" params:") ? " " : " params: "}${defaults}`;
+                continue;
+            }
+            for (const line of translated) {
+                if (!line)
+                    continue;
+                const isInstance = s.dialect === "spectre"
+                    ? /^(\S+)\s*\(/u.test(s.text) && head !== "subckt"
+                    : target === "spectre" && !head.startsWith(".");
+                if (isInstance) {
+                    const name = line.split(/\s+/u)[0];
+                    const key = `${scope}/${name.toLowerCase()}`;
+                    if (names.has(key))
+                        refuse(s, `Converted reference ${name} collides in this cell.`, "REFERENCE_COLLISION");
+                    names.add(key);
+                }
+                out.push(line);
+                for (const _line of line.split("\n"))
+                    lineOrigins.push(s.line);
+            }
+            if (!depth)
+                scope = "";
+        }
+        if (depth)
+            refuse(input.at(-1), "Unclosed subcircuit definition.");
+        if (caseRecords.length)
+            checkSpiceReferenceCase(caseRecords, options.subcircuitNames ?? []);
+        if (target !== "spectre" &&
+            options.fragment === false &&
+            !out.some((s) => s.toLowerCase() === ".end")) {
+            out.push(".end");
+            lineOrigins.push(0);
+        }
+        const converted = out.join("\n") + "\n";
+        if (new TextEncoder().encode(converted).length > MAX_CONVERSION_BYTES * 2)
+            refuse(root, "Converted output exceeds the size limit.", "RESOURCE_LIMIT");
+        return {
+            status: "converted",
+            text: converted,
+            source,
+            target,
+            issues: [],
+            ...(options.withLineOrigins ? { lineOrigins } : {}),
+        };
+    }
+    catch (error) {
+        if (error instanceof ConversionError)
+            return { status: "blocked", issues: [error.issue] };
+        throw error;
+    }
+}

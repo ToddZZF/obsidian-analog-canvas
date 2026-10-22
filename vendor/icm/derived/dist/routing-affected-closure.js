@@ -1,0 +1,130 @@
+import { routeEnd } from "@icm/model";
+import { carriedContactJunctionIds } from "./junction-style.js";
+import { deriveInternalGroupSelection } from "./routing-components.js";
+function stable(values) {
+    return [...new Set(values)].sort((left, right) => left.localeCompare(right, "en"));
+}
+function isInside(endpoint, instanceIds, junctionIds) {
+    return endpoint.kind === "terminal"
+        ? instanceIds.has(endpoint.instanceId)
+        : junctionIds.has(endpoint.junctionId);
+}
+/**
+ * Derive the electrical closure of one visual selection without inspecting
+ * pointer geometry. A marquee may seed stable object IDs, but a Route merely
+ * passing through it never becomes selected by this read model.
+ */
+export function deriveRoutingAffectedClosure(document, seed, options = {}) {
+    const knownInstances = new Set(document.instances.map((item) => item.id));
+    const knownJunctions = new Set(document.junctions.map((item) => item.id));
+    const routesById = new Map();
+    for (const route of document.routes)
+        if (!routesById.has(route.id))
+            routesById.set(route.id, route);
+    const instances = stable(seed.instanceIds.filter((id) => knownInstances.has(id)));
+    const instanceIds = new Set(instances);
+    const internal = options.includeImplicitInstanceRoutes === false
+        ? { netIds: [], routeIds: [], junctionIds: [] }
+        : deriveInternalGroupSelection(document, instances);
+    const internalRouteIds = new Set(internal.routeIds);
+    const internalJunctionIds = new Set(internal.junctionIds);
+    for (const junctionId of seed.junctionIds) {
+        if (knownJunctions.has(junctionId))
+            internalJunctionIds.add(junctionId);
+    }
+    if (options.resolver)
+        for (const id of carriedContactJunctionIds(document, options.resolver, instanceIds))
+            internalJunctionIds.add(id);
+    // A Route the person selected travels with the selection, and the Junctions
+    // on its ends travel with it.
+    //
+    // What pins a Route is a terminal it cannot take along: a Terminal endpoint
+    // belongs to an Instance, so a Route reaching an unselected Instance has to
+    // stay attached and stretch. A Junction endpoint pins nothing — it is an
+    // anchor, free to move, and the unselected Routes meeting it stretch to
+    // follow. Requiring every endpoint to be inside instead stranded the
+    // Junction where two columns share a bus: the selected wires grew doglegs
+    // bending back to a connection point that stayed behind.
+    for (const routeId of seed.routeIds) {
+        if (internalRouteIds.has(routeId))
+            continue;
+        const route = routesById.get(routeId);
+        if (!route)
+            continue;
+        const ends = [route.start, routeEnd(route)];
+        const heldByUnselectedInstance = ends.some((endpoint) => endpoint.kind === "terminal" && !instanceIds.has(endpoint.instanceId));
+        if (heldByUnselectedInstance)
+            continue;
+        internalRouteIds.add(route.id);
+        for (const endpoint of ends) {
+            if (endpoint.kind === "junction") {
+                internalJunctionIds.add(endpoint.junctionId);
+            }
+        }
+    }
+    const boundaryRouteIds = new Set();
+    const externalRouteIds = new Set();
+    const boundaryJunctionIds = new Set();
+    for (const route of document.routes) {
+        if (internalRouteIds.has(route.id))
+            continue;
+        const end = routeEnd(route);
+        const startInside = isInside(route.start, instanceIds, internalJunctionIds);
+        const endInside = isInside(end, instanceIds, internalJunctionIds);
+        if (startInside !== endInside) {
+            boundaryRouteIds.add(route.id);
+            for (const endpoint of [route.start, end]) {
+                if (endpoint.kind === "junction" &&
+                    !internalJunctionIds.has(endpoint.junctionId)) {
+                    boundaryJunctionIds.add(endpoint.junctionId);
+                }
+            }
+        }
+        else {
+            externalRouteIds.add(route.id);
+        }
+    }
+    const explicitlySelectedAnnotations = new Set(seed.annotationIds ?? []);
+    const electricalAnnotationIds = stable(document.annotations.flatMap((annotation) => {
+        const electricalKind = annotation.kind === "net-label" ||
+            annotation.kind === "power-label" ||
+            annotation.kind === "route-marker";
+        const followsObject = annotation.anchor.kind === "object" &&
+            (instanceIds.has(annotation.anchor.objectId) ||
+                internalJunctionIds.has(annotation.anchor.objectId));
+        const followsRoute = annotation.anchor.kind === "route" &&
+            internalRouteIds.has(annotation.anchor.routeId);
+        return electricalKind &&
+            (followsObject ||
+                followsRoute ||
+                explicitlySelectedAnnotations.has(annotation.id))
+            ? [annotation.id]
+            : [];
+    }));
+    const protectedObjectIds = new Set();
+    for (const route of document.routes) {
+        if (route.legs.some((leg) => leg.mode === "locked" || leg.mode === "trunk")) {
+            protectedObjectIds.add(route.id);
+        }
+    }
+    for (const annotation of document.annotations) {
+        if (annotation.locked)
+            protectedObjectIds.add(annotation.id);
+    }
+    for (const owner of [...document.layoutGroups, ...document.constraints]) {
+        if (!owner.locked)
+            continue;
+        for (const objectId of owner.objectIds)
+            protectedObjectIds.add(objectId);
+    }
+    return {
+        instances,
+        internalRoutes: stable(internalRouteIds),
+        boundaryRoutes: stable(boundaryRouteIds),
+        externalRoutes: stable(externalRouteIds),
+        internalJunctions: stable(internalJunctionIds),
+        boundaryJunctions: stable(boundaryJunctionIds),
+        electricalAnnotationIds,
+        protectedObjectIds: stable(protectedObjectIds),
+    };
+}

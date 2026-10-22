@@ -1,0 +1,317 @@
+// One Cell as the netlist sees it: its pins and ground pin, references,
+// instances and the model cards it carries.
+import { deriveStableId, foldNetName, projectCellInterface, spellGreekLetters, } from "@icm/model";
+import { portableCellIdentifier, resolveCommittedDocumentLogicalNets, } from "@icm/derived";
+import { createReferenceIndex, instanceBuiltInSubcircuit, hasBuiltInSubcircuitInterface, nextReference, } from "@icm/devices";
+import { bodySupplies } from "./implicit-mos-supplies.js";
+import { builtInBlockCallTarget } from "./ideal-analog-block-models.js";
+import { extractInductorCouplings } from "./extract-coupling.js";
+import { IDEAL_SWITCH_MODEL } from "./ideal-switch-model.js";
+import { compareText, diagnostic, } from "./extract-common.js";
+import { encodeCandidate, buildNetContext } from "./extract-nets.js";
+import { GROUND_PORT_NAME, cellReachesGround, groundPinName, groundPortIndex, } from "./extract-ground-pin.js";
+import { undrivenPhaseNodes } from "./extract-switch.js";
+import { builtInZenerModelName, zenerParameter, extractDeviceInstance, } from "./extract-device.js";
+import { extractHierarchyInstance, extractExternalSubcircuitInstance, } from "./extract-subcircuit.js";
+import { extractBuiltInSubcircuitInstance } from "./extract-block.js";
+import { reportSubstratesAboveNegativeSupply, reportDefaultBodySupplies, reportBodiesOffSourceSupply, } from "./extract-findings.js";
+import { GENERIC_DIODE_MODEL, GENERIC_NMOS_MODEL, GENERIC_NPN_MODEL, GENERIC_PMOS_MODEL, GENERIC_PNP_MODEL, definesGenericModel, reportGenericDiodes, reportUndefinedGenericModels, reportGenericBjts, reportGenericMos, } from "./extract-generic-models.js";
+const MAX_INSTANCES_PER_CELL = 100_000;
+export function extractCell(project, document, documentsById, cellNameByDocumentId, 
+/** The Project's own subcircuit names; see projectSubcircuitNames. */
+projectNames, projectedNames, placedBodies, options, diagnostics) {
+    if (!document.netlist) {
+        diagnostic(diagnostics, document.id, "MISSING_CELL_INTERFACE", `Document ${document.id} has no netlist interface`);
+        return null;
+    }
+    for (const formal of document.netlist.formalParameters) {
+        if (formal.defaultValue !== undefined)
+            continue;
+        diagnostic(diagnostics, document.id, "UNREPRESENTABLE_REQUIRED_FORMAL_PARAMETER", `Formal parameter ${formal.name} has no portable SPICE/Spectre default`);
+    }
+    if (document.instances.length > MAX_INSTANCES_PER_CELL) {
+        diagnostic(diagnostics, document.id, "INSTANCE_LIMIT_EXCEEDED", `Cell has ${document.instances.length} instances; maximum is ${MAX_INSTANCES_PER_CELL}`);
+    }
+    const context = buildNetContext(project, document, documentsById, new Map(project.externalSubcircuitDefinitions.map((definition) => [
+        definition.id,
+        definition,
+    ])), projectedNames, options, diagnostics);
+    const interfaceProjection = projectCellInterface(document.netlist);
+    // Formal pins read the authored Document, not buildNetContext's recovered
+    // power-marker claims. All pins share that same logical projection.
+    const interfaceLogicalNets = resolveCommittedDocumentLogicalNets(document);
+    for (const issue of interfaceProjection.issues) {
+        diagnostic(diagnostics, document.id, issue.code, `Port ${issue.portName} has conflicting directions: ${issue.directions.join(", ")}`, [...issue.terminalIds]);
+    }
+    const ports = interfaceProjection.ports.flatMap((port) => {
+        let hasMissingNet = false;
+        for (const netId of port.netIds) {
+            if (document.nets.some((candidate) => candidate.id === netId))
+                continue;
+            hasMissingNet = true;
+            diagnostic(diagnostics, document.id, "MISSING_INTERFACE_NET", `Netlist terminal ${port.name} references unknown Net ${netId}`, [netId]);
+        }
+        if (hasMissingNet)
+            return [];
+        const logicalNet = interfaceLogicalNets.byBaseNetId.get(port.netIds[0]);
+        const encodedPort = encodeCandidate(port.name, logicalNet?.scope ?? "local", options);
+        if (!encodedPort.ok) {
+            diagnostic(diagnostics, document.id, encodedPort.code, `Port ${port.name} cannot be encoded for ${options.format}: ${encodedPort.message}`, [...port.netIds]);
+            return [];
+        }
+        const representativeNetId = port.netIds[0];
+        const netName = context.nameByNetId.get(representativeNetId) ?? port.name;
+        return [{ id: representativeNetId, name: encodedPort.token, netName }];
+    });
+    // Ground becomes this Cell's own pin: the node inside is named for it, and
+    // the pin joins the interface beside the supplies. A Cell that only passes
+    // ground to a child gets the node anyway, so the child's reference has
+    // somewhere to come from.
+    const printedAsSubcircuit = !(options.rootAsTopLevel && document.id === options.rootDocumentId);
+    if (options.groundPin === "pin" &&
+        printedAsSubcircuit &&
+        cellReachesGround(document, documentsById)) {
+        const groundName = groundPinName(document);
+        const encodedGround = encodeCandidate(groundName.name, "local", options);
+        const groundNet = context.nets.find((net) => net.name === "0");
+        const groundToken = encodedGround.ok
+            ? encodedGround.token
+            : groundName.name;
+        // An author who already gave ground a pin of their own keeps it: the
+        // policy states a reference, it does not duplicate one. The node then
+        // takes that pin's name, so no Cell printed as a subcircuit is left
+        // reaching for the global reference under a different name.
+        const authoredPin = groundNet
+            ? ports.find((port) => port.netName === groundNet.name)
+            : undefined;
+        if (authoredPin && groundNet) {
+            for (const [netId, name] of context.nameByNetId)
+                if (name === groundNet.name)
+                    context.nameByNetId.set(netId, authoredPin.name);
+            context.nameByAuthoredName.set(foldNetName("0"), authoredPin.name);
+            groundNet.name = authoredPin.name;
+            groundNet.scope = "local";
+            authoredPin.netName = authoredPin.name;
+        }
+        else if (groundNet) {
+            for (const [netId, name] of context.nameByNetId)
+                if (name === "0")
+                    context.nameByNetId.set(netId, groundToken);
+            context.nameByAuthoredName.set(foldNetName("0"), groundToken);
+            groundNet.name = groundToken;
+            groundNet.scope = "local";
+            ports.splice(groundPortIndex(document, ports), 0, {
+                id: groundNet.id,
+                name: groundToken,
+                netName: groundToken,
+            });
+        }
+        else {
+            // Nothing in this Cell touches ground; it exists only to carry the
+            // reference down to a child that does.
+            const passThroughId = deriveStableId("netlist", "ground-port", document.id, GROUND_PORT_NAME);
+            context.nets.push({
+                id: passThroughId,
+                name: groundToken,
+                scope: "local",
+            });
+            context.nameByNetId.set(passThroughId, groundToken);
+            context.nameByAuthoredName.set(foldNetName("0"), groundToken);
+            ports.splice(groundPortIndex(document, ports), 0, {
+                id: passThroughId,
+                name: groundToken,
+                netName: groundToken,
+            });
+        }
+        // The author may have meant that Net as ground, or not: say which name
+        // ground's pin took, and how to make the two one.
+        if (!authoredPin && groundName.taken !== undefined)
+            diagnostic(diagnostics, document.id, "GROUND_PIN_RENAMED", `Ground's pin is named ${groundToken}: ${groundName.taken} is another Net here${groundNet
+                ? `. If ${groundName.taken} is this Cell's ground, connect it to the ground marker`
+                : ""}`, groundNet ? [groundNet.id] : [], "info");
+    }
+    // Node names are final here, ground included, so findings use them.
+    reportDefaultBodySupplies(document, context, ports, diagnostics);
+    reportBodiesOffSourceSupply(document, context, placedBodies, diagnostics);
+    const referenceIndex = createReferenceIndex(document, project);
+    const syntheticReferences = new Map();
+    const reservedReferences = new Set(referenceIndex.byReference.keys());
+    for (const instance of [...document.instances].sort((left, right) => left.id.localeCompare(right.id))) {
+        if (instance.reference)
+            continue;
+        const policy = referenceIndex.policyByInstanceId.get(instance.id);
+        if (!policy)
+            continue;
+        const reference = nextReference(referenceIndex, policy, {
+            reservedReferences,
+        });
+        if (!reference)
+            continue;
+        syntheticReferences.set(instance.id, reference);
+        reservedReferences.add(reference.toLowerCase());
+    }
+    const reportedDuplicateReferences = new Set();
+    for (const issue of referenceIndex.issues) {
+        if (issue.code === "MISSING_REFERENCE")
+            continue;
+        const otherInstanceIds = issue.otherInstanceId
+            ? [issue.otherInstanceId, issue.instanceId]
+            : [issue.instanceId];
+        switch (issue.code) {
+            case "WRONG_REFERENCE_PREFIX": {
+                const policy = referenceIndex.policyByInstanceId.get(issue.instanceId);
+                const free = policy
+                    ? nextReference(referenceIndex, policy, { reservedReferences })
+                    : undefined;
+                diagnostic(diagnostics, document.id, "WRONG_REFERENCE_PREFIX", `Reference ${issue.reference} does not match ${issue.instanceId}'s component prefix ${issue.expectedPrefix}${free ? `; ${free} is free` : ""}`, otherInstanceIds);
+                break;
+            }
+            case "DUPLICATE_REFERENCE":
+                if (!issue.reference ||
+                    reportedDuplicateReferences.has(issue.reference.toLowerCase())) {
+                    break;
+                }
+                reportedDuplicateReferences.add(issue.reference.toLowerCase());
+                diagnostic(diagnostics, document.id, "DUPLICATE_INSTANCE_REFERENCE", `Reference ${issue.reference} is duplicated under case folding`, otherInstanceIds);
+                break;
+        }
+    }
+    const instances = [];
+    const cellPinInstanceIds = new Set(interfaceProjection.ports.flatMap((port) => port.interfaceInstanceIds));
+    const spelledReferences = new Map();
+    for (const source of [...document.instances].sort((a, b) => {
+        const left = a.reference ?? syntheticReferences.get(a.id) ?? a.id;
+        const right = b.reference ?? syntheticReferences.get(b.id) ?? b.id;
+        return compareText(left, right) || a.id.localeCompare(b.id);
+    })) {
+        // Older/Agent-authored drawings can omit references on primitive devices
+        // too. Allocate only in this read-only projection, before dialect prefixes.
+        // A Greek letter is written as its standard name (Mφ is Mphi).
+        const authoredReference = source.reference ?? syntheticReferences.get(source.id);
+        const reference = authoredReference === undefined
+            ? undefined
+            : spellGreekLetters(authoredReference);
+        const instance = reference !== source.reference ? { ...source, reference } : source;
+        if (reference && authoredReference) {
+            const folded = reference.toLowerCase();
+            const prior = spelledReferences.get(folded);
+            if (!prior) {
+                spelledReferences.set(folded, {
+                    reference: authoredReference,
+                    id: source.id,
+                });
+            }
+            else if (prior.reference.toLowerCase() !== authoredReference.toLowerCase()) {
+                diagnostic(diagnostics, document.id, "DUPLICATE_INSTANCE_REFERENCE", `References ${prior.reference} and ${authoredReference} both export as ${reference}`, [prior.id, source.id]);
+            }
+        }
+        if (cellPinInstanceIds.has(instance.id))
+            continue;
+        const binding = instance.netlist?.binding;
+        const captured = project.componentDefinitions?.find((component) => component.symbol.id === instance.symbolId);
+        if ((!binding || binding.kind === "unresolved-subcircuit") &&
+            captured?.subcircuit &&
+            !hasBuiltInSubcircuitInterface(captured))
+            diagnostic(diagnostics, document.id, "MODEL_IMPLEMENTATION_MISSING", `${instance.reference ?? instance.id} has an interface-only component definition. Repair its implementation and Pin mapping in User Components.`, [instance.id]);
+        const builtInSubcircuit = instanceBuiltInSubcircuit(project, instance);
+        const extracted = builtInSubcircuit
+            ? extractBuiltInSubcircuitInstance(document, instance, builtInSubcircuit, instance.reference ?? syntheticReferences.get(instance.id), context, options, diagnostics, projectNames, bodySupplies(builtInBlockCallTarget(instance, builtInSubcircuit, projectNames), projectNames, options.format).length === 0)
+            : binding?.kind === "subcircuit"
+                ? extractHierarchyInstance(document, instance, documentsById, cellNameByDocumentId, context, options, diagnostics)
+                : binding?.kind === "external-subcircuit"
+                    ? extractExternalSubcircuitInstance(document, instance, project.externalSubcircuitDefinitions.find((definition) => definition.id === binding.definitionId), captured, context, diagnostics)
+                    : extractDeviceInstance(project, document, instance, context, options, diagnostics);
+        if (extracted)
+            instances.push(extracted);
+    }
+    const models = [];
+    if (instances.some((instance) => instance.deviceClass === "switch" &&
+        instance.target === IDEAL_SWITCH_MODEL.name))
+        models.push(structuredClone(IDEAL_SWITCH_MODEL));
+    // The parts a generic card stands in for, and the Cell then carries it.
+    // Export carries stand-ins in either dialect so they read back. Spectre
+    // runs keep relying on the reader's libraries; SPICE runs carry the cards
+    // (VACASK prints them from the SPICE cards). Names match as SPICE reads them.
+    const carryGenericCard = (model, deviceClass, everyFormat = false) => {
+        const parts = everyFormat || options.format === "spice"
+            ? instances.filter((instance) => instance.deviceClass === deviceClass &&
+                (everyFormat
+                    ? instance.target?.toUpperCase() === model.name
+                    : instance.target === model.name))
+            : [];
+        if (!parts.length ||
+            definesGenericModel(project, options.deckSources, model))
+            return [];
+        models.push(structuredClone(model));
+        return parts;
+    };
+    reportSubstratesAboveNegativeSupply(document, context, instances, diagnostics);
+    const genericDiodes = carryGenericCard(GENERIC_DIODE_MODEL, "diode", !options.run);
+    if (genericDiodes.length)
+        reportGenericDiodes(document, genericDiodes, diagnostics);
+    const genericBjts = [GENERIC_NPN_MODEL, GENERIC_PNP_MODEL]
+        .map((model) => ({
+        model,
+        parts: carryGenericCard(model, "bjt", !options.run),
+    }))
+        .filter(({ parts }) => parts.length);
+    if (genericBjts.length)
+        reportGenericBjts(document, genericBjts, diagnostics);
+    // A netlist handed out carries the MOS stand-ins, in either dialect, so it
+    // reads back with each part's channel; a run's deck does not (#1420).
+    const genericMos = options.run
+        ? []
+        : [GENERIC_NMOS_MODEL, GENERIC_PMOS_MODEL]
+            .map((model) => ({
+            model,
+            parts: carryGenericCard(model, "mos", true),
+        }))
+            .filter(({ parts }) => parts.length);
+    if (genericMos.length)
+        reportGenericMos(document, genericMos, diagnostics);
+    if (options.format === "spice")
+        reportUndefinedGenericModels(project, document, instances, options.deckSources, diagnostics, new Set(genericMos.map(({ model }) => model.name)));
+    for (const extracted of instances) {
+        const source = document.instances.find((candidate) => candidate.id === extracted.id);
+        if (source?.symbolId !== "zener-diode" ||
+            source.netlist?.binding !== undefined ||
+            extracted.target !== builtInZenerModelName(extracted.reference))
+            continue;
+        const bv = zenerParameter(source, "bv");
+        if (!bv?.trim())
+            continue;
+        const ibv = zenerParameter(source, "ibv");
+        models.push({
+            name: extracted.target,
+            type: "D",
+            parameters: [
+                { name: "BV", rawValue: bv.trim() },
+                ...(ibv?.trim() ? [{ name: "IBV", rawValue: ibv.trim() }] : []),
+            ],
+        });
+    }
+    const couplings = extractInductorCouplings(document, instances, diagnostics);
+    // A clock phase nothing here drives is this Cell's pin, after the authored
+    // ones and ground, for its caller or testbench to drive (#1475).
+    if (printedAsSubcircuit)
+        for (const token of undrivenPhaseNodes.get(context) ?? []) {
+            const net = context.nets.find((candidate) => candidate.name === token);
+            ports.push({ id: net.id, name: token, netName: token });
+        }
+    return {
+        id: document.id,
+        name: cellNameByDocumentId.get(document.id) ??
+            portableCellIdentifier(document.netlist.name, document.id),
+        ports,
+        nets: context.nets,
+        instances,
+        ...(models.length ? { models } : {}),
+        ...(couplings.length ? { couplings } : {}),
+        formalParameters: document.netlist.formalParameters.map((parameter) => ({
+            name: parameter.name,
+            ...(parameter.defaultValue === undefined
+                ? {}
+                : { defaultValue: parameter.defaultValue }),
+        })),
+    };
+}

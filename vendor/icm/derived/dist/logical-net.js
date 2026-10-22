@@ -1,0 +1,279 @@
+import { registerDocumentCache } from "./document-caches.js";
+import { foldNetName, isFrozenSnapshot } from "@icm/model";
+const committedDocumentLogicalNetCache = registerDocumentCache(new WeakMap());
+export function logicalNetContractIssueKey(issue) {
+    return `${issue.code}:${issue.netIds.join(",")}`;
+}
+class DisjointSet {
+    parent = new Map();
+    constructor(ids) {
+        for (const id of ids)
+            this.parent.set(id, id);
+    }
+    find(id) {
+        const parent = this.parent.get(id);
+        if (!parent || parent === id)
+            return id;
+        const root = this.find(parent);
+        this.parent.set(id, root);
+        return root;
+    }
+    union(left, right) {
+        const leftRoot = this.find(left);
+        const rightRoot = this.find(right);
+        if (leftRoot === rightRoot)
+            return;
+        const [first, second] = [leftRoot, rightRoot].sort((a, b) => a.localeCompare(b, "en"));
+        this.parent.set(second, first);
+    }
+}
+function unionGroups(set, groups) {
+    for (const ids of groups) {
+        const [first, ...rest] = ids;
+        if (!first)
+            continue;
+        for (const id of rest)
+            set.union(first, id);
+    }
+}
+/**
+ * Resolve Document-local logical identity from owner-addressed scoped names
+ * and formal Cell-Pin names.
+ * Physical Base Nets remain intact; this pure result is the only electrical
+ * folding implementation used by editor and netlist consumers. `spice-source`
+ * and `net-name-hint` evidence are provenance, not electrical equivalence: a
+ * user cut must not remain connected merely because both resulting components
+ * came from the same source Net or retained the same source spelling.
+ */
+export function resolveDocumentLogicalNets(document) {
+    const baseNetIds = document.nets
+        .map((net) => net.id)
+        .sort((left, right) => left.localeCompare(right, "en"));
+    const set = new DisjointSet(baseNetIds);
+    const byScopedName = new Map();
+    const formalNames = (document.netlist?.terminals ?? []).map((terminal) => {
+        const interfaceInstances = terminal.interfaceInstanceIds.flatMap((instanceId) => {
+            const instance = document.instances.find((candidate) => candidate.id === instanceId);
+            return instance ? [instance] : [];
+        });
+        const interfaceAnnotation = terminal.interfaceAnnotationId
+            ? document.annotations.find((candidate) => candidate.id === terminal.interfaceAnnotationId)
+            : undefined;
+        const matchingGlobalClaim = document.connectivityEvidence.some((evidence) => evidence.kind === "name-claim" &&
+            evidence.netId === terminal.netId &&
+            evidence.scope === "global" &&
+            foldNetName(evidence.name) === foldNetName(terminal.name));
+        const powerDomain = interfaceAnnotation?.kind === "power-label" ||
+            interfaceInstances.some((instance) => instance.symbolId === "vdd-port")
+            ? "vdd"
+            : "none";
+        return {
+            id: terminal.id,
+            netId: terminal.netId,
+            name: terminal.name,
+            // A Cell Pin standing on a supply marker is that supply. The marker is
+            // a global connector wherever it is drawn, and exposing one as a Pin
+            // must not take it out of the supply it marks: without this, a Cell with
+            // a VDD Pin and a VDD rail carries two different Nets both spelled VDD.
+            scope: matchingGlobalClaim || powerDomain !== "none"
+                ? "global"
+                : "local",
+            powerDomain,
+        };
+    });
+    for (const evidence of document.connectivityEvidence) {
+        if (evidence.kind !== "name-claim")
+            continue;
+        const key = `${evidence.scope}\u0000${foldNetName(evidence.name)}`;
+        const ids = byScopedName.get(key) ?? [];
+        ids.push(evidence.netId);
+        byScopedName.set(key, ids);
+    }
+    for (const terminal of formalNames) {
+        const key = `${terminal.scope}\u0000${foldNetName(terminal.name)}`;
+        const ids = byScopedName.get(key) ?? [];
+        ids.push(terminal.netId);
+        byScopedName.set(key, ids);
+    }
+    unionGroups(set, byScopedName.values());
+    const membersByRoot = new Map();
+    for (const netId of baseNetIds) {
+        const root = set.find(netId);
+        const members = membersByRoot.get(root) ?? [];
+        members.push(netId);
+        membersByRoot.set(root, members);
+    }
+    const groups = [...membersByRoot.values()]
+        .map((members) => {
+        members.sort((left, right) => left.localeCompare(right, "en"));
+        const memberSet = new Set(members);
+        const evidence = document.connectivityEvidence
+            .filter((item) => memberSet.has(item.netId))
+            .sort((left, right) => left.id.localeCompare(right.id, "en"));
+        const memberFormalNames = formalNames.filter((item) => memberSet.has(item.netId));
+        const nameCandidates = [
+            ...evidence.flatMap((item) => item.kind === "name-claim" ? [item.name] : []),
+        ];
+        const namesByFolded = new Map();
+        for (const name of nameCandidates) {
+            const folded = foldNetName(name);
+            if (!namesByFolded.has(folded))
+                namesByFolded.set(folded, name.trim());
+        }
+        // A single formal Port spelling is a visible current name. Multiple
+        // differently named Cell Pins may intentionally expose one internal
+        // Net, so they remain interface aliases unless a Label/marker chooses
+        // the current Net name explicitly.
+        if (namesByFolded.size === 0) {
+            const formalNamesByFolded = new Map();
+            for (const terminal of memberFormalNames) {
+                const folded = foldNetName(terminal.name);
+                if (!formalNamesByFolded.has(folded)) {
+                    formalNamesByFolded.set(folded, terminal.name.trim());
+                }
+            }
+            if (formalNamesByFolded.size === 1) {
+                const [folded, name] = formalNamesByFolded.entries().next().value;
+                namesByFolded.set(folded, name);
+            }
+        }
+        // A Net Label is an electrical name owner, not a second alias for a
+        // formal Cell Pin. Allow case-only spelling differences, but report a
+        // different label name before it can silently bridge the Pin to another
+        // named Net. Separately named formal Pins on one conductor retain their
+        // existing interface-alias semantics.
+        const labelNames = new Set(evidence.flatMap((item) => item.kind === "name-claim" && item.owner.kind === "net-label"
+            ? [foldNetName(item.name)]
+            : []));
+        const labelDisagreesWithFormal = memberFormalNames.some((terminal) => labelNames.size > 0 && !labelNames.has(foldNetName(terminal.name)));
+        const scopes = new Set(evidence.flatMap((item) => item.kind === "name-claim" ? [item.scope] : []));
+        if (scopes.size === 0)
+            scopes.add("local");
+        const powerDomains = new Set();
+        for (const item of evidence) {
+            if (item.kind === "name-claim" && item.powerDomain) {
+                powerDomains.add(item.powerDomain);
+            }
+        }
+        for (const terminal of memberFormalNames) {
+            if (terminal.powerDomain !== "none") {
+                powerDomains.add(terminal.powerDomain);
+            }
+        }
+        const powerDomain = powerDomains.size > 1
+            ? "conflict"
+            : (powerDomains.values().next().value ?? "none");
+        const conflicts = [];
+        if (namesByFolded.size > 1 || labelDisagreesWithFormal) {
+            conflicts.push("name-conflict");
+        }
+        // Scope is a property of one name identity, not a second physical
+        // partition. When the same already-connected Net carries local and
+        // global claims for that one name, global is the effective scope. Keep
+        // both owner claims intact so a later cut can re-derive each side.
+        if (scopes.size > 1 && namesByFolded.size !== 1) {
+            conflicts.push("scope-conflict");
+        }
+        if (powerDomain === "conflict") {
+            conflicts.push("power-domain-conflict");
+        }
+        // A Cell may state a supply as its own Pin: the Pin and the global node
+        // are one thing under one name, which is what a supply marker means.
+        // Every other formal Pin landing on a global Net is the accident this
+        // reports.
+        const isSupplyReference = namesByFolded.size === 1 &&
+            (powerDomain === "vdd" ||
+                (powerDomain === "ground" && namesByFolded.has(foldNetName("0"))));
+        if (memberFormalNames.length > 0 &&
+            scopes.has("global") &&
+            !isSupplyReference) {
+            conflicts.push("formal-global-conflict");
+        }
+        const sourceNetIds = [
+            ...new Set(evidence.flatMap((item) => item.kind === "spice-source" ? [item.sourceNetId] : [])),
+        ].sort((left, right) => left.localeCompare(right, "en"));
+        return {
+            id: members[0],
+            baseNetIds: members,
+            ...(namesByFolded.size === 1
+                ? { name: [...namesByFolded.values()][0] }
+                : {}),
+            ...(scopes.size === 1
+                ? { scope: [...scopes][0] }
+                : namesByFolded.size === 1 && scopes.has("global")
+                    ? { scope: "global" }
+                    : {}),
+            powerDomain,
+            evidenceIds: evidence.map((item) => item.id),
+            formalTerminalIds: memberFormalNames.map((item) => item.id).sort(),
+            sourceNetIds,
+            conflicts,
+        };
+    })
+        .sort((left, right) => left.id.localeCompare(right.id, "en"));
+    const byId = new Map(groups.map((group) => [group.id, group]));
+    const byBaseNetId = new Map(groups.flatMap((group) => group.baseNetIds.map((netId) => [netId, group])));
+    return { groups, byId, byBaseNetId };
+}
+/**
+ * Reuse Logical-Net resolution for an immutable, committed Document revision.
+ *
+ * This is deliberately separate from {@link resolveDocumentLogicalNets}.
+ * Edit-engine transactions mutate one draft object through several edits
+ * before advancing its revision. Only an owned immutable snapshot enters
+ * this cache; mutable callers always use the raw resolver, even when their
+ * revision has not changed.
+ */
+export function resolveCommittedDocumentLogicalNets(document) {
+    if (!isFrozenSnapshot(document))
+        return resolveDocumentLogicalNets(document);
+    const cached = committedDocumentLogicalNetCache.get(document);
+    if (cached && cached.revision === document.revision) {
+        return cached.resolution;
+    }
+    const resolution = resolveDocumentLogicalNets(document);
+    committedDocumentLogicalNetCache.set(document, {
+        revision: document.revision,
+        resolution,
+    });
+    return resolution;
+}
+/** Electrical naming invariants evaluated on the one resolved semantic view. */
+export function validateLogicalNetContract(document) {
+    return resolveDocumentLogicalNets(document)
+        .groups.flatMap((group) => [
+        ...(group.conflicts.includes("name-conflict")
+            ? [
+                {
+                    code: "CONFLICTING_LOGICAL_NET_NAME",
+                    netIds: group.baseNetIds,
+                },
+            ]
+            : []),
+        ...(group.conflicts.includes("scope-conflict")
+            ? [
+                {
+                    code: "CONFLICTING_LOGICAL_NET_SCOPE",
+                    netIds: group.baseNetIds,
+                },
+            ]
+            : []),
+        ...(group.conflicts.includes("power-domain-conflict")
+            ? [
+                {
+                    code: "CONFLICTING_LOGICAL_NET_POWER_DOMAIN",
+                    netIds: group.baseNetIds,
+                },
+            ]
+            : []),
+        ...(group.conflicts.includes("formal-global-conflict")
+            ? [
+                {
+                    code: "FORMAL_PORT_GLOBAL_NET_CONFLICT",
+                    netIds: group.baseNetIds,
+                },
+            ]
+            : []),
+    ])
+        .sort((left, right) => logicalNetContractIssueKey(left).localeCompare(logicalNetContractIssueKey(right), "en"));
+}

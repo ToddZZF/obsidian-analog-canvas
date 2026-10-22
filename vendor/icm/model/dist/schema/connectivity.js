@@ -1,0 +1,96 @@
+import { z } from "zod";
+import { StableIdSchema } from "./common.js";
+import { TerminalRefSchema } from "./instance.js";
+import { ObjectDocumentStyleSchema } from "./presentation.js";
+import { SourceSpanSchema } from "./source.js";
+/** Logical-Net electrical role shared by derived and Agent contracts. */
+export const NetPowerDomainSchema = z.enum([
+    "none",
+    "vdd",
+    "ground",
+    "conflict",
+]);
+export const NetSchema = z.strictObject({
+    id: StableIdSchema,
+    terminals: z.array(TerminalRefSchema),
+});
+const ConnectivityNameClaimOwnerSchema = z.discriminatedUnion("kind", [
+    z.strictObject({
+        kind: z.literal("net-label"),
+        annotationId: StableIdSchema,
+    }),
+    z.strictObject({
+        kind: z.literal("power-marker"),
+        objectId: StableIdSchema,
+    }),
+    z.strictObject({
+        /** Explicit SPICE `0`/`.global` semantics, not an inferred power name. */
+        kind: z.literal("global-declaration"),
+        sourceNetId: StableIdSchema,
+    }),
+]);
+/** Persisted typed naming and import provenance for one Base Net. */
+export const ConnectivityEvidenceSchema = z.discriminatedUnion("kind", [
+    z.strictObject({
+        id: StableIdSchema,
+        kind: z.literal("name-claim"),
+        netId: StableIdSchema,
+        name: z.string().trim().min(1).max(256),
+        owner: ConnectivityNameClaimOwnerSchema,
+        scope: z.enum(["local", "global"]),
+        /** Electrical classification carried by the marker, never inferred from its symbol. */
+        powerDomain: z.enum(["vdd", "ground"]).optional(),
+    }),
+    z.strictObject({
+        id: StableIdSchema,
+        kind: z.literal("spice-source"),
+        netId: StableIdSchema,
+        sourceNetId: StableIdSchema,
+        sourceRef: SourceSpanSchema.optional(),
+    }),
+    z.strictObject({
+        id: StableIdSchema,
+        /**
+         * Source spelling retained for display/round-trip only. It never names or
+         * joins a Logical Net; current electrical names require a visible owner,
+         * a formal Cell Pin, or an explicit global declaration.
+         */
+        kind: z.literal("net-name-hint"),
+        netId: StableIdSchema,
+        sourceName: z.string().trim().min(1).max(256),
+        origin: z.enum(["spice-import", "legacy-explicit-net-property"]),
+    }),
+]);
+// NoConnect (Net connectivity rationale): explicit electrical declaration for an open Pin.
+const NoConnectEndpointSchema = z.strictObject({
+    kind: z.literal("terminal"),
+    instanceId: StableIdSchema,
+    pinName: z.string().min(1),
+});
+export const NoConnectSchema = z.strictObject({
+    id: StableIdSchema,
+    endpoint: NoConnectEndpointSchema,
+    reason: z.string().optional(),
+    /** The Document style this mark keeps from a copy's source drawing. */
+    documentStyle: ObjectDocumentStyleSchema.optional(),
+});
+/**
+ * Two drawn inductors of one Cell coupled as a mutual inductance (a SPICE
+ * `K`), however far apart they are drawn. Each member names the pin of its
+ * dotted end; `arrow: false` hides the curved arrow, which shows otherwise.
+ */
+const InductorCouplingMemberSchema = z.strictObject({
+    instanceId: StableIdSchema,
+    dotPin: z.string().min(1),
+});
+export const InductorCouplingSchema = z.strictObject({
+    id: StableIdSchema,
+    name: z.string().trim().min(1).max(64),
+    members: z.tuple([
+        InductorCouplingMemberSchema,
+        InductorCouplingMemberSchema,
+    ]),
+    /** SPICE value text, as an instance parameter is. */
+    k: z.string().trim().min(1).max(256),
+    arrow: z.literal(false).optional(),
+});

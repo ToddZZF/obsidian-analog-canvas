@@ -1,0 +1,125 @@
+/* The pane that holds the circuit editor. */
+
+.analog-canvas-view {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.analog-canvas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.3em 0.8em;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 0.85em;
+}
+
+.analog-canvas-title {
+  font-weight: 600;
+}
+
+.analog-canvas-dirty {
+  color: var(--text-error);
+}
+
+.analog-canvas-status {
+  color: var(--text-muted);
+}
+
+.analog-canvas-frame {
+  flex-grow: 1;
+  width: 100%;
+  border: none;
+  background-color: #ffffff;
+}
+
+/* The figures that notes show. The figure itself lives in a shadow root of
+   its own — the drawing carries styles that would paint the whole page — so
+   only its host is styled here. */
+
+.analog-canvas-embed {
+  position: relative;
+  cursor: pointer;
+}
+
+.analog-canvas-embed-figure {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-s, 4px);
+}
+
+.analog-canvas-embed-missing {
+  color: var(--text-error);
+  font-size: 0.9em;
+}
+
+.analog-canvas-embed-warning {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  margin: 0.25em 0;
+}
+
+/* The corner tools a figure offers on hover, the way an image does. */
+
+.analog-canvas-hover {
+  position: absolute;
+  top: 0.5em;
+  right: 0.5em;
+  display: flex;
+  gap: 0.15em;
+  padding: 0.15em;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s, 4px);
+  background-color: var(--background-primary);
+  box-shadow: var(--shadow-s, 0 1px 3px rgba(0, 0, 0, 0.12));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 5;
+}
+
+.analog-canvas-embed:hover .analog-canvas-hover,
+.analog-canvas-hover:hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* The button that asks for an annotation, in Obsidian's own popup. */
+
+.analog-canvas-picker {
+  display: block;
+  width: 100%;
+  padding: 0.6em 0.8em;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: var(--radius-s, 4px);
+  margin: 0.5em 0;
+  background-color: var(--background-secondary);
+  color: var(--text-muted);
+  font-size: 0.9em;
+  text-align: center;
+  cursor: pointer;
+}
+
+.analog-canvas-picker:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.analog-canvas-picker-back {
+  display: inline-block;
+  width: auto;
+}
+
+/* The figure, shown large: the dialog a clicked figure opens. */
+
+.modal.analog-canvas-quicklook {
+  width: min(1100px, 92vw);
+}
+
+.modal.analog-canvas-quicklook .modal-content {
+  max-height: 78vh;
+  overflow: auto;
+}

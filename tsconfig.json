@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "ES2022"],
+    "types": ["node"],
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "importHelpers": false,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "paths": {
+      "@icm/model": ["vendor/icm/model/dist/index.d.ts"],
+      "@icm/derived": ["vendor/icm/derived/dist/index.d.ts"],
+      "@icm/symbols": ["vendor/icm/symbols/dist/index.d.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}

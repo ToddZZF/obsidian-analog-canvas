@@ -1,0 +1,1 @@
+function e(e){if(e.kind!==`instance-label`&&e.kind!==`instance-value`)return;let t=e.binding;return t?.kind===`instance-reference`||t?.kind===`instance-value`?t.instanceId:e.anchor.kind===`object`?e.anchor.objectId:void 0}function t(t,n,r){return t.textColor??(e(t)?n?.styleOverride?.foreground:void 0)??r}export{t as n,e as t};

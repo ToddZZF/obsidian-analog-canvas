@@ -1,0 +1,30 @@
+{
+  "name": "obsidian-analog-canvas",
+  "version": "0.1.0",
+  "description": "Open Analog Canvas circuit drawings in Obsidian and embed them in your notes.",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "build": "node esbuild.config.mjs production",
+    "dev": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "vendor:circuit": "node scripts/copy-circuit-bundle.mjs"
+  },
+  "keywords": [
+    "obsidian",
+    "analog-canvas",
+    "circuit",
+    "schematic"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "^1.7.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "zod": "4.4.3"
+  }
+}

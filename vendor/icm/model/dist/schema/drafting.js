@@ -1,0 +1,159 @@
+import { z } from "zod";
+import { OrientationSchema, PointSchema, RotationSchema, StableIdSchema, } from "./common.js";
+import { VisualAnchorSchema } from "./annotations.js";
+import { ObjectDocumentStyleSchema } from "./presentation.js";
+import { RichTextDocumentSchema } from "./rich-text.js";
+export const ArrowEndStyleSchema = z.enum([
+    "small-arrow",
+    "medium-arrow",
+    "large-arrow",
+    "dot",
+    "none",
+    "open-arrow",
+]);
+const DraftingObjectBaseSchema = z.strictObject({
+    id: StableIdSchema,
+    locked: z.boolean(),
+    zIndex: z.number().int().nonnegative(),
+    anchor: VisualAnchorSchema,
+    styleOverride: z
+        .strictObject({
+        sizeScale: z.number().finite().positive().optional(),
+        weight: z.enum(["normal", "bold"]).optional(),
+        italic: z.boolean().optional(),
+        lineStyle: z.enum(["solid", "dashed", "dotted"]).optional(),
+        arrowHead: z.enum(["none", "filled", "open"]).optional(),
+        /** Legacy paired style; retained as the fallback for each unset end. */
+        arrowHeadAt: z.enum(["end", "start", "both"]).optional(),
+        /** Endpoint identity follows from/to through rotation, mirrors and edits. */
+        arrowStart: ArrowEndStyleSchema.optional(),
+        arrowEnd: ArrowEndStyleSchema.optional(),
+        /** Free multiplier over the profile's annotation stroke (schema 27
+         * widened the previous four-step ladder); document-level
+         * annotationStrokeScale composes multiplicatively on top. */
+        strokeScale: z.number().finite().min(0.25).max(4).optional(),
+        /** Explicit stroke color; absent means the profile foreground. */
+        color: z
+            .string()
+            .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/u)
+            .optional(),
+        /** Opaque fill for closed rectangle/circle shapes only. */
+        fillColor: z
+            .string()
+            .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/u)
+            .optional(),
+        arrowHeadScale: z
+            .union([z.literal(0.75), z.literal(1), z.literal(1.25), z.literal(1.5)])
+            .optional(),
+    })
+        .optional(),
+    /** The Document style this object keeps from a copy's source drawing. */
+    documentStyle: ObjectDocumentStyleSchema.optional(),
+});
+export const DraftTextSchema = DraftingObjectBaseSchema.extend({
+    kind: z.literal("text"),
+    content: RichTextDocumentSchema,
+    alignment: z.enum(["start", "middle", "end"]),
+    rotation: RotationSchema,
+    typographyToken: z.enum(["caption", "body", "label"]).optional(),
+    /** `both` surrounds editable text; one-sided forms are fixed vector marks. */
+    polarity: z.enum(["both", "positive", "negative"]).optional(),
+});
+export const DraftArrowSchema = DraftingObjectBaseSchema.extend({
+    kind: z.literal("arrow"),
+    from: VisualAnchorSchema,
+    to: VisualAnchorSchema,
+    waypoints: z.array(PointSchema).optional(),
+    curveControls: z.array(PointSchema.nullable()).optional(),
+    /** Full hollow shaft/head silhouette. Absent preserves legacy line arrows.
+     * Width is geometric, independent of stroke weight; direction uses from/to. */
+    outline: z.strictObject({ width: z.number().finite().positive() }).optional(),
+}).superRefine((arrow, ctx) => {
+    if (arrow.outline &&
+        (arrow.waypoints?.length || arrow.curveControls?.some(Boolean))) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["outline"],
+            message: "Outline arrows require a straight path; curved paths cannot be silently flattened",
+        });
+    }
+});
+const DraftLeaderSchema = DraftingObjectBaseSchema.extend({
+    kind: z.literal("leader"),
+    target: VisualAnchorSchema,
+});
+const DraftCalloutSchema = DraftingObjectBaseSchema.extend({
+    kind: z.literal("callout"),
+    content: RichTextDocumentSchema,
+    alignment: z.enum(["start", "middle", "end"]),
+    rotation: RotationSchema,
+    typographyToken: z.enum(["caption", "body", "label"]).optional(),
+    target: VisualAnchorSchema,
+});
+const DraftConstructionLineSchema = DraftingObjectBaseSchema.extend({
+    kind: z.literal("construction-line"),
+    points: z.array(PointSchema).min(2),
+    curveControls: z.array(PointSchema.nullable()).optional(),
+    lineStyle: z.enum(["solid", "dashed", "dotted"]),
+});
+const DraftRectangleSchema = DraftingObjectBaseSchema.extend({
+    kind: z.literal("rectangle"),
+    center: PointSchema,
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+    rotation: z.number().finite().min(0).lt(360),
+    lineStyle: z.enum(["solid", "dashed", "dotted"]),
+    /** Missing preserves the historical foreground drafting plane. */
+    layer: z.enum(["background", "foreground"]).optional(),
+});
+/**
+ * A circle is orientation-free: its center/radius are the complete persistent
+ * geometry, which avoids a meaningless rotation property.
+ */
+const DraftCircleSchema = DraftingObjectBaseSchema.extend({
+    kind: z.literal("circle"),
+    center: PointSchema,
+    radius: z.number().int().positive(),
+    lineStyle: z.enum(["solid", "dashed", "dotted"]),
+    /** Missing preserves the historical foreground drafting plane. */
+    layer: z.enum(["background", "foreground"]).optional(),
+});
+const DraftFloatingSymbolSchema = DraftingObjectBaseSchema.extend({
+    kind: z.literal("floating-symbol"),
+    symbolId: StableIdSchema,
+    transform: OrientationSchema,
+});
+export const DraftingObjectSchema = z
+    .discriminatedUnion("kind", [
+    DraftTextSchema,
+    DraftArrowSchema,
+    DraftLeaderSchema,
+    DraftCalloutSchema,
+    DraftConstructionLineSchema,
+    DraftRectangleSchema,
+    DraftCircleSchema,
+    DraftFloatingSymbolSchema,
+])
+    .superRefine((object, ctx) => {
+    if (object.kind !== "arrow" &&
+        (object.styleOverride?.arrowStart !== undefined ||
+            object.styleOverride?.arrowEnd !== undefined)) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["styleOverride"],
+            message: "Endpoint styles are available only for arrows",
+        });
+    }
+    if (object.kind !== "rectangle" &&
+        object.kind !== "circle" &&
+        object.styleOverride?.fillColor !== undefined) {
+        ctx.addIssue({
+            code: "custom",
+            path: ["styleOverride", "fillColor"],
+            message: "fillColor is available only for rectangles and circles",
+        });
+    }
+});
+export const DraftingLayerSchema = z.strictObject({
+    objects: z.array(DraftingObjectSchema),
+});

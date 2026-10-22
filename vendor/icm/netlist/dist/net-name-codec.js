@@ -1,0 +1,107 @@
+import { spellGreekLetters } from "@icm/model";
+const NGSPICE_TOKEN = /^[A-Za-z0-9_!+./:$-]+$/u;
+/**
+ * ngspice reads a bracketed bit in an element line, but its control language
+ * takes `<` and `>` as redirection and `[ ]` as an index, so `print
+ * v(DATA<3>)` never reaches the node. A bus bit writes each bracket as `_`:
+ * `DATA<3>` is `DATA_3_`.
+ */
+const NGSPICE_BUS_BRACKET = /[<>[\]]/gu;
+const SPECTRE_PLAIN_TOKEN = /^[A-Za-z0-9_!]+$/u;
+const SPECTRE_ESCAPABLE = new Set([
+    "+",
+    "-",
+    ".",
+    "/",
+    ":",
+    "<",
+    ">",
+    "[",
+    "]",
+]);
+const SPECTRE_RESERVED = new Set([
+    "ends",
+    "global",
+    "parameters",
+    "simulator",
+    "subckt",
+]);
+function profileSpelling(name, scope, profile) {
+    if (profile !== "cadence-bang" ||
+        scope !== "global" ||
+        name === "0" ||
+        name.endsWith("!")) {
+        return name;
+    }
+    return `${name}!`;
+}
+function encodeNgspice(name) {
+    const token = name.replace(NGSPICE_BUS_BRACKET, "_");
+    if (!NGSPICE_TOKEN.test(token)) {
+        return {
+            ok: false,
+            code: "UNREPRESENTABLE_NGSPICE_NET_NAME",
+            message: `Net name ${name} contains characters that ngspice cannot safely read as one node token`,
+        };
+    }
+    return { ok: true, token, collisionKey: token.toLowerCase() };
+}
+/**
+ * The full-width letters, digits and punctuation an East Asian input method
+ * types (`：`, `＜`, `Ａ`) are the ASCII characters they stand for.
+ */
+function asciiFullWidth(name) {
+    return name.replace(/[！-～]/gu, (character) => String.fromCharCode(character.charCodeAt(0) - 0xfee0));
+}
+function encodeSpectre(name) {
+    if (SPECTRE_RESERVED.has(name.toLowerCase())) {
+        return {
+            ok: false,
+            code: "RESERVED_SPECTRE_NET_NAME",
+            message: `Net name ${name} is reserved by Spectre`,
+        };
+    }
+    if (SPECTRE_PLAIN_TOKEN.test(name)) {
+        return { ok: true, token: name, collisionKey: name };
+    }
+    let token = "";
+    for (const character of name) {
+        if (/[A-Za-z0-9_!]/u.test(character)) {
+            token += character;
+        }
+        else if (SPECTRE_ESCAPABLE.has(character)) {
+            token += `\\${character}`;
+        }
+        else {
+            return {
+                ok: false,
+                code: "UNREPRESENTABLE_SPECTRE_NET_NAME",
+                message: `Net name ${name} contains a character without a supported Spectre escape`,
+            };
+        }
+    }
+    return { ok: true, token, collisionKey: token };
+}
+/**
+ * Pure dialect projection for one semantic Net name and scope. A Greek letter
+ * is written as its standard name (`φ1` is `phi1`), a full-width character as
+ * its ASCII form, and an ngspice bus bit with underscores, so collisions are
+ * judged on what the netlist actually says.
+ */
+export function encodeNetName(name, scope, format, profile = "native") {
+    const spelling = profileSpelling(spellGreekLetters(asciiFullWidth(name.trim())), scope, profile);
+    if (!spelling) {
+        return {
+            ok: false,
+            code: "EMPTY_NET_NAME",
+            message: "Net name is empty",
+        };
+    }
+    if (spelling === "0") {
+        return { ok: true, token: "0", collisionKey: "0" };
+    }
+    return format === "spice" ? encodeNgspice(spelling) : encodeSpectre(spelling);
+}
+export function encodedNetNameCollisionKey(token, format) {
+    return format === "spice" ? token.toLowerCase() : token;
+}
