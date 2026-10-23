@@ -1,8 +1,8 @@
 /**
  * Shows the drawings that notes embed.
  *
- * `![[inv.icproj]]` shows the drawing, `![[inv.icproj|#PFD]]` shows one
- * region of it, and `![[inv.icproj|#]]` lists the regions the drawing
+ * `![[inv.icproj]]` shows the drawing, `![[inv.icproj#PFD]]` shows one
+ * region of it, and `![[inv.icproj#]]` lists the regions the drawing
  * answers to.
  *
  * The figure is drawn by the plugin itself — the drawing is read, turned into
@@ -18,7 +18,7 @@
 
 import { MarkdownPostProcessorContext, MarkdownRenderChild, MarkdownView, Modal, TFile, setIcon, type App, type Editor } from 'obsidian'
 import { dropFiguresOf, hasRegion, listDrawingRegions, readDrawing, renderFigureCached } from './figure'
-import { RegionPickerModal } from './suggest'
+import { RegionPickerModal, regionReference } from './suggest'
 import { log } from './debug'
 import type AnalogCanvasPlugin from '../main'
 
@@ -59,38 +59,75 @@ export function projectIdOf (text: string): string | null {
 }
 
 /**
- * What an embed points at: the whole sheet, one region of it, or the list of
- * regions — `![[inv.icproj]]`, `![[inv.icproj|#PFD]]`, `![[inv.icproj|#]]`.
+ * What an embed points at: the whole sheet, one region of it, the list of
+ * regions, or the old barred spelling — `![[inv.icproj]]`,
+ * `![[inv.icproj#PFD]]`, `![[inv.icproj#]]`, `![[inv.icproj|#PFD]]`.
  */
 type RegionRequest =
   | { kind: 'sheet' }
   | { kind: 'region', name: string }
   | { kind: 'picker' }
+  | { kind: 'legacy', name: string }
+
+/**
+ * What stands between an embed's brackets: `inv.icproj#PFD` as it is written.
+ *
+ * The bar starts an alias — the words shown in place of the link — and the
+ * alias is no region. `![[inv.icproj|#PFD]]` therefore names no region at
+ * all, while `![[inv.icproj#PFD]]` does.
+ */
+interface EmbedRef {
+  /** The file the embed points at. */
+  target: string
+  /** Whether the link carried a `#` — a region, or the list where it is bare. */
+  marked: boolean
+  /** What follows the `#`, where there is one. */
+  region: string
+  /** What follows the `|`, where there is one. */
+  alias: string
+}
+
+function parseEmbedInner (inner: string): EmbedRef {
+  const bar = inner.indexOf('|')
+  const link = (bar >= 0 ? inner.slice(0, bar) : inner).trim()
+  const alias = bar >= 0 ? inner.slice(bar + 1).trim() : ''
+  const hash = link.indexOf('#')
+  return hash >= 0
+    ? {
+        target: link.slice(0, hash).trim(),
+        marked: true,
+        region: decodeURIComponent(link.slice(hash + 1)).trim(),
+        alias
+      }
+    : { target: link, marked: false, region: '', alias }
+}
 
 /**
  * What the embed asks for, from wherever Obsidian keeps it.
  *
- * A region may be written after the name (`![[inv.icproj#PFD]]`) or as a
- * title (`![[inv.icproj|#PFD]]`); the editing view keeps the title on the
- * embed element rather than in its link. The hash marks a region, and a hash
- * on its own asks for the names of the regions there are.
+ * A region is written after the name, `![[inv.icproj#PFD]]`; the hash marks
+ * it, and a hash on its own asks for the names of the regions there are. The
+ * barred spelling `![[inv.icproj|#PFD]]` writes the words as an alias, which
+ * names no region: it draws the sheet, with a word on how to write it.
  */
 function regionRequest (subpath: string, element: HTMLElement): RegionRequest {
-  const marked = subpath.trim().length > 0
-    ? subpath.trim()
-    : (element.getAttribute('alt') ?? '').trim()
-
   const fromMark = (name: string): RegionRequest =>
     name.length > 0 ? { kind: 'region', name } : { kind: 'picker' }
 
+  const marked = subpath.trim()
   if (marked.startsWith('#')) {
     return fromMark(decodeURIComponent(marked.slice(1)).trim())
   }
 
-  const src = element.getAttribute('src') ?? ''
-  const hash = src.indexOf('#')
-  if (hash >= 0) {
-    return fromMark(decodeURIComponent(src.slice(hash + 1)).trim())
+  const src = parseEmbedInner(element.getAttribute('src') ?? '')
+  if (src.marked) {
+    return fromMark(src.region)
+  }
+
+  // The old spelling keeps its words in the alias or the embed's own title.
+  const alias = src.alias.startsWith('#') ? src.alias : (element.getAttribute('alt') ?? '').trim()
+  if (alias.startsWith('#')) {
+    return { kind: 'legacy', name: decodeURIComponent(alias.slice(1)).trim() }
   }
 
   return { kind: 'sheet' }
@@ -106,7 +143,7 @@ interface EmbedPlace {
   from: number
   /** Where they end, after the closing brackets. */
   to: number
-  /** What was written, as in `![[inv.icproj|#PFD]]`. */
+  /** What was written, as in `![[inv.icproj#PFD]]`. */
   token: string
 }
 
@@ -209,7 +246,6 @@ export async function drawInto (
   plugin: AnalogCanvasPlugin,
   fresh = false
 ): Promise<void> {
-  element.empty()
   element.addClass('analog-canvas-embed')
 
   const text = await readDrawing(plugin, file, fresh)
@@ -230,6 +266,9 @@ export async function drawInto (
     return
   }
 
+  // The old contents go only now that the new ones are ready: two drawings
+  // that cross on their way in leave the later one standing alone.
+  element.empty()
   paintFigure(element, figure)
 
   element.setAttribute('data-analog-canvas-path', file.path)
@@ -246,7 +285,7 @@ export async function drawInto (
 interface EmbedContext {
   /** The element the embed is drawn into, as Obsidian made it. */
   containerEl: HTMLElement
-  /** What the note wrote, as in `![[inv.icproj|#PFD]]`. */
+  /** What the note wrote, as in `![[inv.icproj#PFD]]`. */
   linktext: string
   /** Where the embed sits in the vault. */
   sourcePath: string
@@ -381,13 +420,16 @@ class CircuitFigure extends MarkdownRenderChild {
     }
 
     const request = regionRequest(this.subpath, this.containerEl)
-    const key = `${this.file?.path ?? ''}|${request.kind}|${request.kind === 'region' ? request.name : ''}`
+    const asked = request.kind === 'region' || request.kind === 'legacy' ? request.name : ''
+    const key = `${this.file?.path ?? ''}|${request.kind}|${asked}`
     if (key === this.drawnKey && this.drawing !== null) {
       await this.drawing
       return
     }
     this.drawnKey = key
-    this.drawing = this.draw(request, fresh)
+    // Draws wait their turn: what is asked last is drawn last, so a redraw
+    // that lands while another is under way leaves no half-drawn pair behind.
+    this.drawing = (this.drawing ?? Promise.resolve()).then(() => this.draw(request, fresh))
     await this.drawing
   }
 
@@ -404,6 +446,18 @@ class CircuitFigure extends MarkdownRenderChild {
 
     if (request.kind === 'picker') {
       await this.drawPicker(file)
+      return
+    }
+
+    if (request.kind === 'legacy') {
+      // The barred spelling names no region. The sheet is drawn under a word
+      // on how the region is written now.
+      await drawInto(this.containerEl, file, undefined, this.plugin, fresh)
+      this.containerEl.prepend(createDiv({
+        cls: 'analog-canvas-embed-warning',
+        text: `带 | 的区块写法已不再支持，请写成 ![[${file.name}#${request.name}]]`
+      }))
+      this.addHoverBar()
       return
     }
 
@@ -475,7 +529,7 @@ class CircuitFigure extends MarkdownRenderChild {
 
   /**
    * Puts the cursor into the embed's own words, so the note may be pointed
-   * elsewhere — `![[inv.icproj|#PFD]]` becomes editable text under the hand.
+   * elsewhere — `![[inv.icproj#PFD]]` becomes editable text under the hand.
    */
   private async editEmbedText (): Promise<void> {
     const leaves = this.plugin.app.workspace.getLeavesOfType('markdown')
@@ -570,13 +624,12 @@ class CircuitFigure extends MarkdownRenderChild {
       const lineText = editor.getLine(line) ?? ''
       for (const place of embedsOfLine(lineText)) {
         const inside = lineText.slice(place.from + (place.token.startsWith('!') ? 3 : 2), place.to - 2)
-        const target = inside.split(/[|#]/u)[0].trim()
-        const drawing = target.length === 0 ? null : this.plugin.resolveDrawing(target)
+        const ref = parseEmbedInner(inside)
+        const drawing = ref.target.length === 0 ? null : this.plugin.resolveDrawing(ref.target)
         if (drawing === null || drawing.path !== this.file?.path) {
           continue
         }
-        const hash = inside.indexOf('#')
-        const name = hash >= 0 ? decodeURIComponent(inside.slice(hash + 1)).trim() : ''
+        const name = ref.marked ? ref.region : ''
         if (wanted.kind === 'region' && name.toLocaleLowerCase() !== wanted.name.toLocaleLowerCase()) {
           continue
         }
@@ -597,24 +650,24 @@ class CircuitFigure extends MarkdownRenderChild {
     this.containerEl.empty()
     this.containerEl.addClass('analog-canvas-embed')
 
-    const names = await listDrawingRegions(this.plugin, file)
+    const regions = await listDrawingRegions(this.plugin, file)
     const button = this.containerEl.createEl('button', {
       cls: 'analog-canvas-picker',
-      text: names.length === 0
+      text: regions.length === 0
         ? `${file.name} has no annotations to point at.`
         : `Pick an annotation of ${file.name}…`
     })
     button.addEventListener('click', (event) => {
       event.preventDefault()
       event.stopPropagation()
-      const modal = new RegionPickerModal(this.plugin.app, names, (name) => {
-        this.chooseRegion(name)
+      const modal = new RegionPickerModal(this.plugin.app, regions, (region) => {
+        this.chooseRegion(regionReference(region))
       })
       modal.setPlaceholder(`Annotations in ${file.name}`)
       modal.open()
     })
 
-    log(`the annotations were listed for a note: ${file.path} (${names.length})`)
+    log(`the annotations were listed for a note: ${file.path} (${regions.length})`)
   }
 
   /**
@@ -703,12 +756,11 @@ class CircuitFigure extends MarkdownRenderChild {
       return false
     }
 
-    // The note's own spelling is kept: `![[inv.icproj|#]]` grows its region
-    // into `![[inv.icproj|#PFD]]`, and `![[inv.icproj#]]` into its own form.
+    // The region is written the one way regions are written: `![[inv.icproj#]]`
+    // grows its region into `![[inv.icproj#PFD]]`.
     const inside = lineText.slice(best.from + 3, best.to - 2)
-    const target = inside.split(/[|#]/u)[0]
-    const alias = inside.includes('|')
-    const written = alias ? `![[${target}|#${name}]]` : `![[${target}#${name}]]`
+    const target = parseEmbedInner(inside).target
+    const written = `![[${target}#${name}]]`
 
     editor.replaceRange(
       written,

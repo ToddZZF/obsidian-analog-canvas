@@ -14,7 +14,7 @@ import type { TFile } from 'obsidian'
 import { parseProject } from '@icm/project-protocol'
 import { builtInSymbols, createProjectSymbolResolver } from '@icm/symbols'
 import { renderDocumentSvg } from '@icm/render-svg'
-import { circuitRegionNames, resolveCircuitRegion } from './vendor/region-target'
+import { circuitRegions, resolveCircuitRegion, type CircuitRegion } from './vendor/region-target'
 import { log } from './debug'
 import type AnalogCanvasPlugin from '../main'
 
@@ -144,26 +144,26 @@ export async function readDrawing (plugin: AnalogCanvasPlugin, file: TFile, fres
 }
 
 /**
- * Every name a drawing offers a note, read from disk.
+ * Every region a drawing offers a note, read from disk.
  *
  * @param   {AnalogCanvasPlugin}  plugin  The plugin
  * @param   {TFile}               file    The drawing
  *
- * @return  {Promise<string[]>}           The region names, in a stable order.
+ * @return  {Promise<CircuitRegion[]>}    The regions, in a stable order.
  */
-export async function listDrawingRegions (plugin: AnalogCanvasPlugin, file: TFile): Promise<string[]> {
+export async function listDrawingRegions (plugin: AnalogCanvasPlugin, file: TFile): Promise<CircuitRegion[]> {
   const text = await readDrawing(plugin, file)
   return text === null ? [] : listRegions(text)
 }
 
 /**
- * Every name a drawing answers to: the annotations a note may point at.
+ * Every region a drawing answers to: the annotations a note may point at.
  *
  * @param   {string}    text  The contents of the drawing
  *
- * @return  {string[]}        The region names, in a stable order.
+ * @return  {CircuitRegion[]}  The regions, in a stable order.
  */
-export function listRegions (text: string): string[] {
+export function listRegions (text: string): CircuitRegion[] {
   const project = parseProject(text)
   const document =
     project.documents.find(item => item.id === project.topDocumentId) ??
@@ -171,7 +171,7 @@ export function listRegions (text: string): string[] {
   if (document === undefined) {
     return []
   }
-  return circuitRegionNames(document)
+  return circuitRegions(document)
 }
 
 /**

@@ -2,7 +2,7 @@
  * Named circuit regions.
  *
  * A note may point at a part of a drawing instead of the whole sheet:
- * `[[inv.icproj|#Annotation]]` asks the canvas to open the project and
+ * `[[inv.icproj#Annotation]]` asks the canvas to open the project and
  * zoom to whatever `#Annotation` names.
  *
  * A region is a Rectangle or Circle annotation — the frame a reader draws
@@ -19,7 +19,10 @@
  * are not annotations and name no region; they still answer when a note
  * writes them by hand.
  */
-import { resolveDraftingObjectGeometry } from "@icm/derived";
+import {
+  resolveDraftingObjectGeometry,
+  resolveSchematicStyleProfile,
+} from "@icm/derived";
 import { flattenRichText, transformPoint } from "@icm/model";
 import type {
   DerivedRect,
@@ -39,6 +42,27 @@ export interface CircuitRegionTarget {
   readonly objectId: string;
   /** The framed area, in document grid units. */
   readonly bounds: DerivedRect;
+}
+
+/**
+ * One region, as a note may point at it — with the colours its swatch shows.
+ *
+ * A frame's colours are the ones the sheet draws it in: the frame's own ink
+ * shapes the swatch, and the label's ink dots its centre.
+ */
+export interface CircuitRegion {
+  /** What the note writes after `#`, where the name stands alone. */
+  readonly name: string;
+  /** The id of the frame. Namesakes are told apart by this. */
+  readonly objectId: string;
+  /** The frame's own shape. */
+  readonly shape: "rectangle" | "circle";
+  /** The colour the frame is drawn in. */
+  readonly shapeColor: string;
+  /** The colour of the label that names the frame. */
+  readonly textColor: string;
+  /** Whether another frame answers to the same name. */
+  readonly duplicated: boolean;
 }
 
 /** A Rectangle or Circle annotation: the frame drawn around a region. */
@@ -124,27 +148,26 @@ function innermostFrame(
 function anchoredLabelOf(
   document: SchematicDocument,
   frameId: string,
-): string | null {
+): Label | null {
   for (const label of labels(document)) {
     if (label.anchor.kind !== "object" || label.anchor.objectId !== frameId) {
       continue;
     }
-    const name = named(label);
-    if (name.length > 0) return name;
+    if (named(label).length > 0) return label;
   }
   return null;
 }
 
-/** Every name a frame answers to, with the frame that carries it. */
+/** Every name a frame answers to, with the frame and label that carry it. */
 function frameNames(
   document: SchematicDocument,
-): Array<{ name: string; frame: Frame }> {
-  const found: Array<{ name: string; frame: Frame }> = [];
+): Array<{ name: string; frame: Frame; label: Label }> {
+  const found: Array<{ name: string; frame: Frame; label: Label }> = [];
   for (const frame of frames(document)) {
     const anchored = anchoredLabelOf(document, frame.id);
     if (anchored !== null) {
       // The label typed with the frame names it, and nothing else does.
-      found.push({ name: anchored, frame });
+      found.push({ name: named(anchored), frame, label: anchored });
       continue;
     }
     for (const label of labels(document)) {
@@ -153,7 +176,7 @@ function frameNames(
       const name = named(label);
       if (name.length === 0) continue;
       if (innermostFrame(document, seat)?.id !== frame.id) continue;
-      found.push({ name, frame });
+      found.push({ name, frame, label });
     }
   }
   return found;
@@ -238,13 +261,50 @@ export function resolveCircuitRegion(
 }
 
 /**
- * Every name a Document offers: the labels of its Rectangle and Circle
- * annotations. The note app uses this to suggest completions after `#`.
+ * Every region a Document offers: the labels of its Rectangle and Circle
+ * annotations, one entry per frame and name. The note app uses this to
+ * suggest completions after `#`.
  */
-export function circuitRegionNames(document: SchematicDocument): string[] {
-  const names = new Set<string>();
-  for (const entry of frameNames(document)) {
-    names.add(entry.name);
+export function circuitRegions(document: SchematicDocument): CircuitRegion[] {
+  const foreground = foregroundOf(document);
+  const entries = frameNames(document);
+  const counts = new Map<string, number>();
+  for (const entry of entries) {
+    const key = normalize(entry.name);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
   }
-  return [...names].sort((a, b) => a.localeCompare(b));
+  return entries
+    .map((entry) => ({
+      name: entry.name,
+      objectId: entry.frame.id,
+      shape: entry.frame.kind,
+      shapeColor: colorOf(entry.frame, foreground),
+      textColor: colorOf(entry.label, foreground),
+      duplicated: (counts.get(normalize(entry.name)) ?? 0) > 1,
+    }))
+    .sort(
+      (a, b) =>
+        a.name.localeCompare(b.name) || a.objectId.localeCompare(b.objectId),
+    );
+}
+
+/** The ink the document draws its annotations with. */
+function foregroundOf(document: SchematicDocument): string {
+  const presentation = (
+    document as { presentation?: { styleProfileId?: string } }
+  ).presentation;
+  try {
+    return resolveSchematicStyleProfile(
+      presentation?.styleProfileId ?? "razavi-textbook-v1",
+    ).foreground;
+  } catch {
+    return "#000";
+  }
+}
+
+/** The colour a drafting object is drawn in. */
+function colorOf(object: DraftingObject, foreground: string): string {
+  return (
+    object.styleOverride?.color ?? object.styleOverride?.fillColor ?? foreground
+  );
 }
