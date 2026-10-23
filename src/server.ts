@@ -104,7 +104,7 @@ export class CircuitServer {
 
     const url = new URL(request.url ?? '/', this.baseUrl)
     const relative = decodeURIComponent(url.pathname).replace(/^\/+/, '')
-    const target = path.resolve(this.root, relative === '' ? 'zettlr.html' : relative)
+    const target = path.resolve(this.root, relative === '' ? 'obsidian.html' : relative)
 
     // The bundle may not reach outside of its own directory.
     if (target !== this.root && !target.startsWith(this.root + path.sep)) {

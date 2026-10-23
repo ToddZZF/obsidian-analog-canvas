@@ -35,9 +35,9 @@ main.js  styles.css  manifest.json  circuit/
 ```bash
 cd analog-canvas-go
 pnpm install
-pnpm --filter @icm/editor exec vite build --config vite.zettlr.config.ts
+pnpm --filter @icm/editor exec vite build --config vite.obsidian.config.ts
 cd ..
-npm run vendor:circuit        # 把 dist-zettlr 拷进 circuit/
+npm run vendor:circuit        # 把 dist-obsidian 拷进 circuit/
 ```
 
 改动插件本体时：

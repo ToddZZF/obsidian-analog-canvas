@@ -8,14 +8,14 @@
  *
  * The protocol is the one Analog Canvas speaks to a note application; the
  * editor side of it lives in the Analog Canvas repository
- * (`apps/editor/src/hosts/zettlr-bridge.ts`).
+ * (`apps/editor/src/hosts/obsidian-bridge.ts`).
  */
 
 /** The channel every message between the two travels on. */
 export const CIRCUIT_CHANNEL = 'analog-canvas'
 
 /** The editor itself. */
-export const CIRCUIT_EDITOR_PAGE = 'zettlr.html'
+export const CIRCUIT_EDITOR_PAGE = 'obsidian.html'
 
 /** How eagerly the plugin writes a drawing. */
 export type CircuitAutoSaveMode = 'off' | 'immediately' | 'delayed'
