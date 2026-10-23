@@ -402,6 +402,10 @@ export class CircuitView extends ItemView {
    */
   private updateHeader (): void {
     (this.leaf as unknown as { updateHeader?: () => void }).updateHeader?.()
+    // Leaf.updateHeader refreshes the tab strip only; the pane header renders
+    // its title once when the view attaches, so it is written here too.
+    const title = this.containerEl.closest('.workspace-leaf')?.querySelector('.view-header-title')
+    if (title) title.textContent = this.getDisplayText()
   }
 
   /**
