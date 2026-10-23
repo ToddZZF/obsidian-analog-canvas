@@ -32,13 +32,20 @@ export function regionReference (region: CircuitRegion): string {
 
 /**
  * The swatch that tells regions apart: the hollow shape of the frame in its
- * own colour, with the naming label's ink dotted at the centre.
+ * own colour, with the naming label's ink dotted at the centre. A white
+ * shape a touch larger stands behind, so the black ink stays seen on a dark
+ * theme.
  */
 function regionSwatch (region: CircuitRegion): string {
-  const shape = region.shape === 'circle'
+  const circle = region.shape === 'circle'
+  const backing = circle
+    ? `<circle cx="10" cy="10" r="8.75" fill="#fff"/>`
+    : `<rect x="1.25" y="1.25" width="17.5" height="17.5" rx="3" fill="#fff"/>`
+  const shape = circle
     ? `<circle cx="10" cy="10" r="6.5" fill="none" stroke="${region.shapeColor}" stroke-width="2"/>`
     : `<rect x="3.5" y="3.5" width="13" height="13" rx="2" fill="none" stroke="${region.shapeColor}" stroke-width="2"/>`
   return `<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">` +
+    backing +
     shape +
     `<circle cx="10" cy="10" r="2.5" fill="${region.textColor}"/>` +
     `</svg>`
