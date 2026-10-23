@@ -215,6 +215,9 @@ export class CircuitView extends ItemView {
     if (this.drawingTitleEl !== null) {
       this.drawingTitleEl.setText(file.name)
     }
+    // The tab is named after the drawing it shows; it was drawn before the
+    // drawing was known.
+    this.updateHeader()
 
     this.sendOpen(text)
   }
