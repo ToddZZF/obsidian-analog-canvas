@@ -53,7 +53,7 @@ export class CircuitView extends ItemView {
   }
 
   getDisplayText (): string {
-    return this.file?.name ?? 'Circuit'
+    return (this.file?.name ?? 'Circuit') + (this.drawingDirty ? ' ●' : '')
   }
 
   getIcon (): string {
@@ -120,21 +120,6 @@ export class CircuitView extends ItemView {
     container.empty()
     container.classList.add('analog-canvas-view')
 
-    const toolbar = container.createDiv({ cls: 'analog-canvas-toolbar' })
-    this.drawingTitleEl = toolbar.createDiv({ cls: 'analog-canvas-title' })
-    this.dirtyDotEl = toolbar.createSpan({ cls: 'analog-canvas-dirty', text: '●' })
-    this.dirtyDotEl.hide()
-    this.statusMessageEl = toolbar.createSpan({ cls: 'analog-canvas-status' })
-
-    const saveButton = toolbar.createEl('button', {
-      cls: 'analog-canvas-save',
-      text: 'Save',
-      attr: { 'aria-label': 'Save the drawing' }
-    })
-    saveButton.addEventListener('click', () => {
-      this.requestSave()
-    })
-
     const frame = container.createEl('iframe', {
       cls: 'analog-canvas-frame',
       attr: { title: 'Circuit editor' }
@@ -170,7 +155,6 @@ export class CircuitView extends ItemView {
         return
       }
       this.file = moved
-      this.drawingTitleEl?.setText(moved.name)
       this.updateHeader()
     })
   }
@@ -190,12 +174,6 @@ export class CircuitView extends ItemView {
   private stopListening: (() => void) | null = null
   private registerVaultListener: (() => void) | null = null
   private registerRenameListener: (() => void) | null = null
-  /** The element that carries the drawing's name. */
-  private drawingTitleEl: HTMLElement | null = null
-  /** The element that shows that the drawing holds changes. */
-  private dirtyDotEl: HTMLElement | null = null
-  /** The element that carries the last message. */
-  private statusMessageEl: HTMLElement | null = null
 
   /**
    * Shows a drawing in this pane.
@@ -207,14 +185,10 @@ export class CircuitView extends ItemView {
     this.file = file
     this.region = region
     this.drawingDirty = false
-    this.dirtyDotEl?.hide()
 
     const text = await this.plugin.app.vault.read(file)
     this.loadedText = text
 
-    if (this.drawingTitleEl !== null) {
-      this.drawingTitleEl.setText(file.name)
-    }
     // The tab is named after the drawing it shows; it was drawn before the
     // drawing was known.
     this.updateHeader()
@@ -296,11 +270,8 @@ export class CircuitView extends ItemView {
       }
       case 'dirty': {
         this.drawingDirty = message.dirty === true
-        if (this.drawingDirty) {
-          this.dirtyDotEl?.show()
-        } else {
-          this.dirtyDotEl?.hide()
-        }
+        // The tab's name carries the mark that the drawing changed.
+        this.updateHeader()
         this.scheduleAutoSave()
         break
       }
@@ -309,7 +280,7 @@ export class CircuitView extends ItemView {
         break
       }
       case 'error': {
-        this.setStatus(message.message ?? 'The drawing could not be opened')
+        this.notify(message.message ?? 'The drawing could not be opened')
         break
       }
     }
@@ -377,14 +348,13 @@ export class CircuitView extends ItemView {
     if (!(file instanceof TFile) || !isCircuitName(file.path)) {
       // A drawing is written, never a note or anything else that the editor
       // may have been handed by mistake.
-      this.setStatus('The drawing could not be found')
+      this.notify('The drawing could not be found')
       return
     }
 
     this.writing = true
     try {
       await this.plugin.app.vault.modify(file, text)
-      this.setStatus('Saved')
       // The answer names the file as it is now, so the editor stays bound to
       // the drawing through the rename that just happened.
       this.post('saved', { requestId, path: file.path })
@@ -392,10 +362,10 @@ export class CircuitView extends ItemView {
         this.loadedText = text
         this.openedPath = file.path
         this.drawingDirty = false
-        this.dirtyDotEl?.hide()
+        this.updateHeader()
       }
     } catch (error: any) {
-      this.setStatus(`Could not save: ${error?.message ?? String(error)}`)
+      this.notify(`Could not save: ${error?.message ?? String(error)}`)
       this.post('save-failed', {
         requestId,
         path: file.path,
@@ -427,24 +397,8 @@ export class CircuitView extends ItemView {
   }
 
   /**
-   * Shows a message next to the drawing.
-   */
-  private setStatus (message: string): void {
-    if (this.statusMessageEl === null) {
-      return
-    }
-    this.statusMessageEl.setText(message)
-    if (message.length > 0) {
-      window.setTimeout(() => {
-        if (this.statusMessageEl?.getText() === message) {
-          this.statusMessageEl?.setText('')
-        }
-      }, 4000)
-    }
-  }
-
-  /**
-   * Asks the pane to draw its title again, after the drawing was renamed.
+   * Asks the pane to draw its title again: the drawing changed, or the mark
+   * that it holds changes did.
    */
   private updateHeader (): void {
     (this.leaf as unknown as { updateHeader?: () => void }).updateHeader?.()

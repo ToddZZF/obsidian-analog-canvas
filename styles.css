@@ -1,31 +1,11 @@
-/* The pane that holds the circuit editor. */
+/* The pane that holds the circuit editor. The editor is the pane: it fills
+   the tab, with nothing of Obsidian's own view padding around it. */
 
-.analog-canvas-view {
+.workspace-leaf-content .view-content.analog-canvas-view {
   display: flex;
   flex-direction: column;
   padding: 0;
   overflow: hidden;
-}
-
-.analog-canvas-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 0.5em;
-  padding: 0.3em 0.8em;
-  border-bottom: 1px solid var(--background-modifier-border);
-  font-size: 0.85em;
-}
-
-.analog-canvas-title {
-  font-weight: 600;
-}
-
-.analog-canvas-dirty {
-  color: var(--text-error);
-}
-
-.analog-canvas-status {
-  color: var(--text-muted);
 }
 
 .analog-canvas-frame {
