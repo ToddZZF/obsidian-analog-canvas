@@ -55,7 +55,12 @@ function regionSwatch (region: CircuitRegion): string {
 function renderRegionRow (region: CircuitRegion, el: HTMLElement): void {
   const row = el.createDiv({ cls: 'analog-canvas-region-row' })
   const swatch = row.createSpan({ cls: 'analog-canvas-region-swatch' })
-  swatch.innerHTML = regionSwatch(region)
+  // The swatch is one `<svg>` root, parsed as XML to keep its attributes as
+  // they were written.
+  const icon = new DOMParser().parseFromString(regionSwatch(region), 'image/svg+xml').querySelector('svg')
+  if (icon !== null) {
+    swatch.append(document.importNode(icon, true))
+  }
   row.createSpan({ cls: 'analog-canvas-region-name', text: region.name })
   if (region.duplicated) {
     row.createSpan({ cls: 'analog-canvas-region-id', text: region.objectId })

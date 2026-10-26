@@ -284,8 +284,9 @@ function cmOf (editor: Editor): CMView | undefined {
  *
  * The figure carries its fonts inline as `@font-face` rules. They live in the
  * figure's shadow root like the rest of its styles, but a face is registered
- * with the page as a whole, so it is put into the page's own style sheet —
- * that much of the figure is harmless outside it: it only names a font.
+ * with the page as a whole, so it is put among the page's own adopted style
+ * sheets — that much of the figure is harmless outside it: it only names a
+ * font.
  */
 let fontsOffered = false
 
@@ -298,10 +299,9 @@ function offerFonts (figure: string): void {
     return
   }
   fontsOffered = true
-  const style = document.createElement('style')
-  style.setAttribute('data-analog-canvas-fonts', '')
-  style.textContent = faces.join('\n')
-  document.head.appendChild(style)
+  const sheet = new CSSStyleSheet()
+  sheet.replaceSync(faces.join('\n'))
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet]
 }
 
 /**
@@ -319,7 +319,15 @@ function paintFigure (element: HTMLElement, figure: string, size?: EmbedSize): v
   offerFonts(figure)
   const holder = element.createDiv({ cls: 'analog-canvas-embed-figure' })
   const shadow = holder.attachShadow({ mode: 'open' })
-  shadow.innerHTML = figure
+
+  // The figure is one well-formed `<svg>` root; parsing it as XML keeps its
+  // attributes (`viewBox` and the like) spelled as they were written.
+  const source = new DOMParser().parseFromString(figure, 'image/svg+xml').querySelector('svg')
+  if (source === null) {
+    log('a figure could not be parsed as SVG')
+    return
+  }
+  shadow.append(document.importNode(source, true))
 
   const svg = shadow.querySelector('svg')
   if (svg === null) {
@@ -327,24 +335,22 @@ function paintFigure (element: HTMLElement, figure: string, size?: EmbedSize): v
   }
   svg.removeAttribute('width')
   svg.removeAttribute('height')
-  svg.style.display = 'block'
-  svg.style.width = '100%'
 
   if (size === undefined) {
-    svg.style.height = 'auto'
+    svg.setCssStyles({ display: 'block', width: '100%', height: 'auto' })
     return
   }
 
   // The note's own size: the width alone keeps the drawing's proportions,
   // while where both sides are named they are obeyed to the pixel, the way
   // an image is stretched to the size it is given.
+  holder.setCssStyles({ maxWidth: '100%' })
   holder.style.width = `${size.width}px`
-  holder.style.maxWidth = '100%'
   if (size.height === null) {
-    svg.style.height = 'auto'
+    svg.setCssStyles({ display: 'block', width: '100%', height: 'auto' })
   } else {
     holder.style.height = `${size.height}px`
-    svg.style.height = '100%'
+    svg.setCssStyles({ display: 'block', width: '100%', height: '100%' })
     svg.setAttribute('preserveAspectRatio', 'none')
   }
 }
@@ -397,8 +403,8 @@ export async function drawInto (
     element.removeAttribute('data-analog-canvas-size')
   } else {
     // The embed is as wide as its figure, so the corner tools sit on it.
+    element.setCssStyles({ maxWidth: '100%' })
     element.style.width = `${size.width}px`
-    element.style.maxWidth = '100%'
     element.setAttribute('data-analog-canvas-size', sizeAsWritten(size))
   }
   paintFigure(element, figure, size)

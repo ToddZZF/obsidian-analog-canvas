@@ -2,7 +2,7 @@
   "id": "analog-canvas",
   "name": "Analog Canvas",
   "version": "0.1.0",
-  "minAppVersion": "1.4.0",
+  "minAppVersion": "1.7.2",
   "description": "Open Analog Canvas circuit drawings (.icproj) and embed them in your notes.",
   "author": "Todd Zhou",
   "authorUrl": "https://github.com/ToddZZF",
