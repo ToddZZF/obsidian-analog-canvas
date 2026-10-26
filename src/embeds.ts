@@ -3,7 +3,11 @@
  *
  * `![[inv.icproj]]` shows the drawing, `![[inv.icproj#PFD]]` shows one
  * region of it, and `![[inv.icproj#]]` lists the regions the drawing
- * answers to.
+ * answers to. The figure is sized the way an image is sized, after a
+ * bar: `![[inv.icproj|200x100]]` draws it 200 by 100 pixels, and
+ * `![[inv.icproj|200]]` draws it 200 pixels wide with the height
+ * following the drawing's own proportions. A size may stand beside a
+ * region, `![[inv.icproj#PFD|200]]`.
  *
  * The figure is drawn by the plugin itself — the drawing is read, turned into
  * SVG and put into the note — so an embedded drawing costs no more than an
@@ -59,22 +63,21 @@ export function projectIdOf (text: string): string | null {
 }
 
 /**
- * What an embed points at: the whole sheet, one region of it, the list of
- * regions, or the old barred spelling — `![[inv.icproj]]`,
- * `![[inv.icproj#PFD]]`, `![[inv.icproj#]]`, `![[inv.icproj|#PFD]]`.
+ * What an embed points at: the whole sheet, one region of it, or the list of
+ * regions — `![[inv.icproj]]`, `![[inv.icproj#PFD]]`, `![[inv.icproj#]]`.
  */
 type RegionRequest =
   | { kind: 'sheet' }
   | { kind: 'region', name: string }
   | { kind: 'picker' }
-  | { kind: 'legacy', name: string }
 
 /**
- * What stands between an embed's brackets: `inv.icproj#PFD` as it is written.
+ * What stands between an embed's brackets: `inv.icproj#PFD|200` as it is
+ * written.
  *
- * The bar starts an alias — the words shown in place of the link — and the
- * alias is no region. `![[inv.icproj|#PFD]]` therefore names no region at
- * all, while `![[inv.icproj#PFD]]` does.
+ * The bar starts an alias — the place a size stands, `200` or `200x100` —
+ * and the alias is no region. `![[inv.icproj|#PFD]]` therefore names no
+ * region at all, while `![[inv.icproj#PFD]]` does.
  */
 interface EmbedRef {
   /** The file the embed points at. */
@@ -103,12 +106,116 @@ function parseEmbedInner (inner: string): EmbedRef {
 }
 
 /**
+ * How large the note asks for the figure, in pixels: `![[inv.icproj|200x100]]`
+ * names both sides, `![[inv.icproj|200]]` the width alone.
+ */
+interface EmbedSize {
+  /** The width, in pixels. */
+  width: number
+  /** The height, in pixels, where the note names one. */
+  height: number | null
+}
+
+/** A size, as a note writes one after the bar: `200x100` or `200`. */
+const SIZE_WORDS = /^(\d+(?:\.\d+)?)(?:x(\d+(?:\.\d+)?))?$/iu
+
+/** A bare number, the way Obsidian hands a size over as an attribute. */
+const SIZE_ATTRIBUTE = /^\d+(?:\.\d+)?$/u
+
+/** A number of pixels, the way a size stands in a style. */
+const SIZE_STYLE = /^(\d+(?:\.\d+)?)(?:px)?$/iu
+
+/**
+ * The size an alias asks for, if it asks for one.
+ *
+ * An alias is a size when it is a width in pixels, alone or with a height
+ * after an `x` — the way an image is sized. Any other words name the embed
+ * and size nothing.
+ *
+ * @param   {string}     alias  What follows the `|`, as it is written
+ *
+ * @return  {EmbedSize?}        The size, if the alias is one.
+ */
+export function parseEmbedSize (alias: string): EmbedSize | null {
+  const match = SIZE_WORDS.exec(alias.trim())
+  if (match === null) {
+    return null
+  }
+  const width = Number.parseFloat(match[1] ?? '')
+  if (!Number.isFinite(width) || width <= 0) {
+    return null
+  }
+  const height = match[2] === undefined ? null : Number.parseFloat(match[2])
+  return {
+    width,
+    height: height !== null && Number.isFinite(height) && height > 0 ? height : null
+  }
+}
+
+/**
+ * A size, as a note writes one.
+ *
+ * @param   {EmbedSize}  size  The size
+ *
+ * @return  {string}           What goes after the `|`.
+ */
+function sizeAsWritten (size: EmbedSize): string {
+  return size.height === null ? `${size.width}` : `${size.width}x${size.height}`
+}
+
+/**
+ * The size an embed asks for, from wherever Obsidian keeps its words.
+ *
+ * The alias travels after a bar in the `src`, in the `alt`, or in the link
+ * the embed was made from. Obsidian may also take the size out of the words
+ * and hand it over as attributes of its own.
+ *
+ * @param   {HTMLElement}  element   The embed, as Obsidian made it
+ * @param   {string}       linktext  What the note wrote, as in `![[inv.icproj|200]]`
+ *
+ * @return  {EmbedSize?}            The size, if the note names one.
+ */
+function embedSizeOf (element: HTMLElement, linktext: string): EmbedSize | undefined {
+  const src = parseEmbedInner(element.getAttribute('src') ?? '')
+  const size =
+    parseEmbedSize(src.alias) ??
+    parseEmbedSize(element.getAttribute('alt') ?? '') ??
+    parseEmbedSize(parseEmbedInner(linktext).alias)
+  if (size !== null) {
+    return size
+  }
+
+  const width = element.getAttribute('width') ?? ''
+  if (SIZE_ATTRIBUTE.test(width)) {
+    const height = element.getAttribute('height') ?? ''
+    return {
+      width: Number.parseFloat(width),
+      height: SIZE_ATTRIBUTE.test(height) ? Number.parseFloat(height) : null
+    }
+  }
+
+  // Obsidian may also take the size out of the words and lay it on the embed
+  // as a style, the way it sizes an image. A style this plugin wrote itself
+  // says nothing about what the note asks for now.
+  if (element.getAttribute('data-analog-canvas-size') !== null) {
+    return undefined
+  }
+  const styled = SIZE_STYLE.exec(element.style.width ?? '')
+  if (styled === null) {
+    return undefined
+  }
+  const styledHeight = SIZE_STYLE.exec(element.style.height ?? '')
+  return {
+    width: Number.parseFloat(styled[1] ?? ''),
+    height: styledHeight === null ? null : Number.parseFloat(styledHeight[1] ?? '')
+  }
+}
+
+/**
  * What the embed asks for, from wherever Obsidian keeps it.
  *
  * A region is written after the name, `![[inv.icproj#PFD]]`; the hash marks
- * it, and a hash on its own asks for the names of the regions there are. The
- * barred spelling `![[inv.icproj|#PFD]]` writes the words as an alias, which
- * names no region: it draws the sheet, with a word on how to write it.
+ * it, and a hash on its own asks for the names of the regions there are.
  */
 function regionRequest (subpath: string, element: HTMLElement): RegionRequest {
   const fromMark = (name: string): RegionRequest =>
@@ -122,12 +229,6 @@ function regionRequest (subpath: string, element: HTMLElement): RegionRequest {
   const src = parseEmbedInner(element.getAttribute('src') ?? '')
   if (src.marked) {
     return fromMark(src.region)
-  }
-
-  // The old spelling keeps its words in the alias or the embed's own title.
-  const alias = src.alias.startsWith('#') ? src.alias : (element.getAttribute('alt') ?? '').trim()
-  if (alias.startsWith('#')) {
-    return { kind: 'legacy', name: decodeURIComponent(alias.slice(1)).trim() }
   }
 
   return { kind: 'sheet' }
@@ -212,20 +313,39 @@ function offerFonts (figure: string): void {
  *
  * @param   {HTMLElement}  element  Where the figure goes
  * @param   {string}       figure   The figure, as SVG markup
+ * @param   {EmbedSize?}   size     How large the note asks for it
  */
-function paintFigure (element: HTMLElement, figure: string): void {
+function paintFigure (element: HTMLElement, figure: string, size?: EmbedSize): void {
   offerFonts(figure)
   const holder = element.createDiv({ cls: 'analog-canvas-embed-figure' })
   const shadow = holder.attachShadow({ mode: 'open' })
   shadow.innerHTML = figure
 
   const svg = shadow.querySelector('svg')
-  if (svg !== null) {
-    svg.removeAttribute('width')
-    svg.removeAttribute('height')
-    svg.style.display = 'block'
-    svg.style.width = '100%'
+  if (svg === null) {
+    return
+  }
+  svg.removeAttribute('width')
+  svg.removeAttribute('height')
+  svg.style.display = 'block'
+  svg.style.width = '100%'
+
+  if (size === undefined) {
     svg.style.height = 'auto'
+    return
+  }
+
+  // The note's own size: the width alone keeps the drawing's proportions,
+  // while where both sides are named they are obeyed to the pixel, the way
+  // an image is stretched to the size it is given.
+  holder.style.width = `${size.width}px`
+  holder.style.maxWidth = '100%'
+  if (size.height === null) {
+    svg.style.height = 'auto'
+  } else {
+    holder.style.height = `${size.height}px`
+    svg.style.height = '100%'
+    svg.setAttribute('preserveAspectRatio', 'none')
   }
 }
 
@@ -235,6 +355,7 @@ function paintFigure (element: HTMLElement, figure: string): void {
  * @param   {HTMLElement}         element   Where the figure goes
  * @param   {TFile}               file      The drawing
  * @param   {string?}             region    The region to show, if any
+ * @param   {EmbedSize?}          size      How large the note asks for it
  * @param   {AnalogCanvasPlugin}  plugin    The plugin
  * @param   {boolean}             fresh     Whether to draw from the file
  *                                          itself, never from a kept copy
@@ -243,6 +364,7 @@ export async function drawInto (
   element: HTMLElement,
   file: TFile,
   region: string | undefined,
+  size: EmbedSize | undefined,
   plugin: AnalogCanvasPlugin,
   fresh = false
 ): Promise<void> {
@@ -269,7 +391,17 @@ export async function drawInto (
   // The old contents go only now that the new ones are ready: two drawings
   // that cross on their way in leave the later one standing alone.
   element.empty()
-  paintFigure(element, figure)
+  if (size === undefined) {
+    element.style.removeProperty('width')
+    element.style.removeProperty('max-width')
+    element.removeAttribute('data-analog-canvas-size')
+  } else {
+    // The embed is as wide as its figure, so the corner tools sit on it.
+    element.style.width = `${size.width}px`
+    element.style.maxWidth = '100%'
+    element.setAttribute('data-analog-canvas-size', sizeAsWritten(size))
+  }
+  paintFigure(element, figure, size)
 
   element.setAttribute('data-analog-canvas-path', file.path)
   if (region !== undefined) {
@@ -320,6 +452,7 @@ class CircuitFigure extends MarkdownRenderChild {
     super(ctx.containerEl)
     this.file = file
     this.subpath = subpath
+    this.linktext = ctx.linktext
     this.sourcePath = ctx.sourcePath
     // The figure answers its own clicks; Obsidian must not treat a click as
     // one on the embed widget itself.
@@ -328,11 +461,13 @@ class CircuitFigure extends MarkdownRenderChild {
 
   /** Where the embed sits in the vault. */
   private readonly sourcePath: string
-  /** What was drawn last, so a changed title redraws. */
+  /** What the note wrote, as in `![[inv.icproj|200]]`. */
+  private readonly linktext: string
+  /** What was drawn last, so an edited embed redraws. */
   private drawnKey: string | null = null
   /** The drawing that is under way, if any. */
   private drawing: Promise<void> | null = null
-  /** Watches the embed's title, which the editing view changes in place. */
+  /** Watches the embed's attributes, which the editing view changes in place. */
   private observer: MutationObserver | null = null
 
   onload (): void {
@@ -351,13 +486,13 @@ class CircuitFigure extends MarkdownRenderChild {
       this.openQuickLook()
     })
 
-    // The editing view rewrites the embed's title when its text is edited —
-    // `![[inv.icproj|#PFD]]` becomes `![[inv.icproj|#Test]]` under the figure
-    // that is already drawn. The figure follows the title.
+    // The editing view rewrites the embed's attributes when its text is
+    // edited — `![[inv.icproj#PFD]]` becomes `![[inv.icproj#Test]]` under the
+    // figure that is already drawn. The figure follows the new words.
     this.observer = new MutationObserver(() => {
       void this.ensureDrawn()
     })
-    this.observer.observe(this.containerEl, { attributes: true, attributeFilter: ['alt', 'src'] })
+    this.observer.observe(this.containerEl, { attributes: true, attributeFilter: ['alt', 'src', 'width', 'height'] })
     this.register(() => {
       this.observer?.disconnect()
       this.observer = null
@@ -406,6 +541,11 @@ class CircuitFigure extends MarkdownRenderChild {
     return request.kind === 'region' ? request.name : undefined
   }
 
+  /** How large the note asks for the figure, where it says. */
+  private size (): EmbedSize | undefined {
+    return embedSizeOf(this.containerEl, this.linktext)
+  }
+
   /**
    * Draws the figure, unless what is asked for is drawn already.
    */
@@ -420,8 +560,9 @@ class CircuitFigure extends MarkdownRenderChild {
     }
 
     const request = regionRequest(this.subpath, this.containerEl)
-    const asked = request.kind === 'region' || request.kind === 'legacy' ? request.name : ''
-    const key = `${this.file?.path ?? ''}|${request.kind}|${asked}`
+    const size = this.size()
+    const asked = request.kind === 'region' ? request.name : ''
+    const key = `${this.file?.path ?? ''}|${request.kind}|${asked}|${size === undefined ? '' : sizeAsWritten(size)}`
     if (key === this.drawnKey && this.drawing !== null) {
       await this.drawing
       return
@@ -429,15 +570,15 @@ class CircuitFigure extends MarkdownRenderChild {
     this.drawnKey = key
     // Draws wait their turn: what is asked last is drawn last, so a redraw
     // that lands while another is under way leaves no half-drawn pair behind.
-    this.drawing = (this.drawing ?? Promise.resolve()).then(() => this.draw(request, fresh))
+    this.drawing = (this.drawing ?? Promise.resolve()).then(() => this.draw(request, size, fresh))
     await this.drawing
   }
 
   /** Draws what the embed asks for. */
-  private async draw (request: RegionRequest, fresh = false): Promise<void> {
-    // Obsidian sets the embed's title — where a region is written as a title,
-    // `![[inv.icproj|#PFD]]` — only after the embed has been loaded. Waiting
-    // for the stack to unwind lets that land before the region is read.
+  private async draw (request: RegionRequest, size: EmbedSize | undefined, fresh = false): Promise<void> {
+    // Obsidian sets the embed's title — where a size may ride,
+    // `![[inv.icproj|200]]` — only after the embed has been loaded. Waiting
+    // for the stack to unwind lets it land before the figure is drawn.
     await Promise.resolve()
     const file = this.file
     if (file === null) {
@@ -449,22 +590,10 @@ class CircuitFigure extends MarkdownRenderChild {
       return
     }
 
-    if (request.kind === 'legacy') {
-      // The barred spelling names no region. The sheet is drawn under a word
-      // on how the region is written now.
-      await drawInto(this.containerEl, file, undefined, this.plugin, fresh)
-      this.containerEl.prepend(createDiv({
-        cls: 'analog-canvas-embed-warning',
-        text: `带 | 的区块写法已不再支持，请写成 ![[${file.name}#${request.name}]]`
-      }))
-      this.addHoverBar()
-      return
-    }
-
     if (request.kind === 'region') {
       const text = await readDrawing(this.plugin, file)
       if (text !== null && !hasRegion(text, request.name)) {
-        await drawInto(this.containerEl, file, undefined, this.plugin, fresh)
+        await drawInto(this.containerEl, file, undefined, size, this.plugin, fresh)
         this.containerEl.prepend(createDiv({
           cls: 'analog-canvas-embed-warning',
           text: `No annotation named “${request.name}” in ${file.name}`
@@ -474,7 +603,7 @@ class CircuitFigure extends MarkdownRenderChild {
       }
     }
 
-    await drawInto(this.containerEl, file, request.kind === 'region' ? request.name : undefined, this.plugin, fresh)
+    await drawInto(this.containerEl, file, request.kind === 'region' ? request.name : undefined, size, this.plugin, fresh)
     this.addHoverBar()
   }
 
@@ -558,7 +687,7 @@ class CircuitFigure extends MarkdownRenderChild {
     // The embed unfolds into editable source only when its words are selected
     // in the editor's own CodeMirror, with focus and scroll — the way an
     // image's own edit button does it. What is selected are the words between
-    // the brackets, `inv.icproj|#PFD`, the part the note's pointer is made of.
+    // the brackets, `inv.icproj#PFD`, the part the note's pointer is made of.
     const editor = view.editor
     const innerFrom = { line: place.line, ch: place.from + (place.token.startsWith('!') ? 3 : 2) }
     const innerTo = { line: place.line, ch: place.to - 2 }
@@ -697,7 +826,7 @@ class CircuitFigure extends MarkdownRenderChild {
       void this.ensureDrawn()
     })
     const holder = this.containerEl.createDiv()
-    void drawInto(holder, file, name, this.plugin)
+    void drawInto(holder, file, name, this.size(), this.plugin)
   }
 
   /**
@@ -757,10 +886,12 @@ class CircuitFigure extends MarkdownRenderChild {
     }
 
     // The region is written the one way regions are written: `![[inv.icproj#]]`
-    // grows its region into `![[inv.icproj#PFD]]`.
+    // grows its region into `![[inv.icproj#PFD]]`. A size the note wrote after
+    // the bar is kept, `![[inv.icproj#|200]]` becoming `![[inv.icproj#PFD|200]]`.
     const inside = lineText.slice(best.from + 3, best.to - 2)
-    const target = parseEmbedInner(inside).target
-    const written = `![[${target}#${name}]]`
+    const ref = parseEmbedInner(inside)
+    const size = parseEmbedSize(ref.alias)
+    const written = `![[${ref.target}#${name}${size === null ? '' : `|${sizeAsWritten(size)}`}]]`
 
     editor.replaceRange(
       written,
@@ -793,7 +924,7 @@ class QuickLookModal extends Modal {
       ? this.file.name
       : `${this.file.name} — ${this.region}`)
     this.modalEl.addClass('analog-canvas-quicklook')
-    void drawInto(this.contentEl, this.file, this.region, this.plugin)
+    void drawInto(this.contentEl, this.file, this.region, undefined, this.plugin)
   }
 }
 

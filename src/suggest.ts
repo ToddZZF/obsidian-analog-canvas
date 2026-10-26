@@ -66,9 +66,9 @@ function renderRegionRow (region: CircuitRegion, el: HTMLElement): void {
  * Completes the region of an embedded drawing while it is being typed.
  *
  * The trigger is the `#` inside the brackets: `![[inv.icproj#` asks for the
- * annotations of `inv.icproj`. The barred spelling `![[inv.icproj|#…]]` is
- * an alias, not a region, and completes nothing. Picking one rewrites just
- * the `#…` part, so the rest of the note is left as it stands.
+ * annotations of `inv.icproj`. What follows a bar is an alias, never a
+ * region, so `![[inv.icproj|#…]]` completes nothing. Picking one rewrites
+ * just the `#…` part, so the rest of the note is left as it stands.
  */
 export class RegionEditorSuggest extends EditorSuggest<CircuitRegion> {
   /** The drawing the trigger pointed at, for the suggestions to read. */
