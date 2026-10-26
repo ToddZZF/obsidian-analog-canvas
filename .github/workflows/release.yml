@@ -1,0 +1,79 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Check release version
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs')
+          const tag = process.env.GITHUB_REF_NAME
+          const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'))
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+          const versions = JSON.parse(fs.readFileSync('versions.json', 'utf8'))
+
+          const fail = (message) => {
+            console.error('::error::' + message)
+            process.exit(1)
+          }
+
+          if (manifest.version !== tag) {
+            fail(`Tag ${tag} does not match manifest.json version ${manifest.version}; Obsidian requires the release tag to match the manifest version`)
+          }
+          if (pkg.version !== tag) {
+            fail(`Tag ${tag} does not match package.json version ${pkg.version}`)
+          }
+          if (!Object.prototype.hasOwnProperty.call(versions, tag)) {
+            fail(`versions.json has no entry for ${tag}; add "${tag}": "${manifest.minAppVersion}"`)
+          }
+          console.log(`Releasing ${tag}, minAppVersion ${manifest.minAppVersion}`)
+          EOF
+
+      - name: Build
+        run: npm run build
+
+      - name: Package plugin assets
+        run: |
+          test -f main.js
+          test -f manifest.json
+          test -f styles.css
+          test -f circuit/obsidian.html
+          mkdir -p release-assets
+          # The community plugin installer only downloads these three files.
+          cp main.js manifest.json styles.css release-assets/
+          # The circuit editor is loaded from the plugin folder at runtime; ship it alongside.
+          zip -qr release-assets/circuit.zip circuit
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/main.js
+            release-assets/manifest.json
+            release-assets/styles.css
+            release-assets/circuit.zip
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

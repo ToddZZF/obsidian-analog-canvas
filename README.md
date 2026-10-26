@@ -27,11 +27,15 @@
 
 ## 安装
 
-把这几项复制到库的 `.obsidian/plugins/analog-canvas/` 目录：
+**社区插件商店**：直接安装即可。商店的安装器只装 `main.js`、`manifest.json`、`styles.css` 三个文件，编辑器包会在首次加载时从 GitHub Releases 下载 `circuit.zip`（约 6 MB，仅此一处网络访问）解压到插件目录；插件升级后首次加载时也会自动换上配套的编辑器包。
+
+**手动安装**：把这几项复制到库的 `.obsidian/plugins/analog-canvas/` 目录：
 
 ```
 main.js  styles.css  manifest.json  circuit/
 ```
+
+手动放好的 `circuit/` 会被原样使用，插件不会下载或覆盖它。
 
 ## 构建
 
@@ -52,3 +56,7 @@ npm install
 npm run build                 # esbuild 编译 src/ → main.js
 npm run typecheck             # 可选
 ```
+
+## 发布
+
+版本号写在 `manifest.json`、`package.json`、`versions.json` 三处（`versions.json` 里是 `"版本号": "最低 Obsidian 版本"`）。提交后打同名的纯版本号 tag（如 `0.1.1`，不带 `v`）并推送，GitHub Actions 会构建并创建 Release，附上 `main.js`、`manifest.json`、`styles.css`、`circuit.zip`。

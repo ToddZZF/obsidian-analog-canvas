@@ -29,6 +29,7 @@ import path from 'node:path'
 import { createEmptyProject } from '@icm/model'
 import { serializeProject } from '@icm/project-protocol'
 import { CircuitServer } from './server'
+import { EDITOR_FOLDER, ensureEditor } from './fetch-editor'
 import { log, setLogDirectory } from './debug'
 import { renderEmbeds, registerCircuitEmbeds, isCircuitName, projectIdOf } from './embeds'
 import { registerRegionSuggest } from './suggest'
@@ -67,6 +68,12 @@ export default class AnalogCanvasPlugin extends Plugin {
     if (root === null) {
       new Notice('Analog Canvas: The circuit editor was not found in the plugin folder.')
       log('the circuit editor was not found')
+      return
+    }
+
+    if (!await ensureEditor(root, this.manifest.version)) {
+      new Notice('Analog Canvas: The circuit editor is missing and could not be downloaded. See the README to install it by hand.')
+      log('the circuit editor could not be fetched')
       return
     }
 
@@ -190,7 +197,7 @@ export default class AnalogCanvasPlugin extends Plugin {
       return null
     }
 
-    return path.join(directory, 'circuit')
+    return path.join(directory, EDITOR_FOLDER)
   }
 
   /**
