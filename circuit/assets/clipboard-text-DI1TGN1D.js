@@ -1,0 +1,1 @@
+async function e(e){if(typeof e==`string`){await navigator.clipboard.writeText(e);return}if(typeof ClipboardItem==`function`){let t=e.then(e=>new Blob([e],{type:`text/plain`}));t.catch(()=>{});try{await navigator.clipboard.write([new ClipboardItem({"text/plain":t})]);return}catch{await e}}await navigator.clipboard.writeText(await e)}export{e as t};

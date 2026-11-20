@@ -1,5 +1,5 @@
-import { deviceDescriptor } from "@icm/devices";
-import { transformPoint } from "@icm/model";
+import { deviceDescriptor, parameterDisplayContract, } from "@icm/devices";
+import { isSupplyPortSymbol, transformPoint } from "@icm/model";
 import { getRazaviCatalogEntry, withInputSigns } from "@icm/symbols";
 import { objectStyleProfile, resolveDocumentStyleProfile, } from "./style-profile.js";
 import { visibleSymbolInkBounds } from "./visual.js";
@@ -111,12 +111,14 @@ function transformedBounds(localBounds, instance) {
     return { x: left, y: top, width: right - left, height: bottom - top };
 }
 /**
- * Canonical upright Net-name label for the reviewed VDD Port artwork. The
- * label stays on the world-right side after rotation or mirror, so the glyph
- * never follows the symbol into its bar or stem.
+ * Canonical upright Net-name label of a supply port. On the reviewed VDD
+ * Port artwork the label stays on the world-right side after rotation or
+ * mirror, so the glyph never follows the symbol into its bar or stem. A
+ * Named Ground shows its name centred beyond its bars, away from its pin
+ * (below them as drawn upright), where RNL's `$NAMED_GROUND_SYMBOL` puts it.
  */
 export function defaultVddPowerLabelPlacement(instance, resolved, grid) {
-    if (instance.symbolId !== "vdd-port" || !instance.placement)
+    if (!isSupplyPortSymbol(instance.symbolId) || !instance.placement)
         return null;
     const bounds = transformedBounds(visibleSymbolInkBounds(resolved, instance.signalFlowParameters), instance);
     if (!bounds)
@@ -125,6 +127,34 @@ export function defaultVddPowerLabelPlacement(instance, resolved, grid) {
     // fractional geometry, so quantize the derived optical centre only at this
     // persistence boundary instead of leaking off-grid annotation anchors.
     const projectCoordinate = (value) => Math.round(value / grid) * grid;
+    const pin = resolved.definition.pins[0];
+    if (instance.symbolId === "named-ground" && pin) {
+        const placement = instance.placement;
+        const pinAt = transformPoint(pin.at, placement.position, placement);
+        const centre = {
+            x: bounds.x + bounds.width / 2,
+            y: bounds.y + bounds.height / 2,
+        };
+        const away = { x: centre.x - pinAt.x, y: centre.y - pinAt.y };
+        // The position is the text's baseline: below the bars the name stands
+        // a line's height under them, so its capitals clear the lowest bar;
+        // above them its subscript clears the stem; beside them it is level.
+        if (Math.abs(away.y) >= Math.abs(away.x))
+            return {
+                position: {
+                    x: projectCoordinate(centre.x),
+                    y: projectCoordinate(away.y >= 0 ? bounds.y + bounds.height + 2 * grid : bounds.y - grid),
+                },
+                alignment: "middle",
+            };
+        return {
+            position: {
+                x: projectCoordinate(away.x > 0 ? bounds.x + bounds.width + grid / 2 : bounds.x - grid / 2),
+                y: projectCoordinate(centre.y),
+            },
+            alignment: away.x > 0 ? "start" : "end",
+        };
+    }
     return {
         position: {
             x: projectCoordinate(bounds.x + bounds.width + grid / 2),
@@ -927,20 +957,39 @@ function partInkBounds(resolved, parts) {
         definition: { ...resolved.definition, primitives, pins: [] },
     });
 }
-export function defaultInstanceParameterLabelPlacement(instance, resolved, profile, grid, parameter) {
-    return parameterPlacementWith(instanceLabelRowOffset, instance, resolved, profile, grid, parameter);
+export function defaultInstanceParameterLabelPlacement(instance, resolved, profile, grid, parameter, resolver) {
+    return parameterPlacementWith(instanceLabelRowOffset, instance, resolved, profile, grid, parameter, resolver);
 }
 /** Where the rule until 2026-10-04 put a parameter's value: the current
  * parts and sides, rows apart by the wider row distance. */
-export function previousDefaultInstanceParameterLabelPlacement(instance, resolved, profile, grid, parameter) {
-    return parameterPlacementWith(previousInstanceLabelRowOffset, instance, resolved, profile, grid, parameter);
+export function previousDefaultInstanceParameterLabelPlacement(instance, resolved, profile, grid, parameter, resolver) {
+    return parameterPlacementWith(previousInstanceLabelRowOffset, instance, resolved, profile, grid, parameter, resolver);
 }
-function parameterPlacementWith(rows, instance, resolved, profile, grid, parameter) {
-    if (deviceDescriptor(instance.symbolId)?.parameters.some((candidate) => candidate.name === parameter && candidate.displayRole === "multiplier")) {
+function parameterPlacementWith(rows, instance, resolved, profile, grid, parameter, resolver) {
+    const contract = parameterDisplayContract(instance, resolver);
+    if (contract.individual.some((candidate) => candidate.name === parameter &&
+        candidate.displayRole === "multiplier" &&
+        deviceDescriptor(instance.symbolId)?.parameters.some((prior) => prior.name === parameter && prior.displayRole === "multiplier"))) {
         // A multiplier reads with its device's name, a text row under it: a BJT
         // has no value, and a MOS's ×m shows only while the W/L that carries it
         // is hidden, so it takes no fraction's taller row (#1423).
         return defaultPlacementWith(nameFirstPlacer, rows, instance, resolved, profile, grid, "value", 1);
+    }
+    if (instance.netlist?.binding?.kind === "external-subcircuit" ||
+        instance.netlist?.binding?.kind === "subcircuit") {
+        const index = contract.individual.findIndex((p) => p.name === parameter);
+        if (index < 0)
+            return null;
+        const base = defaultPlacementWith(nameFirstPlacer, rows, instance, resolved, profile, grid, "value", 1);
+        if (!base)
+            return null;
+        return {
+            ...base,
+            position: {
+                x: base.position.x,
+                y: base.position.y + index * rows(profile, grid, instance.symbolId),
+            },
+        };
     }
     const index = magneticDisplayParameters(instance.symbolId).findIndex((candidate) => candidate.name === parameter);
     if (index < 0)

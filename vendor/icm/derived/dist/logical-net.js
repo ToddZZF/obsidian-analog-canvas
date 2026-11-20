@@ -1,5 +1,5 @@
 import { registerDocumentCache } from "./document-caches.js";
-import { foldNetName, isFrozenSnapshot } from "@icm/model";
+import { foldNetName, isFrozenSnapshot, isSupplyPortSymbol, scalarCellTerminals, scalarConnectivityEvidence, } from "@icm/model";
 const committedDocumentLogicalNetCache = registerDocumentCache(new WeakMap());
 export function logicalNetContractIssueKey(issue) {
     return `${issue.code}:${issue.netIds.join(",")}`;
@@ -46,12 +46,13 @@ function unionGroups(set, groups) {
  * came from the same source Net or retained the same source spelling.
  */
 export function resolveDocumentLogicalNets(document) {
+    const electricalEvidence = scalarConnectivityEvidence(document);
     const baseNetIds = document.nets
         .map((net) => net.id)
         .sort((left, right) => left.localeCompare(right, "en"));
     const set = new DisjointSet(baseNetIds);
     const byScopedName = new Map();
-    const formalNames = (document.netlist?.terminals ?? []).map((terminal) => {
+    const formalNames = scalarCellTerminals(document.netlist).map((terminal) => {
         const interfaceInstances = terminal.interfaceInstanceIds.flatMap((instanceId) => {
             const instance = document.instances.find((candidate) => candidate.id === instanceId);
             return instance ? [instance] : [];
@@ -59,12 +60,12 @@ export function resolveDocumentLogicalNets(document) {
         const interfaceAnnotation = terminal.interfaceAnnotationId
             ? document.annotations.find((candidate) => candidate.id === terminal.interfaceAnnotationId)
             : undefined;
-        const matchingGlobalClaim = document.connectivityEvidence.some((evidence) => evidence.kind === "name-claim" &&
+        const matchingGlobalClaim = electricalEvidence.some((evidence) => evidence.kind === "name-claim" &&
             evidence.netId === terminal.netId &&
             evidence.scope === "global" &&
             foldNetName(evidence.name) === foldNetName(terminal.name));
         const powerDomain = interfaceAnnotation?.kind === "power-label" ||
-            interfaceInstances.some((instance) => instance.symbolId === "vdd-port")
+            interfaceInstances.some((instance) => isSupplyPortSymbol(instance.symbolId))
             ? "vdd"
             : "none";
         return {
@@ -81,7 +82,7 @@ export function resolveDocumentLogicalNets(document) {
             powerDomain,
         };
     });
-    for (const evidence of document.connectivityEvidence) {
+    for (const evidence of electricalEvidence) {
         if (evidence.kind !== "name-claim")
             continue;
         const key = `${evidence.scope}\u0000${foldNetName(evidence.name)}`;
@@ -89,13 +90,21 @@ export function resolveDocumentLogicalNets(document) {
         ids.push(evidence.netId);
         byScopedName.set(key, ids);
     }
+    // A Cell has one Pin of each name, however its declarations are drawn: a
+    // VDD Pin on a VDD Power marker and a VDD Pin on a plain Port are the same
+    // Pin, though only the first stands on the supply's global scope.
+    const byFormalName = new Map();
     for (const terminal of formalNames) {
         const key = `${terminal.scope}\u0000${foldNetName(terminal.name)}`;
         const ids = byScopedName.get(key) ?? [];
         ids.push(terminal.netId);
         byScopedName.set(key, ids);
+        const formalIds = byFormalName.get(foldNetName(terminal.name)) ?? [];
+        formalIds.push(terminal.netId);
+        byFormalName.set(foldNetName(terminal.name), formalIds);
     }
     unionGroups(set, byScopedName.values());
+    unionGroups(set, byFormalName.values());
     const membersByRoot = new Map();
     for (const netId of baseNetIds) {
         const root = set.find(netId);
@@ -107,7 +116,7 @@ export function resolveDocumentLogicalNets(document) {
         .map((members) => {
         members.sort((left, right) => left.localeCompare(right, "en"));
         const memberSet = new Set(members);
-        const evidence = document.connectivityEvidence
+        const evidence = electricalEvidence
             .filter((item) => memberSet.has(item.netId))
             .sort((left, right) => left.id.localeCompare(right.id, "en"));
         const memberFormalNames = formalNames.filter((item) => memberSet.has(item.netId));

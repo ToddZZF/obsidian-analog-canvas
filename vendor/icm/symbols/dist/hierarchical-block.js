@@ -1,11 +1,9 @@
-import { deriveStableId, projectCellInterface, semanticTextDocument, } from "@icm/model";
+import { deriveStableId, hierarchicalSymbolId, projectCellInterface, projectCellSymbolArtwork, semanticTextDocument, } from "@icm/model";
 import { createHierarchicalBlockGeometry, hierarchicalBlockBodySize, hierarchicalBlockPinSlots, } from "./hierarchical-block-geometry.js";
 import { resolvePdkSymbolMappingForTerminalOrder } from "./pdk-registry.js";
 import { SymbolDefinitionSchema } from "./schema.js";
 export { freeHierarchicalBlockOffsets, hierarchicalBlockBodySize, hierarchicalBlockPinSlots, hierarchicalBlockLabelWarnings, } from "./hierarchical-block-geometry.js";
-export function hierarchicalSymbolId(cellName) {
-    return deriveStableId("hierarchical-symbol", cellName.toLowerCase());
-}
+export { hierarchicalSymbolId };
 /** External symbols are keyed by immutable definition identity, never master spelling. */
 export function externalSubcircuitSymbolId(definitionId) {
     return deriveStableId("external-subcircuit-symbol", definitionId);
@@ -16,6 +14,12 @@ export function createBlockSymbol(layout, options = {}) {
         ...positional,
         pins: positional.pins.map((pin) => ({
             ...pin,
+            ...(layout.terminals.find((terminal) => terminal.name === pin.name)
+                ?.signalMembers
+                ? {
+                    signalMembers: layout.terminals.find((terminal) => terminal.name === pin.name).signalMembers,
+                }
+                : {}),
             presentation: {
                 ...pin.presentation,
                 nameContent: layout.terminals.find((terminal) => terminal.name === pin.name)
@@ -41,6 +45,14 @@ export function projectCellSymbolTerminals(document) {
                         terminal.interfaceInstanceIds.includes(item.anchor.objectId)))));
         return {
             ...port,
+            ...(terminal.signal && terminal.signal.members.length > 1
+                ? {
+                    signalMembers: terminal.signal.members.map(({ id, name }) => ({
+                        id,
+                        name,
+                    })),
+                }
+                : {}),
             nameContent: annotation?.formatOverride ??
                 (!annotation?.binding ? annotation?.content : undefined) ??
                 semanticTextDocument(port.name, "formal-port"),
@@ -55,6 +67,17 @@ export function createHierarchicalBlockSymbol(document, options = {}) {
     const terminals = projectCellSymbolTerminals(document);
     if (!cellName)
         return null;
+    // The author's own artwork, its graphical pins projected onto the Cell
+    // Pins' formal names; a map the Document validation would refuse never
+    // reaches here, and the generated block stands in for one that does.
+    const artwork = document.presentation?.cellSymbol?.artwork;
+    const custom = artwork &&
+        projectCellSymbolArtwork(artwork, terminals, {
+            id: hierarchicalSymbolId(cellName),
+            name: document.name,
+        });
+    if (custom)
+        return SymbolDefinitionSchema.parse(custom);
     return createBlockSymbol({
         id: hierarchicalSymbolId(cellName),
         name: document.name,

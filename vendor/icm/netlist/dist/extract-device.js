@@ -1,7 +1,7 @@
 // A primitive device as its card: model target, parameters, the controls
 // of a controlled source, and the built-in Zener model's name.
-import { drawnMagneticNetwork, drawnSwitchControl } from "@icm/derived";
-import { deviceDescriptor, milliScaleReading, requiredParameterNames, reviewedExternalBindingForMaster, } from "@icm/devices";
+import { isSupplyPortSymbol, } from "@icm/model";
+import { deviceDescriptor, drawnMagneticNetwork, drawnSwitchControl, milliScaleReading, requiredParameterNames, reviewedExternalBindingForMaster, reviewedExternalModelSuggestions, } from "@icm/devices";
 import { parseSpiceNumber } from "@icm/spice";
 import { normalizeIndependentSource } from "./source-waveform.js";
 import { isIdentifier, compareText, diagnostic, } from "./extract-common.js";
@@ -29,9 +29,11 @@ export function extractDeviceInstance(project, document, instance, context, opti
             (markerNet.scope !== "global" || markerNet.name !== "0")) {
             diagnostic(diagnostics, document.id, "GROUND_NAME_MISMATCH", `Ground marker must connect to global Net 0, not ${markerNet.scope} Net ${markerNet.name}`, [instance.id, markerNet.id]);
         }
-        else if (instance.symbolId === "vdd-port" &&
+        else if (isSupplyPortSymbol(instance.symbolId) &&
             markerNet.powerDomain !== "vdd") {
-            diagnostic(diagnostics, document.id, "INVALID_NET_MARKER", `VDD Port ${instance.id} must connect to an explicitly classified VDD Net`, [instance.id, markerNet.id]);
+            diagnostic(diagnostics, document.id, "INVALID_NET_MARKER", instance.symbolId === "vdd-port"
+                ? `VDD Port ${instance.id} must connect to an explicitly classified VDD Net`
+                : `Named Ground ${instance.id} must connect to an explicitly classified supply Net`, [instance.id, markerNet.id]);
         }
         return null;
     }
@@ -47,6 +49,13 @@ export function extractDeviceInstance(project, document, instance, context, opti
     // printer with a null target where the model name belongs, and it throws
     // there.
     if (definition.targetPolicy === "none") {
+        // A PDK device's symbol, such as the MOS Varactor, netlists once its
+        // reviewed model is set.
+        const models = reviewedExternalModelSuggestions(instance.symbolId);
+        if (models.length > 0) {
+            diagnostic(diagnostics, document.id, "MISSING_MODEL_TARGET", `Instance ${instance.reference} requires a model: ${models.join(", ")}`, [instance.id]);
+            return null;
+        }
         diagnostic(diagnostics, document.id, "NON_NETLISTABLE_DEVICE", `Symbol ${instance.symbolId} is drawing-only and has no netlist form`, [instance.id]);
         return null;
     }
@@ -97,7 +106,16 @@ export function extractDeviceInstance(project, document, instance, context, opti
             parameterByFoldedName.set(folded, { name: parameter, rawValue });
         }
     }
+    // A source with a transient function or an AC clause may leave its DC value
+    // out, as SPICE and Spectre cards do: the simulator reads the function's
+    // time-zero value (zero for AC alone). The card prints no DC then.
+    const authored = (name) => parameterByFoldedName.get(name)?.rawValue.trim().toLowerCase();
+    const waveform = authored("waveform");
+    const dcOptional = (waveform !== undefined && waveform !== "" && waveform !== "dc") ||
+        Boolean(authored("acmagnitude"));
     for (const parameter of requiredParameterNames(definition)) {
+        if (dcOptional && parameter.toLowerCase() === "dc")
+            continue;
         if (!parameterByFoldedName.get(parameter.toLowerCase())?.rawValue.trim()) {
             diagnostic(diagnostics, document.id, "MISSING_REQUIRED_PARAMETER", `Instance ${instance.reference} requires parameter ${parameter}`, [instance.id], "error", parameter);
         }
@@ -199,9 +217,16 @@ export function extractDeviceInstance(project, document, instance, context, opti
             }
         }
     }
+    // A source that declares no parameters is a fixed 0 V one, the ammeter: it
+    // prints `V<ref> a b DC 0` whatever its record holds, so the current
+    // through it can be read and nothing else changes.
+    const fixedZeroSource = definition.deviceClass === "voltage-source" &&
+        definition.parameters.length === 0;
     const projectedParameters = definition.deviceClass === "voltage-source" ||
         definition.deviceClass === "current-source"
-        ? normalizeIndependentSource(authoredParameters, definition.sourceWaveformDefault ?? "dc")
+        ? normalizeIndependentSource(fixedZeroSource
+            ? [{ name: "dc", rawValue: "0" }]
+            : authoredParameters, definition.sourceWaveformDefault ?? "dc")
         : null;
     for (const issue of projectedParameters?.issues ?? []) {
         diagnostic(diagnostics, document.id, issue.code, `Instance ${instance.reference}: ${issue.message}`, [instance.id]);

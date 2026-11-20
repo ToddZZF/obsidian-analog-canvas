@@ -1,7 +1,8 @@
-import { generatedBehavioralModel, generatedBehavioralDefinition, } from "./generated-models.js";
+import { definitionBody, generatedBehavioralModel, generatedBehavioralDefinition, } from "./generated-models.js";
 import { printSpectreBehavioralModel } from "./behavioral-model.js";
 import { switchBehavioralDefinition } from "./ideal-switch-model.js";
 import { printInstanceCard } from "./printed-card.js";
+import { spectreNumber } from "./parameter-projection.js";
 import { printedCouplingValue } from "./extract-coupling.js";
 function wrapSpice(tokens, width = 100) {
     const lines = [];
@@ -33,6 +34,36 @@ export function spiceModelCard(model) {
     if (model.type === "nmos" || model.type === "pmos")
         return `.model ${model.name} ${model.type} ${values}`;
     return `.model ${model.name} ${model.type}(${values})`;
+}
+/**
+ * A model a Cell carries, as Spectre's model statement: a MOS stand-in is
+ * Spectre's own BSIM4, as SPICE's is level 54; the classic junction and
+ * Gummel-Poon stand-ins, and the junction FETs' Spectre `jfet`, keep the
+ * parameters the SPICE card states.
+ * Extraction omits the latter from Spectre runs. Null for a switch's model,
+ * which Spectre writes as a behavioral definition.
+ */
+export function spectreModelCard(model) {
+    if (model.type === "nmos" || model.type === "pmos") {
+        // Spectre's bsim4 is the level; any other parameter, a depletion
+        // stand-in's vth0, follows as the SPICE card states it.
+        const parameters = model.parameters
+            .filter((p) => p.name.toLowerCase() !== "level")
+            .map((p) => ` ${p.name.toLowerCase()}=${p.rawValue}`)
+            .join("");
+        return `model ${model.name} bsim4 type=${model.type === "nmos" ? "n" : "p"}${parameters}`;
+    }
+    if (!["D", "NPN", "PNP", "NJF", "PJF"].includes(model.type))
+        return null;
+    const kind = model.type === "D"
+        ? "diode"
+        : model.type === "NJF" || model.type === "PJF"
+            ? `jfet type=${model.type === "NJF" ? "n" : "p"}`
+            : `bjt type=${model.type.toLowerCase()}`;
+    const parameters = model.parameters
+        .map((p) => `${p.name.toLowerCase()}=${p.rawValue}`)
+        .join(" ");
+    return `model ${model.name} ${kind}${parameters ? " " + parameters : ""}`;
 }
 function spiceModels(cell) {
     return (cell.models ?? []).map(spiceModelCard);
@@ -133,7 +164,7 @@ function renderSpice(ir, rootAsTopLevel, locations) {
         append("");
         append(...(definition.kind === "magnetic"
             ? spiceMagneticSubcircuit(definition)
-            : generatedBehavioralModel(definition.name, definition.ports)));
+            : generatedBehavioralModel(definitionBody(definition), definition.ports, definition.name)));
     }
     for (const cell of ir.cells) {
         if (rootAsTopLevel && cell.id === ir.topCellId)
@@ -165,8 +196,8 @@ function renderSpice(ir, rootAsTopLevel, locations) {
     }
     return { text: `${lines.join("\n")}\n`, parameters, instances, fields };
 }
-export function printSpiceNetlist(ir) {
-    return renderSpice(ir, false, false).text;
+export function printSpiceNetlist(ir, rootAsTopLevel = false) {
+    return renderSpice(ir, rootAsTopLevel, false).text;
 }
 /** The Spectre form of a drawn magnetic device's coupled windings. */
 function spectreMagneticSubcircuit(subcircuit) {
@@ -174,7 +205,7 @@ function spectreMagneticSubcircuit(subcircuit) {
     return [
         `subckt ${subcircuit.name} (${subcircuit.ports.join(" ")})`,
         `parameters ${subcircuit.formalParameters
-            .map((parameter) => `${parameter.name}=${parameter.defaultValue}`)
+            .map((parameter) => `${parameter.name}=${spectreNumber(parameter.defaultValue)}`)
             .join(" ")}`,
         ...subcircuit.inductors.map((inductor) => `${inductor.name} (${inductor.nodes.join(" ")}) inductor l=${inductor.parameter}`),
         `${subcircuit.coupling.name} mutual_inductor coupling=${subcircuit.coupling.parameter} ind1=${first} ind2=${second}`,
@@ -182,33 +213,27 @@ function spectreMagneticSubcircuit(subcircuit) {
         `ends ${subcircuit.name}`,
     ];
 }
-function spectreCell(cell, onInstance) {
+function spectreCell(cell, onInstance, asTopLevel = false) {
     const portNames = cell.ports.map((port) => port.name);
-    const lines = [
-        `subckt ${cell.name}${portNames.length ? ` (${portNames.join(" ")})` : ""}`,
-    ];
+    // The root printed as the file's own cards has no `subckt` around them.
+    const lines = asTopLevel
+        ? []
+        : [
+            `subckt ${cell.name}${portNames.length ? ` (${portNames.join(" ")})` : ""}`,
+        ];
     if (cell.formalParameters?.length) {
         lines.push(`parameters ${cell.formalParameters
-            .map((parameter) => `${parameter.name}=${parameter.defaultValue}`)
+            .map((parameter) => `${parameter.name}=${spectreNumber(parameter.defaultValue)}`)
             .join(" ")}`);
     }
     for (const model of cell.models ?? []) {
         if (model.type === "SW")
             lines.push(...printSpectreBehavioralModel(switchBehavioralDefinition(model)));
-        // A MOS stand-in is Spectre's own BSIM4, as SPICE's is level 54.
-        if (model.type === "nmos" || model.type === "pmos")
-            lines.push(`model ${model.name} bsim4 type=${model.type === "nmos" ? "n" : "p"}`);
-        // Classic junction / Gummel-Poon stand-ins, with the same explicit
-        // parameters as the SPICE export. Extraction omits these from Spectre runs.
-        if (["D", "NPN", "PNP"].includes(model.type)) {
-            const kind = model.type === "D" ? "diode" : `bjt type=${model.type.toLowerCase()}`;
-            const parameters = model.parameters
-                .map((p) => `${p.name.toLowerCase()}=${p.rawValue}`)
-                .join(" ");
-            lines.push(`model ${model.name} ${kind}${parameters ? " " + parameters : ""}`);
-        }
+        const card = spectreModelCard(model);
+        if (card)
+            lines.push(card);
     }
-    let offset = lines.join("\n").length + 1;
+    let offset = lines.length ? lines.join("\n").length + 1 : 0;
     for (const instance of cell.instances) {
         const card = printInstanceCard(instance, "spectre", Boolean(onInstance));
         if (card.text) {
@@ -218,14 +243,21 @@ function spectreCell(cell, onInstance) {
         }
     }
     lines.push(...couplingCards(cell, "spectre"));
-    lines.push(`ends ${cell.name}`);
+    if (!asTopLevel)
+        lines.push(`ends ${cell.name}`);
     return lines;
+}
+/** A drawn magnetic device's coupled windings, as a file holds them. */
+export function printMagneticSubcircuit(subcircuit, format) {
+    return format === "spice"
+        ? spiceMagneticSubcircuit(subcircuit)
+        : spectreMagneticSubcircuit(subcircuit);
 }
 /** A Cell the netlist generates, an ideal block's body, as a file holds it. */
 export function printGeneratedCell(cell, format) {
     return format === "spice" ? spiceCell(cell) : spectreCell(cell);
 }
-function renderSpectre(ir, locations = false) {
+function renderSpectre(ir, locations = false, rootAsTopLevel = false) {
     const lines = [
         "// Generated by Analog Canvas netlist-export/1.0",
         "simulator lang=spectre",
@@ -239,32 +271,46 @@ function renderSpectre(ir, locations = false) {
     for (const definition of ir.generatedDefinitions ?? [])
         lines.push("", ...(definition.kind === "magnetic"
             ? spectreMagneticSubcircuit(definition)
-            : printSpectreBehavioralModel(generatedBehavioralDefinition(definition.name, definition.ports))));
+            : printSpectreBehavioralModel(generatedBehavioralDefinition(definitionBody(definition), definition.ports, definition.name))));
     let length = lines.join("\n").length;
-    for (const cell of ir.cells) {
+    // The root printed as the file's own cards comes last, as in SPICE.
+    const root = rootAsTopLevel
+        ? ir.cells.find((cell) => cell.id === ir.topCellId)
+        : undefined;
+    for (const cell of [
+        ...ir.cells.filter((item) => item !== root),
+        ...(root ? [root] : []),
+    ]) {
         const offset = length + 2;
         const cellLines = spectreCell(cell, locations
             ? (instance, relative, card) => locate(cell, instance, offset + relative, card)
-            : undefined);
+            : undefined, cell === root);
+        if (!cellLines.length)
+            continue;
         lines.push("", ...cellLines);
         length += 2 + cellLines.join("\n").length;
     }
     return { text: `${lines.join("\n")}\n`, instances, fields };
 }
-export function printSpectreNetlist(ir) {
-    return renderSpectre(ir).text;
+export function printSpectreNetlist(ir, rootAsTopLevel = false) {
+    return renderSpectre(ir, false, rootAsTopLevel).text;
 }
-export function printDesignNetlist(format, ir) {
+/**
+ * A design netlist file. `rootAsTopLevel` prints the root Cell as the file's
+ * own cards rather than as a subcircuit, as the file it was read from held
+ * them.
+ */
+export function printDesignNetlist(format, ir, rootAsTopLevel = false) {
     return format === "spice"
         ? {
             extension: ".spi",
             mediaType: "application/x-spice",
-            text: printSpiceNetlist(ir),
+            text: printSpiceNetlist(ir, rootAsTopLevel),
         }
         : {
             extension: ".scs",
             mediaType: "application/x-spectre",
-            text: printSpectreNetlist(ir),
+            text: printSpectreNetlist(ir, rootAsTopLevel),
         };
 }
 /** Record a card at its final file offset. Compiler-owned targets stay locked. */
@@ -316,8 +362,10 @@ function cardRecorder(ir, result, parameters) {
     };
 }
 /** Both dialects emit their text and field provenance in the same pass. */
-export function printDesignNetlistWithLocations(format, ir) {
-    const printed = format === "spice" ? renderSpice(ir, false, true) : renderSpectre(ir, true);
+export function printDesignNetlistWithLocations(format, ir, rootAsTopLevel = false) {
+    const printed = format === "spice"
+        ? renderSpice(ir, rootAsTopLevel, true)
+        : renderSpectre(ir, true, rootAsTopLevel);
     return {
         file: {
             extension: format === "spice" ? ".spi" : ".scs",

@@ -291,6 +291,22 @@ const sky130FixedMosBinding = (id, masterName, symbolId, channel) => ({
     ],
     nativeElement: "m1",
 });
+const sky130GenericPolyResistorBinding = () => ({
+    id: "sky130-res-generic-po",
+    libraryId: "sky130_fd_pr",
+    masterName: "sky130_fd_pr__res_generic_po",
+    invocationKind: "external-subcircuit",
+    symbolId: "resistor",
+    deviceClass: "resistor",
+    terminals: [
+        { targetName: "t1", pinName: "1", interaction: "canvas" },
+        { targetName: "t2", pinName: "2", interaction: "canvas" },
+    ],
+    parameters: [
+        geometry("w", "W", "1u", "1", 0),
+        geometry("l", "L", "1u", "1", 1),
+    ],
+});
 const sky130ResistorBinding = (id, masterName) => ({
     id,
     libraryId: "sky130_fd_pr",
@@ -361,31 +377,59 @@ const sky130VaractorBinding = () => ({
         count("vm", "VM", "SKY130 varactor multiplicity", 2),
     ],
 });
-const sky130InductorBinding = (id, masterName) => ({
-    id,
-    libraryId: "sky130_fd_pr",
-    masterName,
-    invocationKind: "external-subcircuit",
-    symbolId: "inductor",
-    deviceClass: "inductor",
-    terminals: [
+/**
+ * A SKY130 inductor is drawn as the Centre-Tap Inductor: its ends A and B and
+ * its tap CT are pins to wire, and its substrate is set in Properties
+ * (#1832). A part drawn as the plain 2-pin inductor before then keeps its
+ * device, with the tap set in Properties.
+ */
+const sky130InductorBindings = (id, masterName) => {
+    const common = {
+        libraryId: "sky130_fd_pr",
+        masterName,
+        invocationKind: "external-subcircuit",
+        deviceClass: "inductor",
+        parameters: [],
+    };
+    const ends = [
         { targetName: "A", pinName: "1", interaction: "canvas" },
         { targetName: "B", pinName: "2", interaction: "canvas" },
+    ];
+    const substrate = {
+        targetName: "SUB",
+        pinName: "SUB",
+        interaction: "property",
+        role: "substrate",
+    };
+    return [
         {
-            targetName: "CT",
-            pinName: "CT",
-            interaction: "property",
-            role: "floating",
+            ...common,
+            id,
+            symbolId: "center-tap-inductor",
+            terminals: [
+                ...ends,
+                { targetName: "CT", pinName: "3", interaction: "canvas" },
+                substrate,
+            ],
         },
         {
-            targetName: "SUB",
-            pinName: "SUB",
-            interaction: "property",
-            role: "substrate",
+            ...common,
+            id: `${id}-two-pin`,
+            symbolId: "inductor",
+            legacy: true,
+            terminals: [
+                ...ends,
+                {
+                    targetName: "CT",
+                    pinName: "CT",
+                    interaction: "property",
+                    role: "floating",
+                },
+                substrate,
+            ],
         },
-    ],
-    parameters: [],
-});
+    ];
+};
 const bjtCanvasTerminals = () => ["C", "B", "E"].map((name) => ({
     targetName: name,
     pinName: name,
@@ -440,6 +484,7 @@ const sg13Length = (name, label, defaultValue, help, displayRole, spiceOrder, un
     displayRole,
     targetDefaultValue: defaultValue,
     spiceOrder,
+    numericLimits: { minimum: 0, exclusiveMinimum: true },
 });
 const sg13Count = (name, label, help, spiceOrder, displayRole = "multiplier", defaultValue = "1") => ({
     name,
@@ -452,6 +497,17 @@ const sg13Count = (name, label, help, spiceOrder, displayRole = "multiplier", de
     displayRole,
     targetDefaultValue: defaultValue,
     spiceOrder,
+    numericLimits: {
+        minimum: name === "m" || name === "b" ? 0 : 1,
+        ...(name === "m" ? { exclusiveMinimum: true } : { integer: true }),
+        ...(name === "b"
+            ? { maximum: 100 }
+            : name === "ng"
+                ? { maximum: 100 }
+                : name === "Nx"
+                    ? { maximum: 10 }
+                    : {}),
+    },
 });
 const sg13Canvas = (names) => names.map((name) => ({
     targetName: name,
@@ -468,13 +524,24 @@ const sg13Substrate = (pinName) => ({
 const sg13MosBinding = (id, masterName, symbolId, width, length) => ({
     id,
     libraryId: "sg13g2_pr",
+    nativeMosModel: "psp103",
+    nativeElement: `n${masterName}`,
+    // Pinned SG13G2 PCell tech parameters: n/p MOS and n/p MOS-HV ranges.
+    sizeLimits: {
+        length: [parseSpiceNumber(length), 10e-6],
+        widthPerFinger: parseSpiceNumber(width),
+    },
     masterName,
     invocationKind: "external-subcircuit",
     symbolId,
     deviceClass: "mos",
     terminals: sg13Canvas(["d", "g", "s", "b"]),
     parameters: [
-        sg13Length("w", "W", width, "Width in metres", "width", 0),
+        {
+            ...sg13Length("w", "W", width, "Width in metres", "width", 0),
+            // Declared PCell range for total W; not a simulator cutoff.
+            numericLimits: { minimum: 0, exclusiveMinimum: true, maximum: 10e-6 },
+        },
         sg13Length("l", "L", length, "Length in metres", "length", 1),
         sg13Count("ng", "NG", "Gate finger count", 2, "finger-count"),
         sg13Count("m", "M", "Parallel device count", 3),
@@ -492,7 +559,14 @@ const sg13NpnBinding = (id, masterName, emitterLength, emitterWidth) => ({
     terminals: [...sg13Canvas(["c", "b", "e"]), sg13Substrate("S")],
     parameters: [
         sg13Length("le", "LE", emitterLength, "Emitter length in metres", "none", 0),
-        sg13Length("we", "WE", emitterWidth, "Emitter width in metres", "none", 1),
+        {
+            ...sg13Length("we", "WE", emitterWidth, "Emitter width in metres", "none", 1),
+            // The wrapper scales with LE/Nx; its fixed-width model does not scale WE.
+            numericLimits: {
+                minimum: parseSpiceNumber(emitterWidth),
+                maximum: parseSpiceNumber(emitterWidth),
+            },
+        },
         sg13Count("Nx", "NX", "Emitter count, 1 to 10", 2),
     ],
 });
@@ -504,13 +578,20 @@ const sg13ResistorBinding = (id, masterName, length, bends) => ({
     invocationKind: "external-subcircuit",
     symbolId: "resistor",
     deviceClass: "resistor",
+    sizeLimits: {
+        length: [parseSpiceNumber(length), 1e-3],
+        widthPerFinger: 500e-9,
+    },
     terminals: [
         { targetName: "1", pinName: "1", interaction: "canvas" },
         { targetName: "2", pinName: "2", interaction: "canvas" },
         sg13Substrate("B"),
     ],
     parameters: [
-        sg13Length("w", "W", "500n", "Width in metres", "width", 0),
+        {
+            ...sg13Length("w", "W", "500n", "Width in metres", "width", 0),
+            numericLimits: { maximum: 1e-3 },
+        },
         sg13Length("l", "L", length, "Length in metres", "length", 1),
         ...(bends ? [sg13Count("b", "B", "Number of bends", 2, "none", "0")] : []),
         sg13Count("m", "M", "Parallel resistor count", 3),
@@ -524,18 +605,61 @@ const sg13MimBinding = (id, masterName, side, feed) => ({
     invocationKind: "external-subcircuit",
     symbolId: "capacitor",
     deviceClass: "capacitor",
+    sizeLimits: {
+        length: [feed ? 7e-6 : 1.14e-6, 1e-3],
+        widthPerFinger: feed ? 7e-6 : 1.14e-6,
+    },
     terminals: [
         { targetName: "PLUS", pinName: "1", interaction: "canvas" },
         { targetName: "MINUS", pinName: "2", interaction: "canvas" },
         ...(feed ? [sg13Substrate("B")] : []),
     ],
     parameters: [
-        sg13Length("w", "W", side, "Width in metres", "width", 0),
+        {
+            ...sg13Length("w", "W", side, "Width in metres", "width", 0),
+            numericLimits: { maximum: 1e-3 },
+        },
         sg13Length("l", "L", side, "Length in metres", "length", 1),
         ...(feed
             ? [sg13Length("wfeed", "WFEED", feed, "Feed width in metres", "none", 2)]
             : []),
         sg13Count("m", "M", "Parallel capacitor count", 3),
+    ],
+});
+/**
+ * `.subckt sg13_hv_svaricap G1 W G2 bn`, the MOS varactor: drawn as the MOS
+ * Varactor, its gates G1 and G2 and its n-well control W are pins to wire
+ * and its substrate is set in Properties. w l Nx follow the xschem template
+ * (`sg13_svaricap.sym`, which also writes `mm_ok`, a mismatch switch left at
+ * its model default); m is the X-line multiplier. The bounds are the model's
+ * own parameter checks.
+ */
+const sg13VaricapBinding = () => ({
+    id: "sg13g2-svaricap-hv",
+    libraryId: "sg13g2_pr",
+    masterName: "sg13_hv_svaricap",
+    invocationKind: "external-subcircuit",
+    symbolId: "mos-varactor",
+    deviceClass: "capacitor",
+    sizeLimits: { length: [300e-9, 800e-9], widthPerFinger: 3.74e-6 },
+    terminals: [
+        ...["G1", "W", "G2"].map((name) => ({
+            targetName: name,
+            pinName: name,
+            interaction: "canvas",
+        })),
+        sg13Substrate("B"),
+    ],
+    parameters: [
+        {
+            ...sg13Length("w", "W", "3.74u", "Width in metres", "width", 0),
+            numericLimits: { maximum: 9.74e-6 },
+        },
+        sg13Length("l", "L", "300n", "Length in metres", "length", 1),
+        // Each of the Nx fingers is w wide, so W is not shared out among them
+        // as a MOS's W is among its ng fingers.
+        sg13Count("Nx", "NX", "Gate finger count, 1 to 10", 2, "none"),
+        sg13Count("m", "M", "Parallel varactor count", 3),
     ],
 });
 export const reviewedExternalDeviceBindings = [
@@ -564,14 +688,15 @@ export const reviewedExternalDeviceBindings = [
     sky130FixedMosBinding("sky130-pfet-20v0", "sky130_fd_pr__pfet_20v0", "pdmos", { length: "0.5", width: "30" }),
     sky130MosBinding("sky130-pfet-01v8-hvt", "sky130_fd_pr__pfet_01v8_hvt", "pmos", "1u", "150n", sky130Limits(1.5e-7, 2.02e-5)),
     sky130MosBinding("sky130-pfet-g5v0d10v5", "sky130_fd_pr__pfet_g5v0d10v5", "pmos", "20u", "500n", sky130Limits(5e-7, 2.02e-5)),
+    sky130GenericPolyResistorBinding(),
     sky130ResistorBinding("sky130-res-high-po", "sky130_fd_pr__res_high_po"),
     sky130ResistorBinding("sky130-res-xhigh-po", "sky130_fd_pr__res_xhigh_po"),
     sky130MimCapBinding("sky130-cap-mim-m3-1", "sky130_fd_pr__cap_mim_m3_1"),
     sky130MimCapBinding("sky130-cap-mim-m3-2", "sky130_fd_pr__cap_mim_m3_2"),
     sky130VaractorBinding(),
-    sky130InductorBinding("sky130-ind-03-90", "sky130_fd_pr__ind_03_90"),
-    sky130InductorBinding("sky130-ind-05-125", "sky130_fd_pr__ind_05_125"),
-    sky130InductorBinding("sky130-ind-05-220", "sky130_fd_pr__ind_05_220"),
+    ...sky130InductorBindings("sky130-ind-03-90", "sky130_fd_pr__ind_03_90"),
+    ...sky130InductorBindings("sky130-ind-05-125", "sky130_fd_pr__ind_05_125"),
+    ...sky130InductorBindings("sky130-ind-05-220", "sky130_fd_pr__ind_05_220"),
     sky130VerticalPnpBinding("sky130-pnp-05v5-w0p68l0p68", "sky130_fd_pr__pnp_05v5_W0p68L0p68"),
     // The 3.4 um emitter stays below its high-injection knee at currents
     // where the 0.68 um one does not (#1614).
@@ -614,6 +739,7 @@ export const reviewedExternalDeviceBindings = [
     sg13ResistorBinding("sg13g2-rhigh", "rhigh", "960n", true),
     sg13MimBinding("sg13g2-cap-cmim", "cap_cmim", "7u"),
     sg13MimBinding("sg13g2-cap-rfcmim", "cap_rfcmim", "10u", "5u"),
+    sg13VaricapBinding(),
 ];
 /** The Library gate drawn for a cell function, by input count (#1450). */
 const GATE_SYMBOLS = {
@@ -673,16 +799,6 @@ const TSMC28_FUNCTIONS = {
     XOR: "xor",
     XNR: "xnor",
 };
-const TSMC28_STEMS = {
-    inv: "INV",
-    buf: "BUFF",
-    nand: "ND",
-    nor: "NR",
-    and: "AN",
-    or: "OR",
-    xor: "XOR",
-    xnor: "XNR",
-};
 const STANDARD_CELL_RULES = [
     {
         // sky130_fd_sc_hd__nand2_1: inputs A–D, VGND VNB VPB VPWR, then the
@@ -719,6 +835,7 @@ const STANDARD_CELL_RULES = [
         namespace: /^sg13g2_/iu,
     },
     {
+        // TSMC 28 HPC+ 12-track, retired with its process (not an open one):
         // ND2D1BWP12T30P140[LVT]: [CK]<function><inputs>[X|OPT…]D<drive>; the
         // clock (CK, DCCK), delay (DEL), ECO (G…MCO) and level-shifting (LVLHL)
         // buffers and inverters too. Input I or A1–A4, output ZN inverting and Z
@@ -736,7 +853,6 @@ const STANDARD_CELL_RULES = [
             ["VDD", "VDD", "VDD"],
             ["VSS", "VSS", "VSS"],
         ],
-        example: (fn, inputs) => `${TSMC28_STEMS[fn]}${inputs > 1 ? inputs : ""}D1BWP12T30P140`,
         maxInputs: {},
         namespace: /BWP12T30P140(?:LVT)?$/iu,
     },
@@ -797,15 +913,26 @@ const reviewedById = new Map(reviewedExternalDeviceBindings.map((binding) => [
     binding.id,
     binding,
 ]));
+/** Each master's bindings, the one new parts are drawn with first. */
+const reviewedByMaster = new Map();
+for (const binding of reviewedExternalDeviceBindings) {
+    const master = binding.masterName.toLowerCase();
+    reviewedByMaster.set(master, [
+        ...(reviewedByMaster.get(master) ?? []),
+        binding,
+    ]);
+}
 /**
  * The reviewed device of a master name. `symbolId` is the symbol the part is
- * drawn with: a standard cell is reviewed only behind the Library gate of its
- * function (#1450). Without it, as when importing a netlist or drawing a
- * definition's block, a cell is an ordinary external subcircuit.
+ * drawn with: a device drawn two ways answers for that drawing (#1832), and a
+ * standard cell is reviewed only behind the Library gate of its function
+ * (#1450). Without it, as when importing a netlist or drawing a definition's
+ * block, a device is the way new parts draw it, and a cell is an ordinary
+ * external subcircuit.
  */
 export function reviewedExternalBindingForMaster(masterName, symbolId) {
-    const normalized = masterName.toLowerCase();
-    const device = reviewedExternalDeviceBindings.find((binding) => binding.masterName.toLowerCase() === normalized);
+    const devices = reviewedByMaster.get(masterName.toLowerCase());
+    const device = devices?.find((binding) => binding.symbolId === symbolId) ?? devices?.[0];
     if (device || !symbolId || !GATE_OF_SYMBOL.has(symbolId))
         return device;
     const cell = standardCellBindingForMaster(masterName);
@@ -845,35 +972,55 @@ export function resolveReviewedExternalBinding(masterName, terminalNames, symbol
 export function resolveReviewedLibraryInterface(masterName, terminalNames) {
     return resolveReviewedExternalBinding(masterName, terminalNames, standardCellBindingForMaster(masterName)?.symbolId);
 }
-/** The process each reviewed library belongs to: a PDK's standard cells ride with its primitives. */
+/**
+ * The process each reviewed library belongs to: a PDK's standard cells ride
+ * with its primitives. A retired process's library belongs to Custom.
+ */
 export const LIBRARY_PROCESS = {
     sky130_fd_pr: "sky130",
     sky130_fd_sc_hd: "sky130",
     sg13g2_pr: "sg13g2",
     sg13g2_stdcell: "sg13g2",
-    tcbn28hpcplusbwp12t30p140: "tsmc28",
+    tcbn28hpcplusbwp12t30p140: "custom",
 };
 /** Reviewed masters a part may take, from one PDK's libraries or all of them. */
-export function reviewedExternalModelSuggestions(symbolId, libraryId) {
+export function reviewedExternalModelSuggestions(symbolId, libraryId, libraries) {
     const sameProcess = (id) => !libraryId || LIBRARY_PROCESS[id] === LIBRARY_PROCESS[libraryId];
-    // A gate is offered each library's weakest cell of its function; any other
-    // drive strength or variant of the library is accepted as well.
+    // Prefer advertised qualified masters; offline export offers the weakest
+    // example. Other strengths can still be authored through the model name.
     const gate = GATE_OF_SYMBOL.get(symbolId);
     if (gate)
-        return STANDARD_CELL_RULES.filter((rule) => sameProcess(rule.libraryId) && builds(rule, gate.fn, gate.inputs)).map((rule) => rule.example(gate.fn, gate.inputs));
+        return STANDARD_CELL_RULES.flatMap((rule) => {
+            if (!rule.example ||
+                !sameProcess(rule.libraryId) ||
+                !builds(rule, gate.fn, gate.inputs))
+                return [];
+            const inventories = libraries?.filter((library) => library.cells === rule.libraryId && library.masters);
+            if (!inventories?.length)
+                return [rule.example(gate.fn, gate.inputs)];
+            return [
+                ...new Set(inventories.flatMap((library) => library.masters ?? [])),
+            ].filter((master) => standardCellBindingForMaster(master)?.symbolId === symbolId);
+        });
     return reviewedExternalDeviceBindings
-        .filter((binding) => reviewedExternalBindingSupportsSymbol(binding, symbolId) &&
+        .filter((binding) => binding.symbolId === symbolId &&
+        !binding.legacy &&
         sameProcess(binding.libraryId))
         .map((binding) => binding.masterName);
 }
 /**
- * Whether a part drawn with this symbol may take the reviewed device. Only its
- * own symbol may: the binding's terminals name that symbol's pins, so on any
- * other drawing they are pins the part does not have, and it can be neither
- * wired nor exported.
+ * Whether a part drawn with this symbol may take the reviewed device: a
+ * binding of its master for that symbol does. The binding's terminals name
+ * its symbol's pins, so on any other drawing they are pins the part does not
+ * have, and it can be neither wired nor exported; resolve the master with the
+ * drawn symbol for the terminals that part has.
  */
 export function reviewedExternalBindingSupportsSymbol(binding, symbolId) {
-    return binding.symbolId === symbolId;
+    return (binding.symbolId === symbolId ||
+        (reviewedByMaster
+            .get(binding.masterName.toLowerCase())
+            ?.some((each) => each.symbolId === symbolId) ??
+            false));
 }
 /** Reviewed SKY130 plain-um input to the canonical Project length spelling. */
 export function sky130MicrometresToProjectLength(value) {
@@ -894,4 +1041,68 @@ export function sky130MicrometresToProjectLength(value) {
         return `${Number(micrometres.toPrecision(12))}u`;
     }
     return `${Number((micrometres * 1000).toPrecision(12))}n`;
+}
+/** Shared literal model-parameter findings for Properties and design/simulation export. */
+export function reviewedParameterIssues(binding, parameters, reference) {
+    const widthRole = binding.parameters.some((p) => p.displayRole === "finger-count")
+        ? "width per finger"
+        : "width";
+    const issues = reviewedSizeOutOfRange(binding, parameters).map((found) => ({
+        code: "REVIEWED_SIZE_OUT_OF_RANGE",
+        parameter: found.parameter,
+        message: binding.libraryId === "sg13g2_pr"
+            ? `${reference} has ${found.parameter} ${found.text}, outside the supported ${found.bound} ${found.role === "width" ? widthRole : "length"} of ${micrometres(found.limit)} for ${binding.masterName}. Adjust the dimension or restore the model defaults.`
+            : sizeOutOfRangeMessage(reference, binding.masterName, found),
+    }));
+    for (const parameter of binding.parameters) {
+        const limits = parameter.numericLimits;
+        if (!limits ||
+            issues.some((issue) => issue.parameter.toLowerCase() === parameter.name.toLowerCase()))
+            continue;
+        const entry = partEntry(parameters, parameter.name);
+        const text = entry?.[1] || parameter.defaultValue;
+        if (!text)
+            continue;
+        let value;
+        try {
+            value = parseSpiceNumber(text);
+        }
+        catch {
+            continue;
+        }
+        const shown = (bound) => parameter.unitHint === "m" ? micrometres(bound) : String(bound);
+        let required;
+        if (limits.integer && !Number.isInteger(value))
+            required = "an integer";
+        else if (limits.minimum !== undefined &&
+            (limits.exclusiveMinimum
+                ? value <= limits.minimum
+                : value < limits.minimum * (1 - 1e-9)))
+            required = `${limits.exclusiveMinimum ? "greater than" : "at least"} ${shown(limits.minimum)}`;
+        else if (limits.maximum !== undefined &&
+            value > limits.maximum * (1 + 1e-9))
+            required = `at most ${shown(limits.maximum)}`;
+        if (required)
+            issues.push({
+                code: "REVIEWED_PARAMETER_OUT_OF_RANGE",
+                parameter: entry?.[0] ?? parameter.name,
+                message: `${reference} has ${parameter.name} ${text}, outside the supported range (${required}) for ${binding.masterName}. Adjust the value or restore the model defaults.`,
+            });
+    }
+    return issues;
+}
+const micrometres = (metres) => `${Number((metres / 1e-6).toPrecision(6))} µm`;
+function sizeOutOfRangeMessage(reference, master, found) {
+    const label = found.role === "width" ? "W" : "L";
+    if (found.bound === "slip") {
+        const text = found.text.trim();
+        const bare = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/iu.test(text);
+        return `${reference} has ${label} ${text}, which is ${found.fingers > 1 ? `${micrometres(found.metres / found.fingers)} per finger` : micrometres(found.metres)}: over ${found.limit / 1e-3} mm, larger than ${master} is made, so its unit is likely missing or wrong.${bare ? ` A size without a unit is in metres; write ${text}u if you mean ${text} µm.` : ""}`;
+    }
+    const size = found.fingers === 1
+        ? micrometres(found.metres)
+        : `${micrometres(found.metres)} over ${found.fingers} fingers, ${micrometres(found.metres / found.fingers)} each`;
+    if (found.bound === "maximum")
+        return `${reference} has ${label} ${size}, above the ${micrometres(found.limit)} longest length ${master} runs at on Production's simulator, so a simulation stops at this line.`;
+    return `${reference} has ${label} ${size}, below the ${micrometres(found.limit)} minimum ${found.role === "width" ? "width per finger" : "length"} of ${master}. Its PDK has no model that ${found.role === "width" ? "narrow" : "short"}, so a simulation stops at this line.`;
 }

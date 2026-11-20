@@ -34,12 +34,16 @@ function directory(path) {
     const separator = path.lastIndexOf("/");
     return separator < 0 ? "" : path.slice(0, separator);
 }
-function resolveInclude(sourcePath, requestedPath, rootDirectory) {
-    if (requestedPath.startsWith("/") ||
+/**
+ * An include named by an absolute, drive-qualified or URL path is a library
+ * outside the sources (a PDK's models): it is kept as written and never read.
+ */
+export function isExternalLibraryPath(requestedPath) {
+    return (/^[\\/]/u.test(requestedPath) ||
         /^[a-z]:[\\/]/iu.test(requestedPath) ||
-        requestedPath.includes("://")) {
-        return null;
-    }
+        requestedPath.includes("://"));
+}
+function resolveInclude(sourcePath, requestedPath, rootDirectory) {
     const combined = [directory(sourcePath), requestedPath]
         .filter(Boolean)
         .join("/");
@@ -114,7 +118,7 @@ async function loadInputs(inputs) {
     }
     return { files, diagnostics };
 }
-export async function createSourceBundle(inputs, entryPath) {
+export async function createSourceBundle(inputs, entryPath, includeRoot) {
     const normalizedEntry = normalizeSourcePath(entryPath) ?? entryPath;
     const loaded = await loadInputs(inputs);
     const entry = loaded.files.get(normalizedEntry);
@@ -135,7 +139,7 @@ export async function createSourceBundle(inputs, entryPath) {
     }
     const visited = new Set();
     const active = [];
-    const rootDirectory = directory(normalizedEntry);
+    const rootDirectory = includeRoot === "workspace" ? "" : directory(normalizedEntry);
     function visit(path) {
         const source = loaded.files.get(path);
         visited.add(path);
@@ -150,6 +154,21 @@ export async function createSourceBundle(inputs, entryPath) {
                 continue;
             }
             const includeStatement = statement;
+            if (isExternalLibraryPath(includeStatement.requestedPath)) {
+                dependencies.push({
+                    sourceFileId: source.id,
+                    requestedPath: includeStatement.requestedPath,
+                    resolvedPath: null,
+                    targetFileId: null,
+                    status: "external",
+                    ...(includeStatement.kind === "library"
+                        ? { section: includeStatement.section }
+                        : {}),
+                    sourceRef: includeStatement.sourceRef,
+                });
+                diagnostics.push(diagnostic("SPICE_SOURCE_INCLUDE_EXTERNAL", "warning", "source", `Kept as an external library and not read: ${includeStatement.requestedPath}${includeStatement.kind === "library" && includeStatement.section ? ` (section ${includeStatement.section})` : ""}. Models it defines have no card in the sources.`, includeStatement.sourceRef));
+                continue;
+            }
             const resolvedPath = resolveInclude(path, includeStatement.requestedPath, rootDirectory);
             if (!resolvedPath) {
                 dependencies.push({

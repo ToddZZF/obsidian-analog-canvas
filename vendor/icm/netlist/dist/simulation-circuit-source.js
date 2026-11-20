@@ -33,7 +33,7 @@ export function generateCircuitSource(project, binding, input, engine = "vacask"
             // intentionally retains those cards, so supply a visibly unresolved,
             // protected token in this projection only, never an electrical default.
             if (!card.target &&
-                ["mos", "diode", "bjt", "switch", "hierarchical"].includes(card.deviceClass))
+                ["mos", "diode", "bjt", "jfet", "switch", "hierarchical"].includes(card.deviceClass))
                 card.target =
                     card.invocationKind === "subcircuit" ? "<subcircuit>" : "<model>";
             const instance = project.documents

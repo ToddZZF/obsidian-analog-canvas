@@ -1,5 +1,6 @@
 import { resolveCommittedDocumentLogicalNets } from "@icm/derived";
 import { analyzeDesignNetlist, analyzeDesignNetlistForAuthoring, } from "./extract.js";
+import { sortsSupplyPorts, supplyPortRank } from "./extract-ground-pin.js";
 import { withNetlistPowerMarkerClaims } from "./extract-nets.js";
 /**
  * The name a design netlist writes one Net under, such as `net12` for an
@@ -9,14 +10,26 @@ import { withNetlistPowerMarkerClaims } from "./extract-nets.js";
  * leaves out answers null.
  */
 export function designNetlistNetName(project, documentId, netId, options = {}) {
+    return (designNetlistNetNames(project, documentId, [netId], options).get(netId) ??
+        null);
+}
+/** Read the selected Nets' names with one analysis of the Cell per mode. */
+export function designNetlistNetNames(project, documentId, netIds, options = {}) {
+    const names = new Map();
+    if (netIds.length === 0)
+        return names;
     const source = project.documents.find((document) => document.id === documentId);
     if (!source)
-        return null;
+        return names;
     // The netlist joins supply markers by name before it names Nets, so the
     // Net it writes is the group that joining makes.
-    const logicalId = resolveCommittedDocumentLogicalNets(withNetlistPowerMarkerClaims(source, project)).byBaseNetId.get(netId)?.id;
-    if (!logicalId)
-        return null;
+    const logical = resolveCommittedDocumentLogicalNets(withNetlistPowerMarkerClaims(source, project));
+    const pending = new Map();
+    for (const netId of netIds) {
+        const logicalId = logical.byBaseNetId.get(netId)?.id;
+        if (logicalId)
+            pending.set(netId, logicalId);
+    }
     const analysisOptions = {
         groundPin: "pin",
         ...options,
@@ -26,11 +39,54 @@ export function designNetlistNetName(project, documentId, netId, options = {}) {
         analyzeDesignNetlist,
         analyzeDesignNetlistForAuthoring,
     ]) {
-        const name = analyze(project, analysisOptions)
-            .ir?.cells.find((cell) => cell.id === documentId)
-            ?.nets.find((net) => net.id === logicalId)?.name;
-        if (name)
-            return name;
+        if (pending.size === 0)
+            break;
+        const cell = analyze(project, analysisOptions).ir?.cells.find(({ id }) => id === documentId);
+        if (!cell)
+            continue;
+        const namesById = new Map(cell.nets.map(({ id, name }) => [id, name]));
+        for (const [netId, logicalId] of pending) {
+            const name = namesById.get(logicalId);
+            if (!name)
+                continue;
+            names.set(netId, name);
+            pending.delete(netId);
+        }
+    }
+    return names;
+}
+/**
+ * The pins a design netlist writes for one Cell printed as a subcircuit, in
+ * order: the Cell's own Pins, each by its first Net, and those the export
+ * adds, such as ground's pin or a default supply; `supply` marks the ones
+ * the export puts before the signals (#2177). A drawing that does not
+ * extract yet answers with its draft's pins; one with no draft, null.
+ */
+export function designNetlistCellPorts(project, documentId) {
+    const source = project.documents.find((document) => document.id === documentId);
+    if (!source)
+        return null;
+    // Read as the export ranks the ports it sorts.
+    const logical = resolveCommittedDocumentLogicalNets(withNetlistPowerMarkerClaims(source));
+    const analysisOptions = {
+        groundPin: "pin",
+        rootDocumentId: documentId,
+    };
+    // A Cell read from a file keeps its own Pins where the file has them; the
+    // supplies the export adds still take their places.
+    const own = new Set(source.netlist?.terminals.map((terminal) => terminal.netId) ?? []);
+    for (const analyze of [
+        analyzeDesignNetlist,
+        analyzeDesignNetlistForAuthoring,
+    ]) {
+        const cell = analyze(project, analysisOptions).ir?.cells.find((candidate) => candidate.id === documentId);
+        if (cell)
+            return cell.ports.map(({ id, name }) => ({
+                id,
+                name,
+                supply: supplyPortRank(logical, { id, name }) < 2 &&
+                    (sortsSupplyPorts(source) || !own.has(id)),
+            }));
     }
     return null;
 }

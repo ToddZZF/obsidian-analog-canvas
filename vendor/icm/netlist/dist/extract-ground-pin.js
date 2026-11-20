@@ -106,3 +106,25 @@ export function groundPortIndex(document, ports) {
     }
     return index;
 }
+/**
+ * Where a port of a Cell printed as a subcircuit sorts: its positive supply
+ * first (0), then ground (1), then the signals (2) in the Cell's own order.
+ * `logical` reads the Cell with the netlist's power-marker claims. Cell
+ * properties shows the same order, the supplies locked in place (#2177).
+ */
+export function supplyPortRank(logical, port) {
+    const domain = logical.byBaseNetId.get(port.id)?.powerDomain;
+    if (domain === "vdd" || port.name.toUpperCase() === "VDD")
+        return 0;
+    if (domain === "ground" || port.name.toUpperCase() === "VSS")
+        return 1;
+    return 2;
+}
+/**
+ * Whether the export sorts a Cell's ports by {@link supplyPortRank}. A Cell
+ * read from a netlist file (it keeps the import's reference) prints its
+ * ports in its own order, as the file declared them, so it writes again as
+ * it was read and every positional call stays the file's; a ground pin the
+ * export adds still goes after its VDD ports.
+ */
+export const sortsSupplyPorts = (document) => document.importReference === undefined;

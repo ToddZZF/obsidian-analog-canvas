@@ -1,10 +1,11 @@
 // Calls to subcircuits: a hierarchy Cell, or an external subcircuit with the
 // size and substrate checks of a reviewed PDK device.
-import { circuitComponentTerminals, foldNetName, projectCellInterface, routeEndpoints, } from "@icm/model";
+import { circuitComponentTerminals, foldNetName, projectScalarCellInterface, scalarCellTerminals, routeEndpoints, } from "@icm/model";
 import { drawnSupplyNet, namesNegativeSupply } from "@icm/derived";
-import { bindsProjectCell, matchGateCellPins, projectLengthToSky130Micrometres, resolveReviewedExternalBinding, reviewedSize, reviewedSizeModelled, reviewedSizeOutOfRange, } from "@icm/devices";
+import { bindsExternalByPartPins, bindsProjectCell, libraryGateTerminals, matchGateCellPins, matchGateExternalPins, projectLengthToSky130Micrometres, resolveReviewedExternalBinding, reviewedSize, reviewedSizeModelled, reviewedParameterIssues, } from "@icm/devices";
 import { isIdentifier, compareText, diagnostic, } from "./extract-common.js";
 import { terminalNetName } from "./extract-nets.js";
+import { switchPhaseNode } from "./extract-switch.js";
 import { addsGroundPin, groundPinName, groundPortIndex, } from "./extract-ground-pin.js";
 /**
  * The Net of a gate's rail that no Net was chosen for, whether the gate calls
@@ -21,6 +22,19 @@ function autoRailNetName(document, instance, rail, context, diagnostics, asked) 
         diagnostic(diagnostics, document.id, "MISSING_BLOCK_SUPPLY", `Analog Block ${instance.reference ?? instance.id} has no unambiguous ${rail} Net; select one in Properties or draw a unique ${rail === "VDD" ? "positive supply" : "ground"}`, [instance.id]);
     }
     return drawnName ?? null;
+}
+/**
+ * The node a subcircuit call passes for one of a part's terminals: the clock
+ * a chopper's label names (#1928), the rail of a supply no Net was chosen
+ * for, or the terminal's own Net.
+ */
+function callTerminalNetName(document, instance, terminal, context, options, diagnostics, railsAsked, memberId) {
+    if (terminal.clock)
+        return switchPhaseNode(document, instance, context, options, diagnostics);
+    if (terminal.supply &&
+        !context.netByTerminal.has(`${instance.id}\u0000${terminal.pinName}`))
+        return autoRailNetName(document, instance, terminal.supply, context, diagnostics, railsAsked);
+    return terminalNetName(document, instance, terminal.pinName, context, diagnostics, memberId);
 }
 export function extractHierarchyInstance(document, instance, documentsById, cellNameByDocumentId, context, options, diagnostics) {
     const netlist = instance.netlist;
@@ -42,7 +56,8 @@ export function extractHierarchyInstance(document, instance, documentsById, cell
     }
     validateFormalParameterOverrides(document, instance, child.netlist.formalParameters, diagnostics);
     // Callers and definitions share the authored interface, including its order.
-    const childPorts = projectCellInterface(child.netlist).ports;
+    const childPorts = projectScalarCellInterface(child.netlist).ports;
+    const scalarTerminals = scalarCellTerminals(child.netlist);
     // A Library gate bound to the Cell keeps its own pins, and meets the
     // Cell's Pins by name (#1450).
     const gate = bindsProjectCell(instance.symbolId)
@@ -55,18 +70,23 @@ export function extractHierarchyInstance(document, instance, documentsById, cell
     if (gate && !gate.ok)
         diagnostic(diagnostics, document.id, "GATE_CELL_PIN_MISMATCH", `${gate.message}. ${reference} is bound to it: fix the Cell's Pins, or clear ${reference}'s model`, [instance.id, child.id]);
     const railsAsked = new Set();
+    // A Cell Pin its custom block maps to a property supply takes the Net
+    // chosen in Properties, else that rail, as a Circuit Component's does.
+    const supplies = new Map((child.presentation.cellSymbol?.artwork?.terminals ?? []).flatMap((mapping) => "supply" in mapping ? [[mapping.terminalId, mapping.supply]] : []));
     const nodes = childPorts.map((port) => {
+        const member = scalarTerminals.find((terminal) => terminal.id === port.id);
+        const supply = member?.memberId ? undefined : supplies.get(port.id);
         const pin = gate
             ? gate.pins.find((item) => item.portName === port.name)
-            : { pinName: port.name };
+            : {
+                pinName: member?.aggregateName ?? port.name,
+                ...(supply ? { supply } : {}),
+            };
         // Strict extraction rejects the accompanying error. Authoring keeps an
         // explicit non-executable slot rather than shifting positional arguments.
         const netName = !pin
             ? null
-            : pin.supply &&
-                !context.netByTerminal.has(`${instance.id}\u0000${pin.pinName}`)
-                ? autoRailNetName(document, instance, pin.supply, context, diagnostics, railsAsked)
-                : terminalNetName(document, instance, pin.pinName, context, diagnostics);
+            : callTerminalNetName(document, instance, pin, context, options, diagnostics, railsAsked, member?.memberId);
         return {
             pinName: port.name,
             netName: netName ?? `<unconnected:${port.name}>`,
@@ -112,7 +132,7 @@ function validateFormalParameterOverrides(document, instance, formalParameters, 
         diagnostic(diagnostics, document.id, "MISSING_REQUIRED_SUBCIRCUIT_PARAMETER", `Instance ${instance.reference ?? instance.id} must override formal parameter ${formal.name}`, [instance.id]);
     }
 }
-export function extractExternalSubcircuitInstance(document, instance, definition, component, context, diagnostics) {
+export function extractExternalSubcircuitInstance(document, instance, definition, component, context, options, diagnostics) {
     const netlist = instance.netlist;
     if (!netlist || netlist.binding?.kind !== "external-subcircuit")
         return null;
@@ -127,16 +147,31 @@ export function extractExternalSubcircuitInstance(document, instance, definition
     const reviewed = definition.implementation
         ? undefined
         : resolveReviewedExternalBinding(definition.name, definition.terminals.map((terminal) => terminal.name), instance.symbolId);
+    // A Library part bound to the definition keeps its own pins, and meets the
+    // definition's ports by name (#1928).
+    const gate = !reviewed &&
+        bindsExternalByPartPins({ componentDefinitions: component ? [component] : [] }, instance.symbolId)
+        ? matchGateExternalPins(instance.symbolId, definition)
+        : undefined;
+    if (gate && !gate.ok) {
+        const reference = instance.reference ?? instance.id;
+        diagnostic(diagnostics, document.id, "GATE_CELL_PIN_MISMATCH", `${gate.message}. ${reference} is bound to it: fix its ports, or clear ${reference}'s model`, [instance.id, definition.id]);
+    }
     const terminalBindings = component?.circuitBinding
         ? circuitComponentTerminals(component, definition)
         : reviewed
             ? reviewed.terminals
-            : definition.terminals.map((terminal) => ({
-                targetName: terminal.name,
-                pinName: terminal.name,
-                interaction: "canvas",
-            }));
-    const allowedPins = new Set(terminalBindings.map((terminal) => terminal.pinName.toLowerCase()));
+            : definition.terminals.map((terminal) => {
+                const pin = gate?.pins.find((item) => item.portName === terminal.name);
+                return {
+                    targetName: terminal.name,
+                    pinName: pin?.pinName ?? terminal.name,
+                    interaction: "canvas",
+                    ...(pin?.supply ? { supply: pin.supply } : {}),
+                    ...(pin?.clock ? { clock: true } : {}),
+                };
+            });
+    const allowedPins = new Set((gate ? libraryGateTerminals(instance.symbolId) : terminalBindings).map((terminal) => terminal.pinName.toLowerCase()));
     const referencedPins = new Set();
     for (const net of document.nets) {
         for (const terminal of net.terminals) {
@@ -172,11 +207,7 @@ export function extractExternalSubcircuitInstance(document, instance, definition
     }
     const railsAsked = new Set();
     const nodes = terminalBindings.map((terminal) => {
-        const rail = "supply" in terminal ? terminal.supply : undefined;
-        const netName = rail &&
-            !context.netByTerminal.has(`${instance.id}\u0000${terminal.pinName}`)
-            ? autoRailNetName(document, instance, rail, context, diagnostics, railsAsked)
-            : terminalNetName(document, instance, terminal.pinName, context, diagnostics);
+        const netName = callTerminalNetName(document, instance, terminal, context, options, diagnostics, railsAsked);
         return {
             pinName: terminal.targetName,
             ...(terminal.targetName !== terminal.pinName
@@ -232,12 +263,10 @@ export function extractExternalSubcircuitInstance(document, instance, definition
             : micrometres(value.metres);
         diagnostic(diagnostics, document.id, "REVIEWED_SIZE_UNMODELLED", `${instance.reference} is W ${shown(size.width)}, L ${shown(size.length)}, a size ${definition.name} has no model for: its library models it only at ${reviewed.modelledSizes.description}, so the simulation stops at this line. Give it one of those sizes.`, [instance.id], "warning");
     }
-    // A size the PDK does not make, or one a unit slip left in metres (#1474).
-    // The part exports as drawn: which size was meant is the author's to say.
-    for (const found of reviewed
-        ? reviewedSizeOutOfRange(reviewed, netlist.parameters)
+    for (const issue of reviewed
+        ? reviewedParameterIssues(reviewed, netlist.parameters, instance.reference)
         : [])
-        diagnostic(diagnostics, document.id, "REVIEWED_SIZE_OUT_OF_RANGE", sizeOutOfRangeMessage(instance.reference, definition.name, found), [instance.id], "warning", found.parameter);
+        diagnostic(diagnostics, document.id, issue.code, issue.message, [instance.id], "warning", issue.parameter);
     return {
         id: instance.id,
         reference: instance.reference,
@@ -251,20 +280,6 @@ export function extractExternalSubcircuitInstance(document, instance, definition
 }
 const micrometres = (metres) => `${Number((metres / 1e-6).toPrecision(6))} µm`;
 /** What REVIEWED_SIZE_OUT_OF_RANGE says of one size (#1474). */
-function sizeOutOfRangeMessage(reference, master, found) {
-    const label = found.role === "width" ? "W" : "L";
-    if (found.bound === "slip") {
-        const text = found.text.trim();
-        const bare = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/iu.test(text);
-        return `${reference} has ${label} ${text}, which is ${found.fingers > 1 ? `${micrometres(found.metres / found.fingers)} per finger` : micrometres(found.metres)}: over ${found.limit / 1e-3} mm, larger than ${master} is made, so its unit is likely missing or wrong.${bare ? ` A size without a unit is in metres; write ${text}u if you mean ${text} µm.` : ""}`;
-    }
-    const size = found.fingers === 1
-        ? micrometres(found.metres)
-        : `${micrometres(found.metres)} over ${found.fingers} fingers, ${micrometres(found.metres / found.fingers)} each`;
-    if (found.bound === "maximum")
-        return `${reference} has ${label} ${size}, above the ${micrometres(found.limit)} longest length ${master} runs at on Production's simulator, so a simulation stops at this line.`;
-    return `${reference} has ${label} ${size}, below the ${micrometres(found.limit)} minimum ${found.role === "width" ? "width per finger" : "length"} of ${master}. Its PDK has no model that ${found.role === "width" ? "narrow" : "short"}, so a simulation stops at this line.`;
-}
 /** A Net named as a Cell's ground or substrate: GND, AGND, SUB, VSUB. */
 const GROUND_OR_SUBSTRATE_NAME = /^[ad]?(?:gnd|v?sub)[a-z0-9_]*$/iu;
 /**

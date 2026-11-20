@@ -28,6 +28,8 @@ export interface CircuitHostMessage {
   text?: string
   focus?: string
   region?: string
+  /** The Cell to show, by its stable document id. */
+  documentId?: string
   requestId?: string
   message?: string
   /** The plugin's own save preference, for the 'preferences' message. */

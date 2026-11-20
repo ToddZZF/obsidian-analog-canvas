@@ -11,7 +11,7 @@ import { printSpiceWithLocations } from "./printers.js";
 import { inspectSimulationSourceGraph, } from "./simulation-source-graph.js";
 import { resolveAuthoredCircuitScope } from "./simulation-source-scopes.js";
 import { nativeSourceCollection } from "./simulation-native-collection.js";
-import { ngspiceSimulationDevices, NATIVE_MOS_OP_PARAMETERS, } from "./simulation-ngspice-devices.js";
+import { ngspiceSimulationDevices, nativeDeviceOpFields, } from "./simulation-ngspice-devices.js";
 import { prepareNgspiceAuthoredNames, spellNgspiceAuthoredText, } from "./simulation-ngspice-name-diagnostics.js";
 /**
  * Why a definition without a body cannot run, and what would. A standard
@@ -30,7 +30,7 @@ function missingImplementation(definition) {
         return {
             code: "STANDARD_CELL_UNSUPPORTED",
             severity: "error",
-            message: `${definition.name} is a ${library} cell that simulation does not run. Hosted ngspice runs sky130_fd_sc_hd combinational gate cells (inverters, buffers, NAND, NOR, AND, OR, XOR and XNOR) bound to a Library gate; give this cell a Project model source to run it.`,
+            message: `${definition.name} is a ${library} cell that simulation does not run. Hosted ngspice runs combinational Library gates qualified by the selected Profile. Provide a Project model source for this cell.`,
         };
     return {
         code: "MODEL_IMPLEMENTATION_MISSING",
@@ -446,11 +446,11 @@ export function compileNgspiceSourceSimulation(project, folder, variant) {
                 occurrence: device.occurrence,
                 reference: device.reference,
                 polarity: device.polarity,
-                values: NATIVE_MOS_OP_PARAMETERS.map((parameter) => ({
+                values: nativeDeviceOpFields(device).map(({ parameter, vector }) => ({
                     parameter,
                     label: parameter.toUpperCase(),
                     unit: parameter === "id" ? "A" : parameter.startsWith("g") ? "S" : "V",
-                    expression: acquisition(`@${device.nativeDevice}[${parameter}]`, "native", false),
+                    expression: acquisition(vector, "native", false),
                 })),
             });
         }

@@ -2,8 +2,77 @@
  * Route paint beside the conductor ink: direction arrows, the miter bridges
  * that join strokes at pins and Junctions, and No Connect marks.
  */
-import { objectStyleProfile, resolveEndpointPoint } from "@icm/derived";
+import { measureLabelText, objectStyleProfile, resolveEndpointPoint, richTextMetrics, } from "@icm/derived";
+import { routeEnd, } from "@icm/model";
+import { resolveInstanceSymbol } from "@icm/symbols";
 import { escapeXml, pointList } from "./svg-markup.js";
+/** Aggregate ink stays an appearance choice on top of the kept Wire style. */
+export function busStrokeProfile(profile, memberCount) {
+    return memberCount > 1
+        ? {
+            ...profile,
+            strokes: { ...profile.strokes, wire: profile.strokes.wire * 1.5 },
+        }
+        : profile;
+}
+function aggregateMemberIds(document, resolver, endpoint) {
+    if (endpoint.kind === "junction")
+        return document.junctions
+            .find((junction) => junction.id === endpoint.junctionId)
+            ?.members?.map((member) => member.id);
+    const local = endpoint.pinName === "P"
+        ? document.netlist?.terminals.find((terminal) => terminal.interfaceInstanceIds.includes(endpoint.instanceId))?.signal?.members
+        : undefined;
+    if (local)
+        return local.map((member) => member.id);
+    const instance = document.instances.find((item) => item.id === endpoint.instanceId);
+    return instance
+        ? resolveInstanceSymbol(resolver, instance)
+            ?.definition.pins.find((pin) => pin.name === endpoint.pinName)
+            ?.signalMembers?.map((member) => member.id)
+        : undefined;
+}
+/** A small slash identifies a member takeoff without implying a bus-wide dot. */
+export function busTapMarks(document, resolver, route, centerline) {
+    if (centerline.length < 2)
+        return [];
+    return [route.start, routeEnd(route)].flatMap((endpoint, index) => {
+        let memberIds;
+        if (endpoint.memberId)
+            memberIds = [endpoint.memberId];
+        else if (route.members) {
+            memberIds = route.members.map((member) => index === 0 ? member.startMemberId : member.endMemberId);
+            const aggregate = aggregateMemberIds(document, resolver, endpoint);
+            if (!aggregate ||
+                (memberIds.length === aggregate.length &&
+                    memberIds.every((id, i) => id === aggregate[i])))
+                return [];
+        }
+        else
+            return [];
+        const points = index === 0 ? centerline : [...centerline].reverse();
+        const origin = points[0];
+        const next = points.find((point) => point.x !== origin.x || point.y !== origin.y);
+        if (!next)
+            return [];
+        const length = Math.hypot(next.x - origin.x, next.y - origin.y);
+        const dx = (next.x - origin.x) / length;
+        const dy = (next.y - origin.y) / length;
+        const distance = Math.min(6, length / 2);
+        const half = Math.min(3, length / 4);
+        const center = { x: origin.x + dx * distance, y: origin.y + dy * distance };
+        return [
+            {
+                memberIds,
+                from: {
+                    x: center.x - (dx - dy) * half,
+                    y: center.y - (dy + dx) * half,
+                },
+                to: { x: center.x + (dx - dy) * half, y: center.y + (dy + dx) * half },
+            },
+        ];
+    });
+}
 export function renderRouteDirectionArrow(centerline, placement, color, profile) {
     if (!placement || centerline.length < 2)
         return "";
@@ -70,7 +139,7 @@ export function renderRouteDirectionArrow(centerline, placement, color, profile)
  * than offset along a lead: the declaration applies to that exact terminal or
  * port origin.
  */
-export function renderNoConnectMarkers(document, resolver, profile, objectIds) {
+export function noConnectMarkerLayouts(document, resolver, profile, objectIds) {
     return [...document.noConnects]
         .filter((item) => !objectIds || objectIds.has(item.id))
         .sort((left, right) => left.id.localeCompare(right.id, "en"))
@@ -80,11 +149,61 @@ export function renderNoConnectMarkers(document, resolver, profile, objectIds) {
             return [];
         const markProfile = objectStyleProfile(profile, noConnect);
         const halfExtent = Math.max(markProfile.strokes.normal * 3, 4);
-        const strokeWidth = markProfile.strokes.normal;
+        const memberId = noConnect.endpoint.memberId;
+        const instance = memberId &&
+            document.instances.find((item) => item.id === noConnect.endpoint.instanceId);
+        const name = instance
+            ? resolveInstanceSymbol(resolver, instance)
+                ?.definition.pins.find((pin) => pin.name === noConnect.endpoint.pinName)
+                ?.signalMembers?.find((member) => member.id === memberId)?.name
+            : undefined;
+        const siblings = document.noConnects.filter((item) => item.endpoint.instanceId === noConnect.endpoint.instanceId &&
+            item.endpoint.pinName === noConnect.endpoint.pinName &&
+            item.endpoint.memberId);
+        const index = siblings.findIndex((item) => item.id === noConnect.id);
+        const fontSize = markProfile.typography.netFontSize;
+        const text = name ? `${name} NC` : undefined;
+        const x = point.x + halfExtent + 3;
+        const y = point.y - halfExtent - 3 - index * fontSize;
+        const measured = text
+            ? measureLabelText({ runs: [{ kind: "text", value: text }] }, { ...richTextMetrics(markProfile, "label"), fontSize })
+            : undefined;
+        const left = Math.min(0, measured?.lines[0]?.ink?.left ?? 0);
+        const right = Math.max(measured?.width ?? 0, measured?.lines[0]?.ink?.right ?? 0);
         return [
-            `<path data-object-id="${escapeXml(noConnect.id)}" data-role="no-connect" d="M ${point.x - halfExtent} ${point.y - halfExtent} L ${point.x + halfExtent} ${point.y + halfExtent} M ${point.x + halfExtent} ${point.y - halfExtent} L ${point.x - halfExtent} ${point.y + halfExtent}" fill="none" stroke="${markProfile.foreground}" stroke-width="${strokeWidth}" stroke-linecap="${markProfile.lineCap}"/>`,
+            {
+                id: noConnect.id,
+                point,
+                halfExtent,
+                profile: markProfile,
+                label: text
+                    ? {
+                        text,
+                        x,
+                        y,
+                        fontSize,
+                        bounds: {
+                            x: x + left,
+                            y: y - fontSize,
+                            width: right - left,
+                            height: fontSize * 1.3,
+                        },
+                    }
+                    : undefined,
+            },
         ];
-    })
+    });
+}
+export function renderNoConnectMarkers(document, resolver, profile, objectIds) {
+    return noConnectMarkerLayouts(document, resolver, profile, objectIds)
+        .flatMap(({ id, point, halfExtent, profile: markProfile, label }) => [
+        `<path data-object-id="${escapeXml(id)}" data-role="no-connect" d="M ${point.x - halfExtent} ${point.y - halfExtent} L ${point.x + halfExtent} ${point.y + halfExtent} M ${point.x + halfExtent} ${point.y - halfExtent} L ${point.x - halfExtent} ${point.y + halfExtent}" fill="none" stroke="${markProfile.foreground}" stroke-width="${markProfile.strokes.normal}" stroke-linecap="${markProfile.lineCap}"/>`,
+        ...(label
+            ? [
+                `<text data-object-id="${escapeXml(id)}" data-role="no-connect-member" x="${label.x}" y="${label.y}" fill="${markProfile.foreground}" font-size="${label.fontSize}">${escapeXml(label.text)}</text>`,
+            ]
+            : []),
+    ])
         .join("");
 }
 /**

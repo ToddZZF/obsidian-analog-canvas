@@ -6,6 +6,11 @@ import { repairBoundFormatOverrides } from "./transforms/bound-format-override.j
 import { repairMisdrawnReviewedBindings } from "./transforms/misdrawn-reviewed-binding.js";
 import { repairUnmodelledReviewedSizes } from "./transforms/reviewed-size.js";
 import { repairAmplifierPolaritySnapshots } from "./transforms/amplifier-polarity.js";
+import { repairSupplyPinSnapshots } from "./transforms/supply-pins.js";
+import { repairAdcBodySnapshots } from "./transforms/adc-body.js";
+import { repairSymbolBodySnapshots } from "./transforms/symbol-body.js";
+import { upgradeRetiredSymbolLibraryLock } from "./transforms/symbol-library-lock.js";
+import { rejectClosedBodyGeometry } from "./closed-body-envelope.js";
 import { OLDEST_SUPPORTED_PROJECT_SCHEMA_VERSION } from "./version.js";
 import { upgradeSchema49To50 } from "./transforms/simulation-folders.js";
 import { upgradeSchema50To51 } from "./transforms/drafting-shape-paint.js";
@@ -15,7 +20,7 @@ import { upgradeSchema53To54 } from "./transforms/parameter-annotations.js";
 import { upgradeSchema54To55 } from "./transforms/arrow-end-styles.js";
 import { upgradeSchema55To56 } from "./transforms/route-line-style.js";
 import { upgradeSchema56To57 } from "./transforms/power-rail-terminals.js";
-import { CURRENT_PROJECT_FILE_VERSION, decodeProjectFile, rejectKeptDocumentStyle, } from "./owned-project-file.js";
+import { CURRENT_PROJECT_FILE_VERSION, decodeProjectFile, rejectKeptDocumentStyle, rejectSignalMembers, rejectOrderedSignals, rejectMemberNoConnect, } from "./owned-project-file.js";
 /**
  * One upgrade step per historical version, oldest first: entry N carries a
  * Project from schemaVersion OLDEST + N to OLDEST + N + 1. A file loads by
@@ -61,9 +66,10 @@ const UPGRADE_CHAIN = [
 function isRecord(value) {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function hasExplicitCellBody(project) {
+/** Whether any Cell symbol presentation in the file carries `field`. */
+function hasCellSymbolField(project, field) {
     const items = (value) => Array.isArray(value) ? value.filter(isRecord) : [];
-    const presentationHasBody = (value) => isRecord(value) && Object.hasOwn(value, "bodyBounds");
+    const presentationHasBody = (value) => isRecord(value) && Object.hasOwn(value, field);
     const artworkHasBody = (value) => isRecord(value) &&
         isRecord(value.generatedFrom) &&
         presentationHasBody(value.generatedFrom.presentation);
@@ -99,7 +105,7 @@ function checkedProject(result) {
                     : segment),
             })),
         };
-    const project = repairAmplifierPolaritySnapshots(result.data);
+    const project = repairAdcBodySnapshots(repairSupplyPinSnapshots(repairAmplifierPolaritySnapshots(result.data)));
     const modelDiagnostics = collectProjectModelSources(project, project.externalSubcircuitDefinitions.map((d) => d.id)).diagnostics.filter((d) => d.severity === "error");
     if (modelDiagnostics.length)
         return {
@@ -171,11 +177,69 @@ export function tryParseProjectWithMetadata(serialized) {
     }
     let current;
     try {
-        if (sourceSchemaVersion < 74 && hasExplicitCellBody(parsed))
+        if (sourceSchemaVersion < 82)
+            rejectClosedBodyGeometry(parsed);
+        if (sourceSchemaVersion < 81 && Array.isArray(parsed.documents)) {
+            for (const [index, item] of parsed.documents.entries()) {
+                if (!isRecord(item))
+                    continue;
+                if (Object.hasOwn(item, "drawingOrder"))
+                    throw new ProjectFormatError([
+                        {
+                            code: "INVALID_PROJECT",
+                            message: "A drawing order requires Project schema 81",
+                            path: ["documents", index, "drawingOrder"],
+                        },
+                    ]);
+                if (Array.isArray(item.instances))
+                    for (const [instanceIndex, instance] of item.instances.entries())
+                        if (isRecord(instance) && Object.hasOwn(instance, "bodyFill"))
+                            throw new ProjectFormatError([
+                                {
+                                    code: "INVALID_PROJECT",
+                                    message: "A symbol body fill requires Project schema 81",
+                                    path: [
+                                        "documents",
+                                        index,
+                                        "instances",
+                                        instanceIndex,
+                                        "bodyFill",
+                                    ],
+                                },
+                            ]);
+            }
+        }
+        if (sourceSchemaVersion < 75)
+            rejectSignalMembers(parsed);
+        if (sourceSchemaVersion < 76)
+            rejectOrderedSignals(parsed);
+        if (sourceSchemaVersion < 77)
+            rejectMemberNoConnect(parsed);
+        if (sourceSchemaVersion < 78 &&
+            Array.isArray(parsed.documents) &&
+            parsed.documents.some((document) => isRecord(document) &&
+                isRecord(document.presentation) &&
+                Object.hasOwn(document.presentation, "crossingStyle")))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "Wire hops require Project schema 78",
+                    path: ["documents"],
+                },
+            ]);
+        if (sourceSchemaVersion < 74 && hasCellSymbolField(parsed, "bodyBounds"))
             throw new ProjectFormatError([
                 {
                     code: "INVALID_PROJECT",
                     message: "An explicit Cell symbol body requires Project schema 74",
+                    path: ["schemaVersion"],
+                },
+            ]);
+        if (sourceSchemaVersion < 80 && hasCellSymbolField(parsed, "artwork"))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "A Cell's custom symbol artwork requires Project schema 80",
                     path: ["schemaVersion"],
                 },
             ]);
@@ -203,6 +267,19 @@ export function tryParseProjectWithMetadata(serialized) {
                 {
                     code: "INVALID_PROJECT",
                     message: "A Document font requires Project schema 72",
+                    path: ["documents"],
+                },
+            ]);
+        if (sourceSchemaVersion < 79 &&
+            Array.isArray(parsed.documents) &&
+            parsed.documents.some((document) => isRecord(document) &&
+                isRecord(document.presentation) &&
+                Object.hasOwn(document.presentation, "textFace") &&
+                document.presentation.textFace !== "serif"))
+            throw new ProjectFormatError([
+                {
+                    code: "INVALID_PROJECT",
+                    message: "A Document font other than the serif requires Project schema 79",
                     path: ["documents"],
                 },
             ]);
@@ -310,13 +387,18 @@ export function tryParseProjectWithMetadata(serialized) {
     // author, a file that is gone.
     // SPICE invocation prefixes belong to export, never to file loading.
     current = repairBoundFormatOverrides(current);
+    const relocked = upgradeRetiredSymbolLibraryLock(current);
+    const lockMigrated = relocked !== current;
+    current = relocked;
     const validated = tryValidateProject(current);
     if (!validated.ok)
         return validated;
     // A Var Cap bound to the SKY130 varactor (#1298) could be neither wired nor
     // exported; it opens as an ideal Var Cap. A repair the schema would refuse
     // leaves the Project as it was rather than refusing to open it.
-    let project = validated.project;
+    let project = sourceSchemaVersion < 82
+        ? repairSymbolBodySnapshots(validated.project)
+        : validated.project;
     const repaired = repairMisdrawnReviewedBindings(project);
     if (repaired !== project) {
         const checked = CircuitProjectSchema.safeParse(repaired);
@@ -368,7 +450,7 @@ export function tryParseProjectWithMetadata(serialized) {
         ok: true,
         project,
         sourceSchemaVersion,
-        migrated: migrated || validated.migrated,
+        migrated: migrated || lockMigrated || validated.migrated,
     };
 }
 export function parseProjectWithMetadata(serialized) {

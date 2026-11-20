@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { cellSymbolPinFitsBody } from "../cell-symbol-layout.js";
 import { StableIdSchema } from "./common.js";
+import { SymbolDefinitionSchema, } from "./symbol-definition.js";
+import { SymbolTerminalMappingSchema, } from "./symbol-binding.js";
 /** Symbol-local grid used by derived hierarchical Cell block geometry. */
 const CELL_SYMBOL_CONNECTION_GRID = 10;
 function symbolGridMultiple(value) {
@@ -52,12 +54,17 @@ const CellSymbolBodyBoundsSchema = z
     .refine((bounds) => bounds.right - bounds.left >= 20 && bounds.bottom - bounds.top >= 20, {
     message: "Cell symbol body must be at least 20 units wide and high",
 });
+const CellSymbolArtworkSchema = z.strictObject({
+    symbol: SymbolDefinitionSchema,
+    terminals: z.array(SymbolTerminalMappingSchema).max(256),
+});
 export const CellSymbolPresentationSchema = z
     .strictObject({
     minimumBodySize: CellSymbolBodySizeSchema.optional(),
     /** Explicit edited edges; never fitted to text or recentered. */
     bodyBounds: CellSymbolBodyBoundsSchema.optional(),
     pinPlacements: z.array(CellSymbolPinPlacementSchema).max(256).optional(),
+    artwork: CellSymbolArtworkSchema.optional(),
 })
     .superRefine((presentation, context) => {
     const terminals = new Set(), slots = new Set();
@@ -116,6 +123,12 @@ export const StyleOverridesSchema = z.strictObject({
  * exactly like its source. An object without it follows its Document.
  */
 export const ObjectDocumentStyleSchema = StyleOverridesSchema;
+/**
+ * The faces a Document may set all its text in instead of Metropolis
+ * (#1725): Times New Roman's metrics ("serif", Liberation Serif), Arial's
+ * ("sans", Liberation Sans) or LaTeX's ("latin-modern", Latin Modern Roman).
+ */
+export const DOCUMENT_TEXT_FACES = ["serif", "sans", "latin-modern"];
 export const PresentationIntentSchema = z.strictObject({
     styleProfileId: StableIdSchema,
     grid: z.number().int().positive(),
@@ -132,7 +145,12 @@ export const PresentationIntentSchema = z.strictObject({
     /** Slant of the leading character, independent of the subscript. */
     labelFirstLetterItalic: z.boolean().optional(),
     /** The one font of all the Document's text; absent means Metropolis. */
-    textFace: z.enum(["serif"]).optional(),
+    textFace: z.enum(DOCUMENT_TEXT_FACES).optional(),
+    /**
+     * How a wire crossing that is not a connection draws: "hop" arcs the
+     * horizontal wire over the vertical one; absent means a plain cross.
+     */
+    crossingStyle: z.enum(["hop"]).optional(),
     flow: z
         .strictObject({
         power: z.literal("top").optional(),

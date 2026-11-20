@@ -1,7 +1,14 @@
 import { ProjectSimulationFolderSchema, SimulationExperimentConfigSchema, NativeSimulationExperimentConfigSchema, } from "./schema.js";
-/** The same small starter text for a human or Agent; no hidden analyses writer. */
+/**
+ * The same small starter text for a human or Agent; no hidden analyses writer.
+ * Without a Profile the folder has no configuration file and SPICE syntax: it
+ * is the author's Testbench, run with their own simulator (#2110).
+ */
 export function createSimulationFolder(options) {
-    const ngspice = options.engine === "ngspice";
+    if (options.template === "testbench")
+        return testbenchFolder(options);
+    const ngspice = options.engine === "ngspice" ||
+        (options.engine === undefined && options.profileId === undefined);
     const comment = ngspice ? "*" : "//";
     // Always-quoted interface identifiers preserve exact case and punctuation.
     // These are names, not source snippets; never interpolate new statements.
@@ -10,10 +17,12 @@ export function createSimulationFolder(options) {
             throw new Error("A native DUT identifier must be non-empty and contain no whitespace");
         return ngspice ? name : `'${name.replaceAll("'", "''")}'`;
     };
-    const config = NativeSimulationExperimentConfigSchema.parse({
-        version: 2,
-        environment: { profileId: options.profileId },
-    });
+    const config = options.profileId === undefined
+        ? null
+        : NativeSimulationExperimentConfigSchema.parse({
+            version: 2,
+            environment: { profileId: options.profileId },
+        });
     return ProjectSimulationFolderSchema.parse({
         id: options.id,
         name: options.name,
@@ -81,10 +90,14 @@ export function createSimulationFolder(options) {
                         "",
                     ].join("\n"),
                 },
-                {
-                    path: "experiment.json",
-                    text: JSON.stringify(config, null, 2) + "\n",
-                },
+                ...(config
+                    ? [
+                        {
+                            path: "experiment.json",
+                            text: JSON.stringify(config, null, 2) + "\n",
+                        },
+                    ]
+                    : []),
             ],
             circuitBindings: options.documentId
                 ? [
@@ -93,6 +106,54 @@ export function createSimulationFolder(options) {
                         path: "circuit.spice",
                         documentId: options.documentId,
                         emission: options.dut ? "subcircuit" : "top-level",
+                    },
+                ]
+                : [],
+            dependencies: [],
+        },
+    });
+}
+/**
+ * An author's Testbench: one SPICE entry that includes the Cell and calls it.
+ * The configuration path is reserved but holds no file until a Profile is
+ * chosen, so nothing here depends on a hosted environment.
+ */
+function testbenchFolder(options) {
+    const dut = options.dut;
+    if (dut && [dut.name, ...dut.ports].some((name) => !name || /\s/u.test(name)))
+        throw new Error("A DUT identifier must be non-empty and contain no whitespace");
+    const text = [
+        // Short lines: they are read in the editor's side panel.
+        `* ${options.name.replace(/[\r\n]/gu, " ")}`,
+        "* Run with your own simulator and PDK.",
+        "* circuit.spice: File › Export netlist.",
+        "* Specs, e.g.  * @spec gain >= 60 unit=dB",
+        ...(options.documentId ? ['.include "circuit.spice"'] : []),
+        ...(dut
+            ? dut.ports.length
+                ? [`XDUT ${[...dut.ports, dut.name].join(" ")}`]
+                : ["* The Cell has no pins: it is the bench."]
+            : []),
+        "* Sources, loads and analyses here.",
+        ".end",
+        "",
+    ].join("\n");
+    return ProjectSimulationFolderSchema.parse({
+        id: options.id,
+        name: options.name,
+        version: 4,
+        input: {
+            kind: "source",
+            entry: "testbench.spice",
+            configPath: "experiment.json",
+            files: [{ path: "testbench.spice", text }],
+            circuitBindings: options.documentId
+                ? [
+                    {
+                        id: "circuit",
+                        path: "circuit.spice",
+                        documentId: options.documentId,
+                        emission: dut?.ports.length ? "subcircuit" : "top-level",
                     },
                 ]
                 : [],

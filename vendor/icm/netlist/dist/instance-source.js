@@ -1,5 +1,5 @@
-import { drawnMagneticNetwork, drawnMagneticParameters, resolveCommittedDocumentLogicalNets, } from "@icm/derived";
-import { deviceDescriptor } from "@icm/devices";
+import { resolveCommittedDocumentLogicalNets } from "@icm/derived";
+import { deviceDescriptor, drawnMagneticNetwork, drawnMagneticParameters, } from "@icm/devices";
 import { spellGreekLetters, } from "@icm/model";
 import { analyzeDesignNetlist, analyzeDesignNetlistForAuthoring, } from "./extract.js";
 import { printSpiceCellInstances } from "./printers.js";

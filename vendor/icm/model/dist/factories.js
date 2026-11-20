@@ -41,6 +41,12 @@ export function createCellDocument(id, name, presentation) {
     delete child.presentation.cellSymbol;
     return child;
 }
+/** The Symbol Library every current Project locks (packages/components/catalog.json). */
+export const CURRENT_SYMBOL_LIBRARY_LOCK = Object.freeze({
+    id: "razavi-symbols",
+    version: "1",
+    hash: "razavi-reference-v1",
+});
 export function createEmptyProject(id, name, documentId = "document-main") {
     return CircuitProjectSchema.parse({
         schemaVersion: CURRENT_MODEL_SCHEMA_VERSION,
@@ -52,11 +58,7 @@ export function createEmptyProject(id, name, documentId = "document-main") {
             sourcePolicy: "copy",
             files: [],
         },
-        symbolLibrary: {
-            id: "razavi-symbols",
-            version: "1",
-            hash: "razavi-reference-v1",
-        },
+        symbolLibrary: { ...CURRENT_SYMBOL_LIBRARY_LOCK },
         structureRevision: 0,
         topDocumentId: documentId,
         documents: [createEmptyDocument(documentId, "dut")],

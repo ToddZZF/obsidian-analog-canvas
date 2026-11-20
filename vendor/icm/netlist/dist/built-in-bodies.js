@@ -1,10 +1,12 @@
-import { ADDER_SIGNED_INPUTS, ADDER_TARGET, IDEAL_COMPARATOR_TARGET, OPAMP_TARGET, adderBodySigns, builtInModelContract, builtInSubcircuitDescriptors, isIdealComparatorBody, idealComparatorModelTarget, isIdealOpampBody, } from "@icm/devices";
+import { ADDER_SIGNED_INPUTS, ADDER_TARGET, IDEAL_COMPARATOR_TARGET, OPAMP_TARGET, adderBodySigns, builtInDeviceDescriptors, drawnMagneticNetwork, builtInModelContract, builtInSubcircuitDescriptors, isIdealComparatorBody, idealComparatorModelTarget, isIdealOpampBody, subcircuitDescriptor, } from "@icm/devices";
 import { printSpectreBehavioralModel } from "./behavioral-model.js";
 import { generatedBehavioralDefinition, generatedBehavioralModel, } from "./generated-models.js";
 import { idealAnalogBlockCell } from "./ideal-analog-block-models.js";
 import { chopperBehavioralDefinition, IDEAL_CHOPPER_TARGET, IDEAL_SWITCH_MODEL, spiceChopperBody, switchBehavioralDefinition, } from "./ideal-switch-model.js";
+import { magneticSubcircuit } from "./extract-magnetic.js";
 import { bodySupplies } from "./implicit-mos-supplies.js";
-import { printGeneratedCell, spiceModelCard } from "./printers.js";
+import { withoutReservedPrefix } from "./library-part-calls.js";
+import { printGeneratedCell, printMagneticSubcircuit, spiceModelCard, } from "./printers.js";
 /**
  * A source's statements, each with its continuation lines joined: a SPICE
  * line starting with `+` continues the statement before it, a Spectre line
@@ -113,11 +115,12 @@ function isIdealSwitchCard(text) {
  */
 function chopperBody(header, body, format) {
     const name = format === "spice" ? header.name.toLowerCase() : header.name;
-    if (name !== IDEAL_CHOPPER_TARGET)
+    if (name !== IDEAL_CHOPPER_TARGET &&
+        withoutReservedPrefix(name) !== IDEAL_CHOPPER_TARGET)
         return null;
     const printed = format === "spice"
-        ? spiceChopperBody()
-        : printSpectreBehavioralModel(chopperBehavioralDefinition());
+        ? spiceChopperBody(name)
+        : printSpectreBehavioralModel({ ...chopperBehavioralDefinition(), name });
     if (!samePrinting(printed, body, format))
         return null;
     return {
@@ -135,16 +138,62 @@ function chopperBody(header, body, format) {
     };
 }
 /**
+ * The T-coil or transformer a subcircuit is the coupled windings of, if
+ * Analog Canvas prints exactly these statements for it with these ports, in
+ * any order of them: an RNL file lists them in its symbol's terminal order.
+ */
+function magneticBody(header, body, format) {
+    const name = format === "spice" ? header.name.toLowerCase() : header.name;
+    for (const definition of builtInDeviceDescriptors) {
+        const network = drawnMagneticNetwork(definition);
+        // A body that yielded its name is written with the reserved prefix
+        // (#1928).
+        if (!network ||
+            (network.subcircuit !== name &&
+                network.subcircuit !== withoutReservedPrefix(name)))
+            continue;
+        const order = header.ports.map((port) => network.ports.find((candidate) => format === "spice"
+            ? candidate.port.toLowerCase() === port.toLowerCase()
+            : candidate.port === port));
+        if (order.length !== network.ports.length ||
+            !order.every((port) => port !== undefined) ||
+            new Set(order).size !== order.length)
+            return null;
+        const printed = printMagneticSubcircuit({
+            ...magneticSubcircuit(network, definition),
+            name,
+            ports: order.map((port) => port.port),
+        }, format);
+        if (!samePrinting(printed, body, format))
+            return null;
+        return {
+            name: header.name,
+            kind: "subcircuit",
+            symbolId: definition.id,
+            ports: order.map((port) => ({ pinName: port.pinName })),
+        };
+    }
+    return null;
+}
+/**
  * The block a subcircuit is the body of, if Analog Canvas prints exactly
  * these statements for it with these ports: printing the body again and
  * comparing statement for statement tells it from an author's subcircuit of
  * the same name.
  */
 function builtInBody(header, body, format) {
-    const name = format === "spice" ? header.name.toLowerCase() : header.name;
-    const behavioral = isIdealOpampBody(name) ||
+    const written = format === "spice" ? header.name.toLowerCase() : header.name;
+    const behavioralBody = (name) => isIdealOpampBody(name) ||
         isIdealComparatorBody(name) ||
-        ["logic", "signal"].includes(builtInModelContract(name)?.family ?? "");
+        ["logic", "signal", "passive"].includes(builtInModelContract(name)?.family ?? "");
+    // A body that yielded its name to an author's definition is written with
+    // the reserved prefix (#1928).
+    const name = [written, withoutReservedPrefix(written)].find((candidate) => candidate !== undefined &&
+        (behavioralBody(candidate) ||
+            idealAnalogBlockCell(candidate, format) !== null));
+    if (!name)
+        return null;
+    const behavioral = behavioralBody(name);
     const cell = behavioral ? null : idealAnalogBlockCell(name, format);
     if (!behavioral && !cell)
         return null;
@@ -161,11 +210,12 @@ function builtInBody(header, body, format) {
     const printed = cell
         ? printGeneratedCell({
             ...cell,
+            name: written,
             ports: order.flatMap((port) => cell.ports.filter((candidate) => candidate.name === port)),
         }, format)
         : format === "spice"
-            ? generatedBehavioralModel(name, order)
-            : printSpectreBehavioralModel(generatedBehavioralDefinition(name, order));
+            ? generatedBehavioralModel(name, order, written)
+            : printSpectreBehavioralModel(generatedBehavioralDefinition(name, order, written));
     if (!samePrinting(printed, body, format))
         return null;
     const target = isIdealOpampBody(name)
@@ -187,7 +237,7 @@ function builtInBody(header, body, format) {
     // A body that reads neither supply takes ground for one nothing was
     // bound to. The op-amp is the exception: a bound VDD powers it, and only
     // its numeric body is unpowered.
-    const unread = bodySupplies(name, new Set(), format).length === 0;
+    const unread = bodySupplies(name, format).length === 0;
     const signs = adderBodySigns(name);
     return {
         name: header.name,
@@ -213,9 +263,34 @@ function builtInBody(header, body, format) {
     };
 }
 /**
+ * The library block `symbolId` draws, where a call of `name` is that block
+ * as Analog Canvas writes it for `format` without its body: a flip-flop or
+ * a signal block in Spectre, whose definition the reader's libraries give.
+ * Its ports are in the order the call prints them. Null for any other name
+ * or symbol. A netlist alone never says a call is such a block; another
+ * reading of the same file must, such as the RNL symbol it is drawn with.
+ */
+export function callOnlyBlock(name, symbolId, format) {
+    const contract = builtInModelContract(format === "spice" ? name.toLowerCase() : name);
+    // Any Library symbol drawing the body, an input-swapped sibling included.
+    if (!contract ||
+        subcircuitDescriptor(symbolId)?.target !== contract.target ||
+        contract.backends[format] !== "external")
+        return null;
+    return {
+        name,
+        kind: "subcircuit",
+        symbolId: contract.symbolId,
+        target: contract.target,
+        ports: contract.ports.map((port) => port.supply
+            ? { supply: port.supply, unboundAtGround: false }
+            : { pinName: port.pinName }),
+    };
+}
+/**
  * The bodies Analog Canvas writes itself that a netlist source defines (an
- * op-amp's, a logic gate's, an ideal block's, the chopper's, the ideal
- * switch's), for the SPICE / SCS import to bring each card naming one in as
+ * op-amp's, a logic gate's, an ideal block's, the chopper's, a T-coil's or
+ * transformer's, the ideal switch's), for the SPICE / SCS import to bring each card naming one in as
  * the part that wrote it. `text` is the source as the conversion to SPICE
  * takes it: a SPICE source comes back unchanged; in a Spectre one each such
  * body's statements are blanked, its header and parameters kept, so that the
@@ -274,7 +349,8 @@ export function findBuiltInBodies(source, format, path) {
         if (open.length)
             continue;
         const body = builtInBody(closed.header, block, format) ??
-            chopperBody(closed.header, block, format);
+            chopperBody(closed.header, block, format) ??
+            magneticBody(closed.header, block, format);
         if (!body)
             continue;
         bodies.push({ ...body, source: { path, line: block[0].first + 1 } });

@@ -1,5 +1,5 @@
-import { isGridAlignedCoordinate, electricalConnectionGrid, SYMBOL_STANDARD_GRID, transformPoint, } from "@icm/model";
-import { resolveSignalFlowPinAt } from "@icm/symbols";
+import { isGridAlignedCoordinate, electricalConnectionGrid, SYMBOL_STANDARD_GRID, transformPoint, junctionElectricalEndpoints, } from "@icm/model";
+import { relocatedPin, resolveSignalFlowPinAt, } from "@icm/symbols";
 import { mosBulkShouldBeVisible } from "./mos-bulk.js";
 import { resolveCommittedDocumentLogicalNets, } from "./logical-net.js";
 /** One raw lookup for this exact model value, including hidden MOS body policy. */
@@ -7,7 +7,7 @@ export function buildEndpointObjectLookup(document) {
     return {
         instancesById: new Map(document.instances.map((instance) => [instance.id, instance])),
         junctionsById: new Map(document.junctions.map((junction) => [junction.id, junction])),
-        logicalNets: resolveCommittedDocumentLogicalNets(document),
+        logicalNetResolution: resolveCommittedDocumentLogicalNets(document),
     };
 }
 function samePoint(left, right) {
@@ -134,17 +134,18 @@ export function resolveEndpointConnection(document, resolver, endpoint, lookup) 
 export function endpointKey(endpoint) {
     switch (endpoint.kind) {
         case "terminal":
-            return `terminal:${endpoint.instanceId}:${endpoint.pinName}`;
+            return `terminal:${endpoint.instanceId}:${endpoint.pinName}${endpoint.memberId ? `:member:${endpoint.memberId}` : ""}`;
         case "junction":
-            return `junction:${endpoint.junctionId}`;
+            return `junction:${endpoint.junctionId}${endpoint.memberId ? `:member:${endpoint.memberId}` : ""}`;
     }
 }
 /**
  * Returns whether an endpoint participates in the visible wiring graph.
  * Electrical Net membership is intentionally not consulted or mutated here.
- * A variant-hidden pin is an implicit presentation terminal. A base
- * `conditional` pin stays visible until a context-aware policy explicitly
- * proves that hiding it is safe.
+ * A variant-hidden pin is an implicit presentation terminal, unless the
+ * variant moves it elsewhere on its art. A base `conditional` pin stays
+ * visible until a context-aware policy explicitly proves that hiding it is
+ * safe.
  */
 export function isVisibleEndpoint(document, resolver, endpoint, lookup) {
     if (endpoint.kind !== "terminal")
@@ -157,9 +158,12 @@ export function isVisibleEndpoint(document, resolver, endpoint, lookup) {
     if (!resolved)
         return false;
     if (resolved.variant?.hiddenPinNames.includes(endpoint.pinName)) {
+        // A pin the variant moves is drawn where it moved to (#2170).
+        if (relocatedPin(resolved.variant, endpoint.pinName))
+            return true;
         return Boolean(endpoint.pinName === "B" &&
             resolved.variant.auxiliaryPins?.some((pin) => pin.name === "B") &&
-            mosBulkShouldBeVisible(document, instance, lookup?.logicalNets));
+            mosBulkShouldBeVisible(document, instance, lookup?.logicalNetResolution));
     }
     const pin = resolved.definition.pins.find((candidate) => candidate.name === endpoint.pinName);
     return pin !== undefined && pin.presentation.visibility !== "implicit";
@@ -176,9 +180,12 @@ export function endpointBelongsToNet(document, net, endpoint) {
     switch (endpoint.kind) {
         case "terminal":
             return net.terminals.some((terminal) => terminal.instanceId === endpoint.instanceId &&
-                terminal.pinName === endpoint.pinName);
+                terminal.pinName === endpoint.pinName &&
+                terminal.memberId === endpoint.memberId);
         case "junction":
-            return document.junctions.some((junction) => junction.id === endpoint.junctionId && junction.netId === net.id);
+            return document.junctions.some((junction) => junction.id === endpoint.junctionId &&
+                junctionElectricalEndpoints(junction).some((item) => item.netId === net.id &&
+                    endpointKey(item.endpoint) === endpointKey(endpoint)));
     }
 }
 export function netEndpoints(document, net) {
@@ -188,10 +195,8 @@ export function netEndpoints(document, net) {
             ...terminal,
         })),
         ...document.junctions
-            .filter((junction) => junction.netId === net.id)
-            .map((junction) => ({
-            kind: "junction",
-            junctionId: junction.id,
-        })),
+            .flatMap(junctionElectricalEndpoints)
+            .filter((item) => item.netId === net.id)
+            .map((item) => item.endpoint),
     ].sort((left, right) => endpointKey(left).localeCompare(endpointKey(right), "en"));
 }

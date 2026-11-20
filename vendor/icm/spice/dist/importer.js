@@ -1,18 +1,23 @@
-import { CURRENT_MODEL_SCHEMA_VERSION, CircuitProjectSchema, deriveStableId, } from "@icm/model";
+import { CURRENT_MODEL_SCHEMA_VERSION, CURRENT_SYMBOL_LIBRARY_LOCK, CircuitProjectSchema, deriveStableId, } from "@icm/model";
 import { deviceDescriptor, reviewedExternalBindingForMaster, reviewedExternalBindingForTerminalCount, sky130MicrometresToProjectLength, } from "@icm/devices";
 import { externalSubcircuitSymbolId, isPdkMappableSymbolId, isRazaviProductSymbolId, resolvePdkSymbolMapping, } from "@icm/symbols";
 import { diagnostic } from "./diagnostics.js";
 import { compileSpiceSources } from "./compiler.js";
 import { decodeSourceContent, isSpectreSource, normalizeSourcePath, } from "./source.js";
 import { parseNgspiceSourceParameters } from "./source-parameters.js";
-/** The key a built-in body is found by: its kind and its name, any case. */
+/**
+ * The key a built-in body is found by: its kind and its name, any case; a
+ * called block's is `call`.
+ */
 const builtInBodyKey = (kind, name) => `${kind}:${name.toLowerCase()}`;
-/** The built-in body a card names, if the sources define one. */
+/** The built-in body a card names, if the sources define one or call it as a called block. */
 function calledBuiltInBody(instance, bodies) {
     if (instance.target.kind === "subcircuit")
         return bodies.get(builtInBodyKey("subcircuit", instance.target.cellName));
     if (instance.target.kind === "model")
         return bodies.get(builtInBodyKey("model", instance.target.modelName));
+    if (instance.target.kind === "external-subcircuit")
+        return bodies.get(builtInBodyKey("call", instance.target.masterName));
     return undefined;
 }
 /**
@@ -117,6 +122,8 @@ function netlistDeviceClass(symbolId) {
         "zener-diode": "diode",
         npn: "bjt",
         pnp: "bjt",
+        njfet: "jfet",
+        pjfet: "jfet",
         "voltage-source": "voltage-source",
         "current-source": "current-source",
         "voltage-controlled-switch": "switch",
@@ -195,6 +202,10 @@ function symbolFor(instance, modelTypeByName, symbolMappings) {
             return { symbolId: "npn", pinNames: ["C", "B", "E"] };
         if (instance.terminals.length === 3 && modelType === "pnp")
             return { symbolId: "pnp", pinNames: ["C", "B", "E"] };
+        if (instance.terminals.length === 3 && modelType === "njf")
+            return { symbolId: "njfet", pinNames: ["D", "G", "S"] };
+        if (instance.terminals.length === 3 && modelType === "pjf")
+            return { symbolId: "pjfet", pinNames: ["D", "G", "S"] };
         if (instance.terminals.length === 4 && modelType === "nmos")
             return { symbolId: "nmos", pinNames: ["D", "G", "S", "B"] };
         if (instance.terminals.length === 4 && modelType === "pmos")
@@ -315,7 +326,7 @@ function importProvenance(instance, modelTypeByName, symbolMappings) {
  * A device card naming a model no .model card declares cannot say what it
  * is. The symbol catalog is not what is missing, so say what is.
  */
-function undeclaredModelMessage(instance, modelTypeByName, spectre) {
+function undeclaredModelMessage(instance, modelTypeByName, spectre, givesModelTypes) {
     if (instance.target.kind !== "model")
         return undefined;
     const model = instance.target.modelName;
@@ -325,6 +336,8 @@ function undeclaredModelMessage(instance, modelTypeByName, spectre) {
     if (!types.length)
         return undefined;
     const declaration = spectre ? "model statement" : ".model card";
+    if (givesModelTypes)
+        return `${instance.name} uses model ${model}, which no ${declaration} declares (an external library may hold its card), so its device type is unknown. Give its device type in modelTypes, such as {"${model}":"${types[0]}"}, rather than editing the files.`;
     const suggestions = types.map((type) => {
         if (!spectre)
             return `".model ${model} ${type}"`;
@@ -363,13 +376,13 @@ function structureSourceTail(parameters) {
     const { waveform, ...rest } = parsed.parameters;
     Object.assign(parameters, rest, waveform === "dc" ? {} : { waveform });
 }
-function importInstance(instance, diagnostics, modelTypeByName, symbolMappings, builtInBodies, spectre) {
+function importInstance(instance, diagnostics, modelTypeByName, symbolMappings, builtInBodies, spectre, givesModelTypes) {
     const body = calledBuiltInBody(instance, builtInBodies);
     if (body)
         return importBuiltInBlock(instance, body, diagnostics);
     const mapping = symbolFor(instance, modelTypeByName, symbolMappings);
     if (!mapping) {
-        diagnostics.push(diagnostic("SPICE_IMPORT_UNSUPPORTED_SYMBOL", "error", "import", undeclaredModelMessage(instance, modelTypeByName, spectre) ??
+        diagnostics.push(diagnostic("SPICE_IMPORT_UNSUPPORTED_SYMBOL", "error", "import", undeclaredModelMessage(instance, modelTypeByName, spectre, givesModelTypes) ??
             `Unsupported SPICE device ${instance.name} (${targetDescription(instance, symbolMappings)}): the approved Razavi catalog has no symbol. Add and review a Razavi symbol mapping before importing.`, instance.sourceRef));
         return null;
     }
@@ -448,15 +461,29 @@ const SHELF_MAX_COLUMNS = 8;
 const SUPPLY_NAME = /^(?:[ad]?vdd|vcc|vpwr|vpos|vplus|pwr)/iu;
 const GROUND_NAME = /^(?:[ad]?vss|[ad]?gnd|vee|vgnd|vneg|ground)|^0$/iu;
 const OUTPUT_NAME = /^(?:v?o(?:ut)?[pn+-]?|q|qb|qn|y|z)$|^v?out/iu;
+/**
+ * What a Cell Pin's name alone says it is, as imported Pins are read: a
+ * supply, a ground or an output; undefined when the name says nothing.
+ */
+export function cellPinNameRole(name) {
+    if (SUPPLY_NAME.test(name))
+        return "supply";
+    if (GROUND_NAME.test(name))
+        return "ground";
+    if (OUTPUT_NAME.test(name))
+        return "output";
+    return undefined;
+}
 /** Supplies above, grounds below, outputs right and everything else left. A
  * name says it first; otherwise a Net only drains and collectors drive is an
  * output. */
 function cellPinSide(name, netId, nets, instances) {
-    if (SUPPLY_NAME.test(name))
+    const role = cellPinNameRole(name);
+    if (role === "supply")
         return "top";
-    if (GROUND_NAME.test(name))
+    if (role === "ground")
         return "bottom";
-    if (OUTPUT_NAME.test(name))
+    if (role === "output")
         return "right";
     let drives = 0;
     let senses = 0;
@@ -469,10 +496,12 @@ function cellPinSide(name, netId, nets, instances) {
         const pin = terminal.pinName.toUpperCase();
         if ((deviceClass === "mos" && pin === "D") ||
             (deviceClass === "bjt" && pin === "C") ||
+            (deviceClass === "jfet" && pin === "D") ||
             pin === "OUT")
             drives += 1;
         else if ((deviceClass === "mos" && pin === "G") ||
             (deviceClass === "bjt" && pin === "B") ||
+            (deviceClass === "jfet" && pin === "G") ||
             pin === "IN+" ||
             pin === "IN-")
             senses += 1;
@@ -625,6 +654,10 @@ function importedInductorCouplings(cell, documentId, importedInstanceById, diagn
 }
 function importDocument(cell, diagnostics, modelTypeByName, options, builtInBodies, spectreFileIds) {
     const symbolMappings = options.symbolMappings ?? [];
+    const externalSymbolMappings = [
+        ...symbolMappings,
+        ...(options.externalSymbolMappings ?? []),
+    ];
     const namingProfile = options.namingProfile ?? "native";
     const documentId = deriveStableId("document", cell.name.toLowerCase());
     const visibleInstances = cell.instances.filter((instance) => {
@@ -637,7 +670,9 @@ function importDocument(cell, diagnostics, modelTypeByName, options, builtInBodi
         return false;
     });
     const instances = visibleInstances
-        .map((instance) => importInstance(instance, diagnostics, modelTypeByName, symbolMappings, builtInBodies, spectreFileIds.has(instance.sourceRef.fileId)))
+        .map((instance) => importInstance(instance, diagnostics, modelTypeByName, instance.target.kind === "external-subcircuit"
+        ? externalSymbolMappings
+        : symbolMappings, builtInBodies, spectreFileIds.has(instance.sourceRef.fileId), options.undeclaredModels === "give-type"))
         .filter((instance) => instance !== null);
     const importedInstanceById = new Map(instances.map((instance) => [instance.id, instance]));
     // The two output pins are drawn terminals; E/G's control nodes and F/H's
@@ -823,9 +858,14 @@ function importDocument(cell, diagnostics, modelTypeByName, options, builtInBodi
                                     sourceNetId: net.id,
                                 },
                                 scope: "global",
+                                // A global the Cell also takes as a Pin is the supply the
+                                // Pin states (Analog Canvas writes a supply port so), one
+                                // node under one name, not a Pin on a Global Net.
                                 ...(importedName.name === "0"
                                     ? { powerDomain: "ground" }
-                                    : {}),
+                                    : cell.ports.some((port) => port.netId === net.id)
+                                        ? { powerDomain: "vdd" }
+                                        : {}),
                             }
                             : {
                                 id: deriveStableId("connectivity-evidence", documentId, "net-name-hint", net.id, net.name),
@@ -905,12 +945,97 @@ function importDocument(cell, diagnostics, modelTypeByName, options, builtInBodi
         noConnects: [],
     };
 }
+/** The file-level statements a library keeps beside its bodies. */
+const libraryStatement = (statement) => statement.kind === "parameter" ||
+    statement.kind === "model" ||
+    statement.kind === "function" ||
+    (statement.kind === "directive" && statement.category === "option");
+/**
+ * The library bodies the sources define (`libraryBodies`) as the text they
+ * are: every statement of each, and the file level's parameters, options,
+ * functions and model cards, which their bodies and the circuit's cards
+ * read, with the comments between them, in source order. What the circuit
+ * itself is (its Cells, the bodies Analog Canvas writes, its own cards)
+ * stays out, and so do the comments beside it. Each call of a body is bound
+ * to its declared interface, the ports and the parameters its header gives.
+ */
+function librarySource(bundle, library, spectreFileIds) {
+    const sourceId = deriveStableId("model-source", "library", bundle.entryPath);
+    const definitions = new Map();
+    const texts = [];
+    for (const syntax of bundle.syntaxFiles) {
+        const text = bundle.files.find((file) => file.id === syntax.fileId)?.text;
+        if (text === undefined || spectreFileIds.has(syntax.fileId))
+            continue;
+        let open = null;
+        let kept = "";
+        let previousEnd = null;
+        for (const statement of syntax.statements) {
+            if (statement.kind === "subckt_start") {
+                open = statement.name.toLowerCase();
+                if (library.has(open)) {
+                    const key = open;
+                    definitions.set(key, {
+                        id: externalDefinitionId(statement.name),
+                        name: statement.name,
+                        terminals: statement.ports.map((name, index) => ({
+                            id: deriveStableId("external-subcircuit-terminal", key, String(index)),
+                            name,
+                            direction: "passive",
+                        })),
+                        formalParameters: statement.parameters.map((parameter) => ({
+                            name: parameter.name,
+                            defaultValue: parameter.rawText,
+                        })),
+                        interfaceStatus: "declared",
+                        implementation: { kind: "source", sourceId, entry: statement.name },
+                    });
+                }
+            }
+            const keep = open === null ? libraryStatement(statement) : library.has(open);
+            if (statement.kind === "subckt_end")
+                open = null;
+            const { start, end } = statement.sourceRef;
+            if (keep)
+                kept +=
+                    previousEnd === null
+                        ? `${kept ? "\n" : ""}${text.slice(start.offset, end.offset)}`
+                        : text.slice(previousEnd, end.offset);
+            previousEnd = keep ? end.offset : null;
+        }
+        if (kept)
+            texts.push(`${kept}\n`);
+    }
+    if (!definitions.size)
+        return null;
+    return {
+        source: {
+            id: sourceId,
+            language: "spice",
+            entry: "library.spice",
+            files: [{ path: "library.spice", text: texts.join("\n") }],
+            dependencies: [],
+            revision: 1,
+        },
+        definitions,
+    };
+}
+/**
+ * A call's parameters named as the body's header names them (`W` where the
+ * card reads `w`), so the call prints as it was written.
+ */
+function formallyNamed(parameters, definition) {
+    return Object.fromEntries(Object.entries(parameters).map(([name, value]) => [
+        definition.formalParameters.find((formal) => formal.name.toLowerCase() === name)?.name ?? name,
+        value,
+    ]));
+}
 /**
  * Records a stable document link for an imported `X` instance. Typed
  * `netlist.binding` is the navigation authority; import provenance retains the
  * source spelling without becoming an electrical runtime fallback.
  */
-function bindImportedChildDocuments(documents) {
+function bindImportedChildDocuments(documents, libraryDefinitions = new Map()) {
     const documentIdByCellName = new Map(documents.flatMap((document) => {
         const cellName = document.sourceBinding?.cellName;
         return cellName ? [[cellName.toLowerCase(), document.id]] : [];
@@ -931,9 +1056,11 @@ function bindImportedChildDocuments(documents) {
             const externalDefinition = !childDocumentId
                 ? (() => {
                     const key = instance.importProvenance.sourceMasterName.toLowerCase();
-                    const existing = externalDefinitions.get(key);
-                    if (existing)
+                    const existing = externalDefinitions.get(key) ?? libraryDefinitions.get(key);
+                    if (existing) {
+                        externalDefinitions.set(key, existing);
                         return existing;
+                    }
                     const definition = {
                         id: externalDefinitionId(instance.importProvenance.sourceMasterName),
                         name: instance.importProvenance.sourceMasterName,
@@ -967,6 +1094,7 @@ function bindImportedChildDocuments(documents) {
                 importProvenance: {
                     ...instance.importProvenance,
                     status: childDocumentId ||
+                        externalDefinition?.implementation ||
                         (isImportedExternal &&
                             Boolean(instance.importProvenance?.symbolMappingRegistryId))
                         ? "resolved"
@@ -975,6 +1103,11 @@ function bindImportedChildDocuments(documents) {
                 netlist: instance.netlist
                     ? {
                         ...instance.netlist,
+                        ...(externalDefinition?.implementation
+                            ? {
+                                parameters: formallyNamed(instance.netlist.parameters, externalDefinition),
+                            }
+                            : {}),
                         binding: childDocumentId
                             ? {
                                 kind: "subcircuit",
@@ -994,44 +1127,87 @@ function bindImportedChildDocuments(documents) {
         externalSubcircuitDefinitions: [...externalDefinitions.values()],
     };
 }
+/**
+ * The library bodies `libraryBodies` names that the SPICE sources define,
+ * less a built-in body; none where the circuit would be left without a top.
+ */
+function libraryCells(ir, options, isBody, spectreFileIds) {
+    const named = new Set((options.libraryBodies ?? []).map((name) => name.toLowerCase()));
+    const library = new Set(ir.cells
+        .filter((cell) => named.has(cell.name.toLowerCase()) &&
+        !isBody(cell.name) &&
+        !spectreFileIds.has(cell.sourceRef.fileId))
+        .map((cell) => cell.name.toLowerCase()));
+    return ir.topCells.some((name) => !isBody(name) && !library.has(name.toLowerCase()))
+        ? library
+        : new Set();
+}
 function sourceProjectName(bundle) {
     const filename = bundle.entryPath.split("/").at(-1) ?? bundle.entryPath;
     return filename.replace(/\.[^.]+$/u, "") || "Imported SPICE";
 }
 function importCircuitIR(ir, bundle, inputDiagnostics = [], options = {}) {
     const diagnostics = [...inputDiagnostics];
-    const modelTypeByName = new Map(ir.models.map((model) => [
-        model.name.toLowerCase(),
-        model.modelType.toLowerCase(),
-    ]));
-    const builtInBodies = new Map((options.builtInBodies ?? [])
-        .filter((body) => {
-        const definitions = (body.kind === "subcircuit" ? ir.cells : ir.models).filter((definition) => definition.name.toLowerCase() === body.name.toLowerCase());
-        const matches = (candidate, definition) => bundle.files.some((file) => file.id === definition.sourceRef.fileId &&
-            file.path === normalizeSourcePath(candidate.source.path)) && definition.sourceRef.start.line === candidate.source.line;
-        // Only the active definition may authorize a built-in. Model names can
-        // occur in several Cells: keep ordinary bindings if any definition is
-        // custom, rather than applying one Cell's model to another.
-        return (definitions.some((definition) => matches(body, definition)) &&
-            definitions.every((definition) => (options.builtInBodies ?? []).some((candidate) => candidate.kind === body.kind &&
-                candidate.name.toLowerCase() === body.name.toLowerCase() &&
-                matches(candidate, definition))));
-    })
-        .map((body) => [builtInBodyKey(body.kind, body.name), body]));
+    const modelTypeByName = new Map([
+        ...[...(options.modelTypes ?? [])].map(([name, type]) => [name.toLowerCase(), type.toLowerCase()]),
+        ...ir.models.map((model) => [model.name.toLowerCase(), model.modelType.toLowerCase()]),
+    ]);
+    const builtInBodies = new Map([
+        // A call the sources give no definition for is all a called block's
+        // calls are; a Cell of that name is the author's own.
+        ...(options.calledBlocks ?? []).flatMap((block) => ir.cells.some((cell) => cell.name.toLowerCase() === block.name.toLowerCase())
+            ? []
+            : [[builtInBodyKey("call", block.name), block]]),
+        ...(options.builtInBodies ?? [])
+            .filter((body) => {
+            const definitions = (body.kind === "subcircuit" ? ir.cells : ir.models).filter((definition) => definition.name.toLowerCase() === body.name.toLowerCase());
+            const matches = (candidate, definition) => bundle.files.some((file) => file.id === definition.sourceRef.fileId &&
+                file.path === normalizeSourcePath(candidate.source.path)) && definition.sourceRef.start.line === candidate.source.line;
+            // Only the active definition may authorize a built-in. Model names can
+            // occur in several Cells: keep ordinary bindings if any definition is
+            // custom, rather than applying one Cell's model to another.
+            return (definitions.some((definition) => matches(body, definition)) &&
+                definitions.every((definition) => (options.builtInBodies ?? []).some((candidate) => candidate.kind === body.kind &&
+                    candidate.name.toLowerCase() === body.name.toLowerCase() &&
+                    matches(candidate, definition))));
+        })
+            .map((body) => [builtInBodyKey(body.kind, body.name), body]),
+    ]);
     // A built-in body imports as the part each call of it is, not as a Cell.
     const isBody = (name) => builtInBodies.has(builtInBodyKey("subcircuit", name));
-    const cells = ir.cells.filter((cell) => !isBody(cell.name));
     const spectreFileIds = new Set(bundle.files
         .filter((file) => isSpectreSource(options.originalSources?.find((input) => normalizeSourcePath(input.path) === file.path) ?? { path: file.path, bytes: new TextEncoder().encode(file.text) }))
         .map((file) => file.id));
+    const library = libraryCells(ir, options, isBody, spectreFileIds);
+    const inLibrary = (name) => library.has(name.toLowerCase());
+    const cells = ir.cells
+        .filter((cell) => !isBody(cell.name) && !inLibrary(cell.name))
+        .map((cell) => ({
+        ...cell,
+        // A call of a library body calls it as the external subcircuit it is.
+        instances: cell.instances.map((instance) => instance.target.kind === "subcircuit" &&
+            inLibrary(instance.target.cellName)
+            ? {
+                ...instance,
+                target: {
+                    kind: "external-subcircuit",
+                    masterName: instance.target.cellName,
+                },
+            }
+            : instance),
+    }));
+    const kept = library.size
+        ? librarySource(bundle, library, spectreFileIds)
+        : null;
     const importedDocuments = cells.map((cell) => importDocument(cell, diagnostics, modelTypeByName, options, builtInBodies, spectreFileIds));
-    const { documents, externalSubcircuitDefinitions } = bindImportedChildDocuments(importedDocuments);
+    const { documents, externalSubcircuitDefinitions } = bindImportedChildDocuments(importedDocuments, kept?.definitions);
     for (const document of documents) {
         document.importReference.files = bundle.files.map((file) => ({
             fileId: file.id,
         }));
     }
-    const topCell = ir.topCells.find((name) => !isBody(name)) ?? cells[0]?.name;
+    const topCell = ir.topCells.find((name) => !isBody(name) && !inLibrary(name)) ??
+        cells[0]?.name;
     const topDocument = documents.find((document) => document.sourceBinding?.cellName.toLowerCase() === topCell?.toLowerCase());
     if (!topDocument)
         throw new Error("Circuit IR has no importable top Document");
@@ -1063,15 +1239,16 @@ function importCircuitIR(ir, bundle, inputDiagnostics = [], options = {}) {
                 };
             }),
         },
-        symbolLibrary: {
-            id: "razavi-symbols",
-            version: "1",
-            hash: "razavi-reference-v1",
-        },
+        symbolLibrary: { ...CURRENT_SYMBOL_LIBRARY_LOCK },
         structureRevision: 0,
         topDocumentId: topDocument.id,
         documents,
         externalSubcircuitDefinitions,
+        // Kept where a call is bound to it.
+        ...(kept &&
+            externalSubcircuitDefinitions.some((definition) => definition.implementation?.kind === "source")
+            ? { modelSources: [kept.source] }
+            : {}),
         simulationFolders: [],
     });
     return { project, diagnostics };

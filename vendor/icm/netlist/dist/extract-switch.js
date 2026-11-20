@@ -1,8 +1,8 @@
 // Drawn switches: the S card a switch means, and the clock phases it reads,
 // taken as pins where nothing in the Cell drives them.
 import { deriveStableId, foldNetName } from "@icm/model";
-import { drawnSwitchControl, drawnSwitchPhase } from "@icm/derived";
-import { deviceDescriptor } from "@icm/devices";
+import { drawnSwitchPhase } from "@icm/derived";
+import { deviceDescriptor, drawnSwitchControl, } from "@icm/devices";
 import { IDEAL_CHOPPER_TARGET, IDEAL_SWITCH_MODEL, } from "./ideal-switch-model.js";
 import { diagnostic, } from "./extract-common.js";
 import { encodeCandidate, terminalNetName, } from "./extract-nets.js";
@@ -61,55 +61,65 @@ export function isDrawnSwitch(symbolId, project) {
     return definition ? drawnSwitchControl(definition) !== null : false;
 }
 /**
- * A drawn switch as the SPICE `S` card it means: its two switched nodes, then
- * its control against the Cell's ground, closing through the ideal switch. A
- * chopper is the call of the ideal chopper's body on its four pins and the
- * clock its label names.
+ * The node of the clock a switch's or chopper's label names, or null, with a
+ * diagnostic, for a label no node can be named after.
  * A phase names its node the way a Net Label would, so the switch meets the
  * clock drawn on a Net of that name, or a Cell Pin of that name. A phase
  * nothing in the Cell drives becomes a pin of a Cell printed as a subcircuit
  * (see bubblePhasePins); at a deck's top, the testbench, it is a node its text
  * drives.
  */
+export function switchPhaseNode(document, instance, context, options, diagnostics) {
+    const reference = instance.reference;
+    // A switch whose label still shows its own name is clocked by a phase of
+    // that name, so a freshly placed switch netlists at once. Writing Φ1 on
+    // the label moves it onto a shared clock, and E̅N̅ is the signal EN_bar,
+    // never an inverted switch: a complement is drawn, or the testbench's.
+    // The phase is a Net named as typed, or as a Net Label drawn the same
+    // way is named (Φ_1 for Φ₁).
+    const drawnPhase = drawnSwitchPhase(document, instance);
+    const existingNode = (name) => {
+        const encoded = encodeCandidate(name, "local", options);
+        return (context.nameByAuthoredName.get(foldNetName(name)) ??
+            (encoded.ok
+                ? context.nets.find((net) => net.name.toLowerCase() === encoded.token.toLowerCase())?.name
+                : undefined));
+    };
+    const phase = drawnPhase
+        ? ([drawnPhase.drawnName, drawnPhase.name].find((name) => name !== undefined && existingNode(name) !== undefined) ?? drawnPhase.name)
+        : reference;
+    const encoded = encodeCandidate(phase, "local", options);
+    if (!encoded.ok) {
+        diagnostic(diagnostics, document.id, "SWITCH_PHASE_UNREADABLE", `Switch ${reference}'s label ${phase} cannot name a netlist node; write a phase such as Φ1`, [instance.id]);
+        return null;
+    }
+    const token = encoded.token;
+    const added = undrivenPhaseNodes.get(context) ?? new Set();
+    undrivenPhaseNodes.set(context, added);
+    const node = existingNode(phase);
+    if (node)
+        return node;
+    added.add(token);
+    context.nets.push({
+        id: deriveStableId("netlist", "switch-phase", document.id, token),
+        name: token,
+        scope: "local",
+    });
+    return token;
+}
+/**
+ * A drawn switch as the SPICE `S` card it means: its two switched nodes, then
+ * its control against the Cell's ground, closing through the ideal switch. A
+ * chopper is the call of the ideal chopper's body on its four pins and the
+ * clock its label names.
+ */
 export function extractDrawnSwitch(document, instance, definition, control, context, options, diagnostics) {
     const reference = instance.reference;
     let controlNode;
     if (control !== "pin") {
-        // A switch whose label still shows its own name is clocked by a phase of
-        // that name, so a freshly placed switch netlists at once. Writing Φ1 on
-        // the label moves it onto a shared clock, and E̅N̅ is the signal EN_bar,
-        // never an inverted switch: a complement is drawn, or the testbench's.
-        // The phase is a Net named as typed, or as a Net Label drawn the same
-        // way is named (Φ_1 for Φ₁).
-        const drawnPhase = drawnSwitchPhase(document, instance);
-        const existingNode = (name) => {
-            const encoded = encodeCandidate(name, "local", options);
-            return (context.nameByAuthoredName.get(foldNetName(name)) ??
-                (encoded.ok
-                    ? context.nets.find((net) => net.name.toLowerCase() === encoded.token.toLowerCase())?.name
-                    : undefined));
-        };
-        const phase = drawnPhase
-            ? ([drawnPhase.drawnName, drawnPhase.name].find((name) => name !== undefined && existingNode(name) !== undefined) ?? drawnPhase.name)
-            : reference;
-        const encoded = encodeCandidate(phase, "local", options);
-        if (!encoded.ok) {
-            diagnostic(diagnostics, document.id, "SWITCH_PHASE_UNREADABLE", `Switch ${reference}'s label ${phase} cannot name a netlist node; write a phase such as Φ1`, [instance.id]);
+        controlNode = switchPhaseNode(document, instance, context, options, diagnostics);
+        if (!controlNode)
             return null;
-        }
-        const token = encoded.token;
-        const added = undrivenPhaseNodes.get(context) ?? new Set();
-        undrivenPhaseNodes.set(context, added);
-        controlNode = existingNode(phase) ?? null;
-        if (!controlNode) {
-            controlNode = token;
-            added.add(token);
-            context.nets.push({
-                id: deriveStableId("netlist", "switch-phase", document.id, token),
-                name: token,
-                scope: "local",
-            });
-        }
     }
     else {
         controlNode = terminalNetName(document, instance, "CTRL", context, diagnostics);

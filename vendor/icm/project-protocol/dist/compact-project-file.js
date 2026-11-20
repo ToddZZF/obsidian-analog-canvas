@@ -1,5 +1,6 @@
 /** Readable structural shorthand. Every transform has an exact inverse. */
 import { InstanceNetlistDataSchema, SegmentModeSchema } from "@icm/model";
+import { SHORT_FIELDS_FILE_VERSION, transformShortProjectFields, } from "./project-file-short-fields.js";
 const record = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 function richText(value, decode) {
     if (Array.isArray(value))
@@ -108,10 +109,13 @@ export function compactProjectFile(input) {
             }
         }
     symbolPoints(project, false);
+    transformShortProjectFields(project, false);
     return project;
 }
 export function expandProjectFile(input) {
     const project = richText(input, true);
+    if (project.schemaVersion >= SHORT_FIELDS_FILE_VERSION)
+        transformShortProjectFields(project, true);
     const { instancesByType = {}, routeLeg, ...defaults } = project.defaults;
     if (!record(instancesByType) ||
         !record(routeLeg) ||
@@ -151,7 +155,7 @@ export function expandProjectFile(input) {
                     throw new Error("A route uses end or legs, never both");
                 const { end, legId, mode } = route;
                 if (!record(end) ||
-                    Object.keys(end).some((k) => !["terminal", "junction"].includes(k)))
+                    Object.keys(end).some((k) => !["terminal", "junction", "memberId"].includes(k)))
                     throw new Error("A route end specifies only a terminal or junction");
                 route.legs = [
                     {

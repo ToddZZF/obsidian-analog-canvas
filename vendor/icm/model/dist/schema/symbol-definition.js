@@ -1,5 +1,6 @@
 import { StableIdSchema, SymbolLocalPointSchema, SymbolLocalRectSchema, } from "./common.js";
 import { RichTextDocumentSchema } from "./rich-text.js";
+import { resolveClosedSymbolPath } from "../closed-symbol-path.js";
 import { z } from "zod";
 /** Smallest legal electrical pin pitch; ordinary placement still uses the Document grid. */
 export const SYMBOL_CONNECTION_GRID = 2;
@@ -30,6 +31,11 @@ const SymbolPinRoutingSchema = z.strictObject({
 });
 export const SymbolPinSchema = z.strictObject({
     name: z.string().min(1),
+    signalMembers: z
+        .array(z.strictObject({ id: StableIdSchema, name: z.string().min(1) }))
+        .min(2)
+        .max(256)
+        .optional(),
     role: z.string().min(1),
     at: SymbolLocalPointSchema,
     direction: z.enum(["north", "east", "south", "west"]),
@@ -89,14 +95,26 @@ export const SymbolPrimitiveSchema = z.discriminatedUnion("kind", [
         kind: z.literal("circle"),
         center: SymbolGeometryPointSchema,
         radius: z.number().positive(),
+        fillableBody: z.literal(true).optional(),
         fill: z.enum(["none", "foreground"]).optional(),
         stroke: z.enum(["none", "foreground"]).optional(),
         part: StableIdSchema.optional(),
         style: SymbolPrimitiveStyleSchema.optional(),
     }),
     z.strictObject({
+        kind: z.literal("rectangle"),
+        bounds: SymbolLocalRectSchema,
+        fillableBody: z.literal(true).optional(),
+        fill: z.enum(["none", "foreground"]).optional(),
+        stroke: z.enum(["none", "foreground"]).optional(),
+        part: StableIdSchema.optional(),
+        style: SymbolPrimitiveStyleSchema.optional(),
+    }),
+    z
+        .strictObject({
         kind: z.literal("path"),
         data: z.string().min(1),
+        fillableBody: z.literal(true).optional(),
         /**
          * Optional tight bounds of the authored path centerline. Path data is
          * otherwise opaque to geometry consumers, which must conservatively fall
@@ -105,10 +123,22 @@ export const SymbolPrimitiveSchema = z.discriminatedUnion("kind", [
         bounds: SymbolLocalRectSchema.optional(),
         part: StableIdSchema.optional(),
         style: SymbolPrimitiveStyleSchema.optional(),
+    })
+        .superRefine((primitive, context) => {
+        if (!primitive.fillableBody)
+            return;
+        const result = resolveClosedSymbolPath(primitive.data);
+        if (!result.ok)
+            context.addIssue({
+                code: "custom",
+                path: ["data"],
+                message: result.message,
+            });
     }),
     z.strictObject({
         kind: z.literal("polygon"),
         points: z.array(SymbolGeometryPointSchema).min(3),
+        fillableBody: z.literal(true).optional(),
         fill: z.enum(["none", "foreground"]),
         stroke: z.enum(["none", "foreground"]).optional(),
         part: StableIdSchema.optional(),

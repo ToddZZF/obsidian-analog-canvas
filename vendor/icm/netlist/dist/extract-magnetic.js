@@ -1,6 +1,4 @@
-// Drawn T-coils and transformers: the call each one makes, and the
-// coupled-winding subcircuit it calls.
-import { drawnMagneticParameters, } from "@icm/derived";
+import { drawnMagneticParameters, } from "@icm/devices";
 import { parseSpiceNumber } from "@icm/spice";
 import { isIdentifier, diagnostic } from "./extract-common.js";
 import { terminalNetName } from "./extract-nets.js";

@@ -37,7 +37,10 @@ export function richTextIdentifier(content) {
     visit(content.runs);
     return result + (hasOverbar ? "_bar" : "");
 }
-/** Legacy explicit formatting can omit the separator; never reinterpret its
+/** Whether a display spells `name`: its visible characters are the name, or
+ * the name with the `_` before a subscript left out. The schema holds every
+ * stored display of a bound label to this, and the Agent's restyles test it.
+ * Legacy explicit formatting can omit the separator; never reinterpret its
  * stored source name merely by opening a historical drawing. */
 export function richTextPresentsIdentifier(content, name) {
     const identifier = richTextIdentifier(content);

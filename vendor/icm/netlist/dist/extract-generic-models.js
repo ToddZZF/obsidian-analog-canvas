@@ -1,4 +1,5 @@
 import { diagnostic } from "./extract-common.js";
+import { spectreModelCard, spiceModelCard } from "./printers.js";
 import { partList } from "./extract-findings.js";
 /**
  * The model a diode takes in a Process with no diode of its own (#1310):
@@ -16,6 +17,23 @@ export const GENERIC_DIODE_MODEL = {
     parameters: [
         { name: "IS", rawValue: "1e-14" },
         { name: "N", rawValue: "1" },
+    ],
+    authoredName: true,
+};
+/**
+ * The model a Schottky diode takes in every Process, none of which ships one:
+ * each Schottky Diode placed from the library binds to `DSCH`, carried and
+ * replaced as the generic diode is. A placeholder barrier junction with its
+ * saturation current, emission coefficient and series resistance stated, not
+ * any real device: about 0.3 V forward at 1 mA, where `DIODE` drops 0.7 V.
+ */
+export const GENERIC_SCHOTTKY_MODEL = {
+    name: "DSCH",
+    type: "D",
+    parameters: [
+        { name: "IS", rawValue: "1e-8" },
+        { name: "N", rawValue: "1.05" },
+        { name: "RS", rawValue: "1" },
     ],
     authoredName: true,
 };
@@ -49,16 +67,61 @@ export const GENERIC_PNP_MODEL = {
     authoredName: true,
 };
 /**
+ * The models a junction FET takes in every Process, none of which ships one:
+ * each NJFET and PJFET placed from the library binds to `NJF` and `PJF`,
+ * carried and replaced as the generic diode is. Shichman-Hodges placeholders
+ * with their pinch-off voltage, transconductance coefficient and channel-
+ * length modulation stated, not any real device: IDSS = BETA*VTO^2 = 4 mA.
+ * SPICE's PJF takes VTO negative as NJF does, so both state -2.
+ */
+export const GENERIC_NJF_MODEL = {
+    name: "NJF",
+    type: "NJF",
+    parameters: [
+        { name: "VTO", rawValue: "-2" },
+        { name: "BETA", rawValue: "1e-3" },
+        { name: "LAMBDA", rawValue: "0.01" },
+    ],
+    authoredName: true,
+};
+export const GENERIC_PJF_MODEL = {
+    name: "PJF",
+    type: "PJF",
+    parameters: [
+        { name: "VTO", rawValue: "-2" },
+        { name: "BETA", rawValue: "1e-3" },
+        { name: "LAMBDA", rawValue: "0.01" },
+    ],
+    authoredName: true,
+};
+/**
  * Whether the author's own text defines a generic model's name, `.model
  * DIODE …` in SPICE or `model DIODE …` in VACASK and Spectre: a source file
  * of the run this netlist is for, or the SPICE the Project was imported
  * from. That model is the author's. The card inside a Cell would shadow it
  * there, so no Cell carries one. Another simulation folder's files do not
  * count: a testbench defining DIODE for its own run left a second folder's
- * run, and the design export, with no model at all.
+ * run, and the design export, with no model at all. The stand-in card
+ * itself, as the export writes it in SPICE or Spectre, is not the author's:
+ * a netlist the editor wrote and imported again holds it (#1789).
  */
 export function definesGenericModel(project, deckSources, model) {
-    const definition = new RegExp(String.raw `^[ \t]*\.?model[ \t]+${model.name}(?=[\s(]|$)`, "imu");
+    const definition = new RegExp(String.raw `^[ \t]*\.?model[ \t]+${model.name}(?=[\s(]|$)`, "iu");
+    // A card as what it says, however it is spelled: its type, Spectre's diode
+    // as SPICE's d, and its parameters in any order, case or parentheses.
+    const spelled = (line) => {
+        const [, type = "", rest = ""] = /^\s*\.?model\s+\S+\s+([^\s(]+)\s*\(?([^)]*)\)?\s*$/iu.exec(line) ?? [];
+        const kind = type.toLowerCase();
+        return [
+            kind === "diode" ? "d" : kind,
+            ...rest.toLowerCase().split(/\s+/u).filter(Boolean).sort(),
+        ].join(" ");
+    };
+    // Only a stand-in the export writes has parameters: a bare card such as
+    // `.model NMOS NMOS` is the author's.
+    const standIn = new Set(model.parameters.length
+        ? [spiceModelCard(model), spectreModelCard(model)].flatMap((card) => card ? [spelled(card)] : [])
+        : []);
     const texts = [
         ...deckSources,
         ...(project.source?.files ?? []).flatMap((file) => [
@@ -66,7 +129,12 @@ export function definesGenericModel(project, deckSources, model) {
             file.originalContent?.text,
         ]),
     ];
-    return texts.some((text) => text !== undefined && definition.test(text));
+    return texts.some((text) => text !== undefined &&
+        text
+            // A card goes on in `+` lines.
+            .replace(/\r?\n[ \t]*\+/gu, " ")
+            .split(/\r?\n/u)
+            .some((line) => definition.test(line) && !standIn.has(spelled(line))));
 }
 /** Printed parts by the References their Cell shows, in reading order. */
 function namedParts(document, parts) {
@@ -101,6 +169,18 @@ export function reportGenericDiodes(document, diodes, diagnostics) {
         : ""}`, parts.map((part) => part.id), "info");
 }
 /**
+ * Which Schottky diodes run on the generic card, one finding for the Cell as
+ * for its plain diodes: information, since the netlist runs, but on a
+ * stand-in barrier, not on a device anyone chose.
+ */
+export function reportGenericSchottkys(document, diodes, diagnostics) {
+    const parts = namedParts(document, diodes);
+    const values = GENERIC_SCHOTTKY_MODEL.parameters
+        .map((parameter) => `${parameter.name}=${parameter.rawValue}`)
+        .join(", ");
+    diagnostic(diagnostics, document.id, "GENERIC_SCHOTTKY_MODEL", `${partList(parts.map((part) => part.name))} ${parts.length === 1 ? "uses" : "use"} the generic Schottky model ${GENERIC_SCHOTTKY_MODEL.name} (${values}); set a model for a real device`, parts.map((part) => part.id), "info");
+}
+/**
  * The stand-ins a MOS takes in a netlist the editor hands out (its panel,
  * copy and save, SPICE+RNL and Spectre+RNL among them) from a Process with no
  * MOS of its own: Abstract binds each NMOS and PMOS placed from the library to
@@ -124,6 +204,33 @@ export const GENERIC_PMOS_MODEL = {
     name: "PMOS",
     type: "pmos",
     parameters: [{ name: "level", rawValue: "54" }],
+    authoredName: true,
+};
+/**
+ * The models a depletion MOS takes in every Process, none of which ships
+ * one: each depletion NMOS and PMOS placed from the library binds to
+ * `NMOS_DEP` and `PMOS_DEP`, carried and replaced as the JFETs' cards are, in
+ * a run's SPICE deck too. They are the generic BSIM4 with its threshold moved
+ * past zero, on for VGS = 0 (VTH0 -1 for n-channel, +1 for p-channel), so
+ * they take the nf every MOS carries, which a level-1 card refuses; not any
+ * real device.
+ */
+export const GENERIC_NMOS_DEPLETION_MODEL = {
+    name: "NMOS_DEP",
+    type: "nmos",
+    parameters: [
+        { name: "level", rawValue: "54" },
+        { name: "vth0", rawValue: "-1" },
+    ],
+    authoredName: true,
+};
+export const GENERIC_PMOS_DEPLETION_MODEL = {
+    name: "PMOS_DEP",
+    type: "pmos",
+    parameters: [
+        { name: "level", rawValue: "54" },
+        { name: "vth0", rawValue: "1" },
+    ],
     authoredName: true,
 };
 /**
@@ -180,6 +287,21 @@ export function reportGenericMos(document, used, diagnostics) {
     diagnostic(diagnostics, document.id, "GENERIC_MOS_MODEL", `${partList(uses)}, which the netlist defines with ${named.length === 1 ? "a stand-in model" : "stand-in models"}, BSIM4 with its defaults rather than any real device, so it reads back and runs in ngspice and Spectre; set a model for a real device before simulating`, named.flatMap(({ parts }) => parts.map((part) => part.id)), "info");
 }
 /**
+ * Which depletion MOS run on the generic cards, one finding for the Cell as
+ * for its JFETs: information, since the netlist runs, but on stand-in
+ * transistors, not on devices anyone chose.
+ */
+export function reportGenericDepletionMos(document, used, diagnostics) {
+    const uses = used.map(({ model, parts }) => {
+        const names = namedParts(document, parts).map((part) => part.name);
+        const values = model.parameters
+            .map((parameter) => `${parameter.name}=${parameter.rawValue}`)
+            .join(", ");
+        return `${partList(names)} ${names.length === 1 ? "uses" : "use"} the generic depletion MOS model ${model.name} (BSIM4, ${values})`;
+    });
+    diagnostic(diagnostics, document.id, "GENERIC_DEPLETION_MOS_MODEL", `${uses.join(", ")}; set a model for a real device`, used.flatMap(({ parts }) => namedParts(document, parts).map((part) => part.id)), "info");
+}
+/**
  * Which bipolar transistors run on the generic cards (#1420), one finding
  * for the Cell as for its diodes: information, since the netlist runs, but
  * on stand-in transistors, not on devices anyone chose.
@@ -196,4 +318,19 @@ export function reportGenericBjts(document, used, diagnostics) {
         return `${partList(parts.map((part) => part.name))} ${parts.length === 1 ? "uses" : "use"} the generic bipolar model ${model.name} (${values})`;
     });
     diagnostic(diagnostics, document.id, "GENERIC_BJT_MODEL", `${uses.join(", ")}; set a model for a real device`, named.flatMap(({ parts }) => parts.map((part) => part.id)), "info");
+}
+/**
+ * Which junction FETs run on the generic cards, one finding for the Cell as
+ * for its bipolar transistors: information, since the netlist runs, but on
+ * stand-in transistors, not on devices anyone chose.
+ */
+export function reportGenericJfets(document, used, diagnostics) {
+    const uses = used.map(({ model, parts }) => {
+        const names = namedParts(document, parts).map((part) => part.name);
+        const values = model.parameters
+            .map((parameter) => `${parameter.name}=${parameter.rawValue}`)
+            .join(", ");
+        return `${partList(names)} ${names.length === 1 ? "uses" : "use"} the generic JFET model ${model.name} (${values})`;
+    });
+    diagnostic(diagnostics, document.id, "GENERIC_JFET_MODEL", `${uses.join(", ")}; set a model for a real device`, used.flatMap(({ parts }) => namedParts(document, parts).map((part) => part.id)), "info");
 }

@@ -1,9 +1,15 @@
-// A Library logic gate, D flip-flop or Delay Cell implemented by a Cell
-// of its Project: the part keeps its symbol, and its call goes to the Cell's
-// subcircuit.
-import { foldNetName, projectCellInterface, } from "@icm/model";
-import { subcircuitDescriptor } from "./registry.js";
-import { isLibraryLogicGate } from "./reviewed-external.js";
+// A Library part with a generated body (logic gate, D flip-flop, Delay Cell,
+// op-amp, comparator, signal or analog block, crystal, chopper, T-coil,
+// transformer, centre-tapped inductor) implemented by a Cell or an external
+// definition of its Project: the part keeps its symbol, and its call goes to
+// that subcircuit, Pin by name.
+import { cellPinsByUsualName, foldNetName, partPinNameSets, projectCellInterface, } from "@icm/model";
+import { drawnMagneticNetwork } from "./drawn-magnetic.js";
+import { drawnSwitchControl } from "./drawn-switch-control.js";
+import { DIFFERENTIAL_COMPARATOR_TARGET, callsIdealComparatorBody, placedSubcircuitTarget, } from "./ideal-comparator.js";
+import { OPAMP_TARGET } from "./ideal-opamp.js";
+import { deviceDescriptor, subcircuitDescriptor } from "./registry.js";
+import { isLibraryLogicGate, resolveReviewedExternalBinding, } from "./reviewed-external.js";
 /** The Library D flip-flops, which a Cell implements as it does a gate. */
 const CELL_FLIP_FLOPS = new Set([
     "d-flip-flop",
@@ -11,50 +17,205 @@ const CELL_FLIP_FLOPS = new Set([
     "d-flip-flop-reset",
 ]);
 /**
+ * The Library op-amps and comparators, by the target their symbols name,
+ * which a Cell implements as it does a gate (#1878).
+ */
+const CELL_AMPLIFIERS = new Map([
+    [OPAMP_TARGET, "op-amp"],
+    ["opamp_differential", "op-amp"],
+    ["comparator", "comparator"],
+    [DIFFERENTIAL_COMPARATOR_TARGET, "comparator"],
+]);
+const amplifierKind = (symbolId) => CELL_AMPLIFIERS.get(subcircuitDescriptor(symbolId)?.target ?? "");
+/**
+ * A drawn device whose call goes to a generated body, as a Library part's
+ * does: the chopper's four switches, or the coupled windings of a T-coil,
+ * transformer or centre-tapped inductor (#1928).
+ */
+function generatedBodyDevice(symbolId) {
+    const device = deviceDescriptor(symbolId);
+    return device &&
+        (drawnSwitchControl(device) === "chopper" || drawnMagneticNetwork(device))
+        ? device
+        : undefined;
+}
+/**
  * Whether a Library symbol keeps its look while a Cell of its Project
- * implements it: the logic gates, D flip-flops and Delay Cell.
+ * implements it: every Library part whose call goes to a generated body,
+ * the chopper and the magnetic parts too (#1928).
  */
 export function bindsProjectCell(symbolId) {
-    return (isLibraryLogicGate(symbolId) ||
-        CELL_FLIP_FLOPS.has(symbolId) ||
-        symbolId === "delay-cell");
+    return (subcircuitDescriptor(symbolId) !== undefined ||
+        generatedBodyDevice(symbolId) !== undefined);
 }
-/** A Library gate's or flip-flop's pins, then its VDD and VSS terminals. */
+/**
+ * Whether a part bound to an external definition meets its ports by the
+ * Library part's Pins (#1928). A Circuit Component of the Project that takes
+ * a Library symbol's id is drawn with its definition's own terminals.
+ */
+export function bindsExternalByPartPins(project, symbolId) {
+    return (bindsProjectCell(symbolId) &&
+        !project.componentDefinitions?.some((component) => component.symbol.id === symbolId && component.circuitBinding));
+}
+/**
+ * Whether a symbol draws a Library part with a generated body: the Library's
+ * own, or a Project's captured copy that still names that body. A component
+ * whose subcircuit names another master calls the author's own.
+ */
+export function isLibraryPart(project, symbolId) {
+    const library = subcircuitDescriptor(symbolId);
+    const placed = subcircuitDescriptor(symbolId, project.componentDefinitions
+        ? { componentDefinitions: project.componentDefinitions }
+        : undefined);
+    return (library !== undefined &&
+        placed?.target.toLowerCase() === library.target.toLowerCase());
+}
+/**
+ * Whose name a part's call reaches (#1928): `bound`, the author's Cell or
+ * external definition it is bound to by identity; `component`, a User
+ * Component's or imported block's own subcircuit, by name; `library`, for a
+ * Library part, magnetic device or the chopper, a generated body or a master
+ * of the reader's libraries, never the author's by name.
+ */
+export function callOwner(project, instance) {
+    const kind = instance.netlist?.binding?.kind;
+    if (kind === "subcircuit" || kind === "external-subcircuit")
+        return "bound";
+    return kind === "unresolved-subcircuit" &&
+        !isLibraryPart(project, instance.symbolId)
+        ? "component"
+        : "library";
+}
+/**
+ * The parameters a part keeps once bound to a Cell or external definition:
+ * those it declares. The body's own (an adder's signs, a gate's vt) give way
+ * (#1450, #1928).
+ */
+export function boundPartParameters(parameters, formalParameters) {
+    const formals = new Set(formalParameters.map((formal) => formal.name.toLowerCase()));
+    return Object.fromEntries(Object.entries(parameters).filter(([name]) => formals.has(name.toLowerCase())));
+}
+/**
+ * Whether the master a Library part stores is the generated body it is
+ * placed with, which leaves the part unbound (#1928): its own target, or
+ * either body of the ideal comparator. An older comparator's `comparator`
+ * names no body.
+ */
+export function namesOwnBody(symbolId, name) {
+    const descriptor = subcircuitDescriptor(symbolId);
+    if (!descriptor)
+        return false;
+    const folded = name.toLowerCase();
+    return (folded === placedSubcircuitTarget(descriptor.target).toLowerCase() ||
+        callsIdealComparatorBody(descriptor, folded));
+}
+/** What a refusal calls a part a Cell may implement: gate, op-amp, … */
+function partKind(symbolId) {
+    return CELL_FLIP_FLOPS.has(symbolId)
+        ? "flip-flop"
+        : symbolId === "delay-cell"
+            ? "Delay Cell"
+            : isLibraryLogicGate(symbolId)
+                ? "gate"
+                : symbolId === "chopper"
+                    ? "chopper"
+                    : (amplifierKind(symbolId) ?? "part");
+}
+/**
+ * A Library part's pins, then its VDD and VSS terminals. A chopper's clock is
+ * no pin of it: the phase its label names reaches its body's CK.
+ */
 export function libraryGateTerminals(symbolId) {
-    if (!bindsProjectCell(symbolId))
+    const subcircuit = subcircuitDescriptor(symbolId);
+    if (subcircuit)
+        return subcircuit.ports.map((port) => port.supply
+            ? { pinName: port.supply, supply: port.supply }
+            : { pinName: port.pinName });
+    const device = generatedBodyDevice(symbolId);
+    if (!device)
         return [];
-    return (subcircuitDescriptor(symbolId)?.ports ?? []).map((port) => port.supply
-        ? { pinName: port.supply, supply: port.supply }
-        : { pinName: port.pinName });
+    return [
+        ...device.pinOrder.map((pinName) => ({ pinName })),
+        ...(drawnSwitchControl(device) === "chopper"
+            ? [{ pinName: "CK", clock: true }]
+            : []),
+    ];
 }
+/** Whether a terminal is one of a part's own pins: not a supply or a clock. */
+const isPartPin = (terminal) => !terminal.supply && !terminal.clock;
 const spokenList = (names) => names.length < 2
     ? names.join("")
     : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+/** A Library part's own signal pins as a refusal spells them: IN+, IN- and OUT. */
+export function spokenGatePins(symbolId) {
+    return spokenList(libraryGateTerminals(symbolId)
+        .filter(isPartPin)
+        .map((terminal) => terminal.pinName));
+}
 /**
  * How a Library gate meets the Pins of a Cell that implements it: each of its
  * pins the Pin of that name, and its VDD and VSS terminals the Pins of theirs
  * where the Cell has them, since a Cell may take its supplies globally
  * instead. Names compare as SPICE compares them, without case. Undefined for
- * a symbol that is not a Library gate.
+ * a symbol no Cell may implement.
  */
 export function matchGateCellPins(symbolId, cell) {
+    return matchPartPins(symbolId, cell, { title: "Cell", noun: "Cell" });
+}
+/**
+ * How a Library part meets the ports of an external definition that
+ * implements it (#1928), as it meets a Cell's Pins. A definition that names
+ * its ports only by position fits no part.
+ */
+export function matchGateExternalPins(symbolId, definition) {
+    const portNames = definition.terminals.map((terminal) => terminal.name);
+    if (definition.interfaceStatus === "declared")
+        return matchPartPins(symbolId, { name: definition.name, portNames }, { title: "External subcircuit", noun: "subcircuit" });
+    if (!libraryGateTerminals(symbolId).length)
+        return undefined;
+    return {
+        ok: false,
+        pins: [],
+        missing: libraryGateTerminals(symbolId)
+            .filter(isPartPin)
+            .map((terminal) => terminal.pinName),
+        extra: portNames,
+        message: `External subcircuit ${definition.name} names its ports only by position; name them ${spokenGatePins(symbolId)} to bind the ${symbolId} to it`,
+    };
+}
+function matchPartPins(symbolId, cell, { title, noun }) {
     const terminals = libraryGateTerminals(symbolId);
     if (!terminals.length)
         return undefined;
     const byName = new Map(terminals.map((terminal) => [foldNetName(terminal.pinName), terminal]));
+    const partPins = terminals.map((terminal) => terminal.pinName);
+    const usual = cellPinsByUsualName(cell.portNames, partPins);
     const pins = [];
     const extra = [];
     for (const portName of cell.portNames) {
-        const terminal = byName.get(foldNetName(portName));
+        const folded = foldNetName(portName);
+        const usualPin = usual.byName.get(folded);
+        const terminal = byName.get(folded) ??
+            (usualPin === undefined ? undefined : byName.get(foldNetName(usualPin)));
         if (!terminal)
             extra.push(portName);
         else
             pins.push({ portName, ...terminal });
     }
-    const signals = terminals.filter((terminal) => !terminal.supply);
+    const signals = terminals.filter(isPartPin);
     const missing = signals
         .filter((terminal) => !pins.some((pin) => pin.pinName === terminal.pinName))
         .map((terminal) => terminal.pinName);
+    if (usual.ambiguous) {
+        const { set, portNames } = usual.ambiguous;
+        return {
+            ok: false,
+            pins,
+            missing,
+            extra,
+            message: `${title} ${cell.name} does not fit the ${symbolId}: its Pins ${spokenList(portNames)} could each be its ${set.pins.join(" or ")}. Rename ${set.rename}`,
+        };
+    }
     if (!missing.length && !extra.length)
         return { ok: true, pins };
     const plural = (names, one, many) => names.length > 1 ? many : one;
@@ -64,20 +225,35 @@ export function matchGateCellPins(symbolId, cell) {
             : []),
         ...(extra.length
             ? [
-                `its ${plural(extra, "Pin", "Pins")} ${spokenList(extra)} ${plural(extra, "is not one", "are not")} of the ${CELL_FLIP_FLOPS.has(symbolId) ? "flip-flop" : symbolId === "delay-cell" ? "Delay Cell" : "gate"}'s`,
+                `its ${plural(extra, "Pin", "Pins")} ${spokenList(extra)} ${plural(extra, "is not one", "are not")} of the ${partKind(symbolId)}'s`,
             ]
             : []),
     ];
+    // The terminals it may leave out, as the part has them.
+    const optional = [
+        ...(terminals.some((terminal) => terminal.supply)
+            ? [`VDD and VSS unless the ${noun} takes its supplies globally`]
+            : []),
+        ...(terminals.some((terminal) => terminal.clock)
+            ? [
+                `CK for the clock its label names unless the ${noun} takes its clock globally`,
+            ]
+            : []),
+    ];
+    const sets = partPinNameSets(partPins);
+    const usualNames = sets.length
+        ? ` (or ${sets.map((set) => set.spoken).join(", and ")})`
+        : "";
     return {
         ok: false,
         pins,
         missing,
         extra,
-        message: `Cell ${cell.name} does not fit the ${symbolId}: ${problems.join(", and ")}. Its Pins must be ${spokenList(signals.map((terminal) => terminal.pinName))}, in any letter case, and VDD and VSS unless the Cell takes its supplies globally`,
+        message: `${title} ${cell.name} does not fit the ${symbolId}: ${problems.join(", and ")}. Its Pins must be ${spokenList(signals.map((terminal) => terminal.pinName))}, in any letter case${usualNames}${optional.map((clause) => `, and ${clause}`).join("")}`,
     };
 }
 /**
- * The Cell a Library gate is bound to, and how the gate meets its Pins.
+ * The Cell a Library gate or op-amp is bound to, and how it meets its Pins.
  * Undefined for any other Instance, or a Cell that is gone.
  */
 export function gateCellBinding(project, instance) {
@@ -92,4 +268,35 @@ export function gateCellBinding(project, instance) {
         portNames: projectCellInterface(cell.netlist).ports.map((port) => port.name),
     });
     return match && { cell, match };
+}
+/**
+ * The external definition a Library part is bound to (#1928), and how it
+ * meets the definition's ports. Undefined for a reviewed standard cell or PDK
+ * device, which its reviewed terminal order maps, for a definition that is
+ * gone, and for any other Instance.
+ */
+export function gateExternalBinding(project, instance) {
+    const binding = instance.netlist?.binding;
+    if (binding?.kind !== "external-subcircuit" ||
+        !bindsExternalByPartPins(project, instance.symbolId))
+        return undefined;
+    const definition = project.externalSubcircuitDefinitions.find((candidate) => candidate.id === binding.definitionId);
+    if (!definition)
+        return undefined;
+    if (!definition.implementation &&
+        resolveReviewedExternalBinding(definition.name, definition.terminals.map((terminal) => terminal.name), instance.symbolId))
+        return undefined;
+    const match = matchGateExternalPins(instance.symbolId, definition);
+    return match && { definition, match };
+}
+/**
+ * The Cell or external definition a Library part is bound to, by its name,
+ * and how it meets its Pins (#1450, #1928).
+ */
+export function libraryPartBinding(project, instance) {
+    const cell = gateCellBinding(project, instance);
+    if (cell)
+        return { name: cell.cell.netlist.name, match: cell.match };
+    const external = gateExternalBinding(project, instance);
+    return external && { name: external.definition.name, match: external.match };
 }

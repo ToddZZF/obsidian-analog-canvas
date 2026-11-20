@@ -44,6 +44,18 @@ export function requireRazaviCatalogSymbol(symbolId) {
 export function getRazaviCatalogEntry(symbolId) {
     return entriesById.get(symbolId);
 }
+/**
+ * The letter a built-in block is drawn with while its Reference stays its X
+ * call: a UJT or PUT is drawn Q1, a Shockley diode D1, by a display alias.
+ */
+export function drawnReferencePrefix(symbolId) {
+    return entriesById.get(symbolId)?.drawnReferencePrefix;
+}
+/** Whether `name` is one such a block is drawn with rather than its Reference. */
+export function isDrawnReferenceName(name, prefix) {
+    return (prefix !== undefined &&
+        name.trim().toUpperCase().startsWith(prefix.toUpperCase()));
+}
 export function isRazaviProductSymbolId(symbolId) {
     const entry = entriesById.get(symbolId);
     return entry !== undefined && isRazaviProductCatalogEntry(entry);

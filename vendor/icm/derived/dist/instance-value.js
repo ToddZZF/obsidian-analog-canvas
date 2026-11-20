@@ -1,4 +1,4 @@
-import { deviceDescriptor, referencePolicyForInstance, } from "@icm/devices";
+import { parameterDisplayContract, referencePolicyForInstance, } from "@icm/devices";
 function effectiveParameterValue(instance, parameter) {
     const netlist = instance.netlist?.parameters[parameter.name];
     if (netlist !== undefined)
@@ -16,11 +16,11 @@ function boldDocument(value) {
     return { runs: [boldText(value)] };
 }
 /**
- * A magnetic device's parameter under its textbook name: the letter, then
- * the rest as its subscript (L₁, L₂, C_B, L_p), followed by any value. A
- * one-letter name such as K stays as it is.
+ * A parameter under its textbook name: the letter, then the rest as its
+ * subscript (a magnetic device's L₁, L₂, C_B, L_p; a block's V_BO),
+ * followed by any value. A one-letter name such as K stays as it is.
  */
-function magneticParameterDocument(label, rest = "") {
+function textbookNameDocument(label, rest = "") {
     const match = /^([A-Za-z])([A-Za-z0-9]+)$/u.exec(label);
     if (!match)
         return boldDocument(`${label}${rest}`);
@@ -42,54 +42,31 @@ function magneticParameterDocument(label, rest = "") {
         ],
     };
 }
-/**
- * One pure authority for the optional Value annotation beside an instance.
- * Electrical truth stays in the typed netlist parameters; this only projects
- * it to display text and never
- * writes back. Preserve authored spelling, including any explicit unit; never
- * append a guessed suffix. Keep upright bold text and a stacked MOS W/L fraction.
- */
-/**
- * Whether this Symbol's device can ever annotate a value.
- *
- * Different from {@link displayableInstanceValue}, which answers whether one
- * instance has a value to show right now: a resistor with no resistance typed
- * yet is undisplayable but value-capable, and its Value control belongs on
- * screen so the person can see what is missing. A switch, and anything with
- * no device descriptor at all, can never carry one.
- */
-export function symbolSupportsValueAnnotation(symbolId) {
-    return (deviceDescriptor(symbolId)?.capabilities.supportsValueAnnotation === true);
+/** Whether the actual model has a summary, even when its values are still empty. */
+export function instanceSupportsValueAnnotation(instance, resolver) {
+    return parameterDisplayContract(instance, resolver).summary !== "none";
 }
-/** Compound magnetic devices expose independent parameters instead of one Value. */
 export function magneticDisplayParameters(symbolId) {
-    if (!["xfmr", "tcoil", "center-tap-inductor"].includes(symbolId))
-        return [];
-    const parameters = deviceDescriptor(symbolId)?.parameters ?? [];
-    return [
-        ...parameters.filter((parameter) => parameter.name === "k"),
-        ...parameters.filter((parameter) => parameter.name !== "k"),
-    ];
+    const contract = parameterDisplayContract({ symbolId });
+    return contract.magnetic ? contract.individual : [];
 }
-/**
- * The parameters a person may show beside a part, each in a label of its own:
- * a compound magnetic part's (k, Lp, Ls, …), or a device's multiplier m, as
- * bandgap and mirror figures print "×8" by the transistor (#1423).
- */
-export function instanceDisplayParameters(symbolId) {
-    const magnetic = magneticDisplayParameters(symbolId);
-    if (magnetic.length)
-        return magnetic;
-    return (deviceDescriptor(symbolId)?.parameters ?? []).filter((parameter) => parameter.displayRole === "multiplier");
+export function instanceDisplayParameters(instance, resolver) {
+    return parameterDisplayContract(instance, resolver).individual;
 }
 /** Preserve authored values and units while identifying which parameter is shown. */
-export function displayableInstanceParameter(instance, name, options = {}) {
-    const parameter = deviceDescriptor(instance.symbolId)?.parameters.find((candidate) => candidate.name.toLowerCase() === name.toLowerCase());
-    const label = parameter?.label ?? name;
+export function displayableInstanceParameter(instance, name, options = {}, resolver) {
+    const contract = parameterDisplayContract(instance, resolver);
+    const parameter = contract.definitions.find((candidate) => candidate.name.toLowerCase() === name.toLowerCase());
+    if (!parameter)
+        return {
+            kind: "undisplayable",
+            reason: `Parameter ${name} is not declared by this model`,
+        };
+    const label = parameter.label;
     const multiplier = parameter?.displayRole === "multiplier";
-    const magnetic = magneticDisplayParameters(instance.symbolId).some((candidate) => candidate.name.toLowerCase() === name.toLowerCase());
+    const magnetic = contract.magnetic;
     const named = (rest = "") => magnetic
-        ? magneticParameterDocument(label, rest)
+        ? textbookNameDocument(label, rest)
         : boldDocument(`${label}${rest}`);
     // A multiplier reads as a count of devices, "×8", not "M = 8".
     const counted = (value) => multiplier ? boldDocument(`×${value}`) : named(` = ${value}`);
@@ -122,9 +99,9 @@ export function instanceCarriesReference(instance, project) {
  * Whether a part's value prints this parameter as its ×m: a MOS's W/L does
  * (#752), so its own ×m label is wanted only while the W/L is hidden.
  */
-export function valuePrintsMultiplier(symbolId, parameterName) {
-    const parameters = symbolId
-        ? (deviceDescriptor(symbolId)?.parameters ?? [])
+export function valuePrintsMultiplier(instance, parameterName, resolver) {
+    const parameters = instance
+        ? parameterDisplayContract(instance, resolver).definitions
         : [];
     return (parameters.some((parameter) => parameter.displayRole === "multiplier" &&
         parameter.name.toLowerCase() === parameterName.toLowerCase()) && parameters.some((parameter) => parameter.displayRole === "width"));
@@ -135,16 +112,21 @@ export function valuePrintsMultiplier(symbolId, parameterName) {
  * stands for, so it is part of the value rather than a hidden parameter.
  * One is the implicit default and stays unwritten.
  */
-export function printedValueMultiplier(instance) {
-    const multiplier = deviceDescriptor(instance.symbolId)?.parameters.find((parameter) => parameter.displayRole === "multiplier");
-    if (!multiplier || !valuePrintsMultiplier(instance.symbolId, multiplier.name))
+export function printedValueMultiplier(instance, resolver) {
+    const multiplier = parameterDisplayContract(instance, resolver).definitions.find((parameter) => parameter.displayRole === "multiplier");
+    if (!multiplier ||
+        !valuePrintsMultiplier(instance, multiplier.name, resolver))
         return undefined;
     const value = effectiveParameterValue(instance, multiplier);
     return value !== "" && Number(value) !== 1 ? value : undefined;
 }
-export function displayableInstanceValue(instance) {
-    const definition = deviceDescriptor(instance.symbolId);
-    if (!definition) {
+export function displayableInstanceValue(instance, resolver) {
+    const contract = parameterDisplayContract(instance, resolver);
+    const definition = {
+        parameters: contract.definitions,
+        deviceClass: instance.symbolId,
+    };
+    if (!contract.definitions.length) {
         return {
             kind: "undisplayable",
             reason: `Symbol ${instance.symbolId} has no netlist device class`,
@@ -163,7 +145,12 @@ export function displayableInstanceValue(instance) {
                     : `${definition.deviceClass} value needs both width and length`,
             };
         }
-        const multiplierValue = printedValueMultiplier(instance);
+        const multiplierValue = printedValueMultiplier(instance, resolver);
+        if (contract.summary === "geometry")
+            return {
+                kind: "displayable",
+                content: boldDocument(`W=${widthValue} L=${lengthValue}${multiplierValue !== undefined ? ` ×${multiplierValue}` : ""}`),
+            };
         return {
             kind: "displayable",
             content: {
@@ -202,8 +189,12 @@ export function displayableInstanceValue(instance) {
             reason: `${definition.deviceClass} value parameter is empty`,
         };
     }
+    // A block's value whose bare number would not say what it is prints its
+    // textbook name first, as a winding's does: V_BO = 10.
     return {
         kind: "displayable",
-        content: boldDocument(valueText),
+        content: value.valueName
+            ? textbookNameDocument(value.valueName, ` = ${valueText}`)
+            : boldDocument(valueText),
     };
 }

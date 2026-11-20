@@ -2,9 +2,9 @@
  * Instance artwork: symbol primitives, signal-flow block frames, instance
  * transforms and visible pin names.
  */
-import { razaviTextbookProfile, resolvePrimitiveStrokeWidth, } from "@icm/derived";
-import { formatLabelFirstLetter, formatLabelIdentifier, formatLabelSubscripts, inverseTransformPoint, labelTypography, mirrorScale, rewriteRichTextIdentifier, richTextIdentifier, semanticTextDocument, transformPoint, } from "@icm/model";
-import { resolveAdaptiveSignalFlowBlockLayout, resolveInstanceSymbol, resolveSignalFlowPinAt, } from "@icm/symbols";
+import { adaptiveFrameRegion, razaviTextbookProfile, resolvePrimitiveStrokeWidth, } from "@icm/derived";
+import { formatLabelFirstLetter, formatLabelIdentifier, formatLabelSubscripts, labelTypography, mirrorScale, rewriteRichTextIdentifier, richTextIdentifier, semanticTextDocument, transformPoint, } from "@icm/model";
+import { adaptiveSignalFlowSignalLeads, adaptiveSignalFlowSupplyLeads, resolveAdaptiveSignalFlowBlockLayout, drawnAdaptiveBodyParts, resolveInstanceSymbol, resolveSignalFlowPinAt, screenUprightPrimitive, uprightMarkPivots, } from "@icm/symbols";
 import { renderRichTextDocument } from "./rich-text.js";
 import { schematicTextFontSize, schematicTextSizeAttribute, } from "./schematic-text.js";
 import { escapeXml, pointList } from "./svg-markup.js";
@@ -22,18 +22,22 @@ function primitiveStyle(primitive, profile) {
             : ` stroke-miterlimit="${style.miterLimit}"`,
     ].join("");
 }
-function renderPrimitive(primitive, profile, foregroundOverride, orientation) {
+function renderPrimitive(primitive, profile, foregroundOverride, orientation, uprightPivots) {
     const fg = foregroundOverride ?? profile.foreground;
     const style = primitiveStyle(primitive, profile);
-    const rendered = screenUprightPrimitive(primitive, orientation);
+    const rendered = screenUprightPrimitive(primitive, orientation, primitive.part ? uprightPivots?.get(primitive.part) : undefined);
     const uprightPart = rendered.part?.startsWith("upright-")
         ? ` data-part="${escapeXml(rendered.part)}"`
         : "";
     switch (rendered.kind) {
+        case "rectangle": {
+            const { x, y, width, height } = rendered.bounds;
+            return `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${rendered.fill === "foreground" ? fg : "none"}"${rendered.stroke === undefined ? "" : ` stroke="${rendered.stroke === "foreground" ? fg : "none"}"`}${style}/>`;
+        }
         case "line":
             return `<line${uprightPart} x1="${rendered.from.x}" y1="${rendered.from.y}" x2="${rendered.to.x}" y2="${rendered.to.y}"${style}/>`;
         case "polyline":
-            return `<polyline points="${pointList(rendered.points)}"${style}/>`;
+            return `<polyline${uprightPart} points="${pointList(rendered.points)}"${style}/>`;
         case "circle":
             return `<circle cx="${rendered.center.x}" cy="${rendered.center.y}" r="${rendered.radius}"${rendered.fill === undefined ? "" : ` fill="${rendered.fill === "foreground" ? fg : "none"}"`}${rendered.stroke === undefined ? "" : ` stroke="${rendered.stroke === "foreground" ? fg : "none"}"`}${style}/>`;
         case "path":
@@ -42,74 +46,46 @@ function renderPrimitive(primitive, profile, foregroundOverride, orientation) {
             return `<polygon points="${pointList(rendered.points)}" fill="${rendered.fill === "foreground" ? fg : "none"}"${rendered.stroke === undefined ? "" : ` stroke="${rendered.stroke === "foreground" ? fg : "none"}"`}${style}/>`;
     }
 }
-/**
- * Polarity marks are notation, not device geometry: they move with a source,
- * but a minus sign remains horizontal on the page. Pre-apply the inverse of
- * the instance orientation around each marked line's centre; the parent SVG
- * transform then restores the centre while cancelling rotation and mirror.
- */
-function screenUprightLine(line, orientation) {
-    const center = {
-        x: (line.from.x + line.to.x) / 2,
-        y: (line.from.y + line.to.y) / 2,
-    };
-    const canonicalCoordinate = (value) => {
-        const rounded = Math.round(value * 1_000_000) / 1_000_000;
-        return Object.is(rounded, -0) ? 0 : rounded;
-    };
-    const inverseVector = (point) => {
-        const unrotated = inverseTransformPoint({ x: point.x - center.x, y: point.y - center.y }, { x: 0, y: 0 }, orientation);
-        return {
-            x: canonicalCoordinate(center.x + unrotated.x),
-            y: canonicalCoordinate(center.y + unrotated.y),
-        };
-    };
-    return {
-        ...line,
-        from: inverseVector(line.from),
-        to: inverseVector(line.to),
-    };
-}
-function screenUprightPrimitive(primitive, orientation) {
-    if (primitive.kind !== "line" ||
-        !primitive.part?.startsWith("upright-") ||
-        orientation === undefined) {
-        return primitive;
+export function renderFilledRegion(region, attributes) {
+    switch (region.kind) {
+        case "path":
+            return `<path ${attributes} d="${escapeXml(region.data)}" fill-rule="evenodd"/>`;
+        case "polygon":
+            return `<polygon ${attributes} points="${pointList(region.points)}"/>`;
+        case "circle":
+            return `<circle ${attributes} cx="${region.center.x}" cy="${region.center.y}" r="${region.radius}"/>`;
+        case "rectangle": {
+            const { x, y, width, height } = region.bounds;
+            return `<rect ${attributes} x="${x}" y="${y}" width="${width}" height="${height}"/>`;
+        }
     }
-    return screenUprightLine(primitive, orientation);
 }
-function signalFlowFramePoints(body) {
-    const right = body.x + body.width;
-    const bottom = body.y + body.height;
-    const taper = body.height / 4;
-    return `${body.x},${body.y} ${right},${body.y + taper} ${right},${bottom - taper} ${body.x},${bottom}`;
-}
-export function renderAdaptiveSignalFlowFrame(adaptive, attributes) {
-    const { body, shape } = adaptive;
-    return shape === "right-tapered-trapezoid"
-        ? `<polygon ${attributes} points="${signalFlowFramePoints(body)}"/>`
-        : `<rect ${attributes} x="${body.x}" y="${body.y}" width="${body.width}" height="${body.height}"/>`;
+function renderAdaptiveSignalFlowFrame(adaptive, attributes) {
+    return renderFilledRegion(adaptiveFrameRegion(adaptive), attributes);
 }
 export function renderSymbolDefinitionBody(definition, hiddenPrimitiveParts = [], additionalPrimitives = [], profile = razaviTextbookProfile, foregroundOverride, signalFlowParameters, orientation) {
     const adaptive = resolveAdaptiveSignalFlowBlockLayout(definition, signalFlowParameters);
     if (adaptive) {
-        const { body, pinSpan } = adaptive;
-        const center = definition.formulaPresentation.center;
-        const left = center.x - pinSpan;
-        const right = center.x + pinSpan;
-        const bodyLeft = body.x;
-        const bodyRight = body.x + body.width;
+        const parts = drawnAdaptiveBodyParts(definition, hiddenPrimitiveParts, additionalPrimitives);
+        const { input, output } = adaptiveSignalFlowSignalLeads(definition, adaptive, hiddenPrimitiveParts);
+        const lead = (stroke) => stroke
+            ? `<line data-part="${stroke.part}" x1="${stroke.from.x}" y1="${stroke.from.y}" x2="${stroke.to.x}" y2="${stroke.to.y}"/>`
+            : "";
         const frame = renderAdaptiveSignalFlowFrame(adaptive, `data-role="signal-flow-frame" data-part="body" fill="none" stroke-width="${profile.strokes.emphasis}" stroke-linecap="butt" stroke-linejoin="miter"`);
         return [
-            `<line data-part="input-a-lead" x1="${left}" y1="${center.y}" x2="${bodyLeft}" y2="${center.y}"/>`,
-            frame,
-            `<line data-part="output-y-lead" x1="${bodyRight}" y1="${center.y}" x2="${right}" y2="${center.y}"/>`,
+            lead(input),
+            parts.frameVisible ? frame : "",
+            lead(output),
+            // Its supplies, where the variant draws them, on the grown body (#1941).
+            ...adaptiveSignalFlowSupplyLeads(definition, adaptive, hiddenPrimitiveParts).map(lead),
+            ...parts.extraBodies.map((primitive) => renderPrimitive(primitive, profile, foregroundOverride)),
         ].join("");
     }
     const hidden = new Set(hiddenPrimitiveParts);
-    return [...definition.primitives, ...additionalPrimitives]
-        .filter((primitive) => !primitive.part || !hidden.has(primitive.part))
-        .map((primitive) => renderPrimitive(primitive, profile, foregroundOverride, orientation))
+    const shown = [...definition.primitives, ...additionalPrimitives].filter((primitive) => !primitive.part || !hidden.has(primitive.part));
+    const pivots = orientation ? uprightMarkPivots(shown) : undefined;
+    return shown
+        .map((primitive) => renderPrimitive(primitive, profile, foregroundOverride, orientation, pivots))
         .join("");
 }
 export function instanceTransform(instance) {

@@ -1,30 +1,16 @@
 import { deriveStableId } from "@icm/model";
 import { ADDER_TARGET, adderBodyFor, adderBodySigns, adderInputSigns, builtInModelContract, callsIdealComparatorBody, idealComparatorBodyFor, idealComparatorModelTarget, } from "@icm/devices";
-/**
- * The subcircuit names a Project defines itself, in lower case, as SPICE
- * compares names: its exported Cells and its declared external definitions.
- * Each replaces any generated body of the same name.
- */
-export function projectSubcircuitNames(project, cellNames) {
-    return new Set([
-        ...Array.from(cellNames, (name) => name.toLowerCase()),
-        ...project.externalSubcircuitDefinitions.map((definition) => definition.name.toLowerCase()),
-    ]);
-}
+import { semiconductorDeviceCell } from "./semiconductor-device-models.js";
 /**
  * The master a built-in block's call names. An authored target wins: any
  * subcircuit the author retargeted the block to. A comparator bound to the
  * ideal comparator, under either body's name, calls the body its high level
  * chooses: the one reading its own VDD, or the numeric one. An adder left on
- * its own body calls the body its input signs choose, unless the Project
- * defines `adder` itself: a Cell or an external definition of that name
- * replaces every built-in adder body, so the call keeps calling it, whatever
- * the signs. An invalid sign leaves the adder on `adder`, for export to
- * refuse.
+ * its own body calls the body its input signs choose, whatever the Project
+ * defines (#1928). An invalid sign leaves the adder on `adder`, for export
+ * to refuse.
  */
-export function builtInBlockCallTarget(instance, descriptor, 
-/** The Project's own subcircuit names; see projectSubcircuitNames. */
-projectNames) {
+export function builtInBlockCallTarget(instance, descriptor) {
     const binding = instance.netlist?.binding;
     const target = binding?.kind === "unresolved-subcircuit" &&
         typeof binding.name === "string"
@@ -33,8 +19,7 @@ projectNames) {
     if (callsIdealComparatorBody(descriptor, target))
         return idealComparatorBodyFor(instance.netlist?.parameters, idealComparatorModelTarget(target));
     if (descriptor.target !== ADDER_TARGET ||
-        target.toLowerCase() !== ADDER_TARGET ||
-        projectNames.has(ADDER_TARGET))
+        target.toLowerCase() !== ADDER_TARGET)
         return target;
     const signs = adderInputSigns(instance.netlist?.parameters).map((input) => input.sign);
     if (!signs.every((sign) => sign !== null))
@@ -67,9 +52,14 @@ function controlledSource(target, reference, deviceClass, nodes, parameter, expr
  * limit or power this model. The ground-referenced output can therefore
  * exceed those rails. The single-ended op-amp is limited and has bodies of
  * its own (generated-models.ts); the fully differential op-amp's outputs sit
- * about ground, with no common mode a limit could keep.
+ * about `vocm` (ground by default), held there as an ideal CMFB holds them.
+ * A unijunction, PUT or Shockley diode is a body of primitive cards the
+ * same way (semiconductor-device-models.ts).
  */
 export function idealAnalogBlockCell(target, format) {
+    const device = semiconductorDeviceCell(target, format);
+    if (device)
+        return device;
     // Every adder body shares the adder's model entry; its signs choose the
     // body and are never a SPICE parameter of it.
     const adderSigns = adderBodySigns(target);
@@ -78,9 +68,10 @@ export function idealAnalogBlockCell(target, format) {
     if (model?.family !== "linear")
         return null;
     const ports = model.ports.map((port) => port.name);
-    const parameter = adderSigns ? undefined : model.parameters[0];
-    if (!adderSigns && !parameter)
+    const parameters = adderSigns ? [] : model.parameters;
+    if (!adderSigns && parameters.length === 0)
         throw new Error(`Ideal analog model has no parameter: ${name}`);
+    const differential = model.implementation === "opamp_differential";
     const e = (reference, nodes, expression = "gain") => controlledSource(target, reference, "vcvs", nodes, "gain", expression, format);
     const g = (nodes) => controlledSource(target, "GCORE", "vccs", nodes, "gm", "gm", format);
     const gain = (sign) => (sign === "-" ? "-1" : "1");
@@ -90,10 +81,24 @@ export function idealAnalogBlockCell(target, format) {
                 e("ESUMA", ["Y", "nsum", "A", "0"], gain(adderSigns[0])),
                 e("ESUMB", ["nsum", "0", "B", "0"], gain(adderSigns[1])),
             ]
-        : model.implementation === "opamp_differential"
+        : differential
             ? [
-                e("EPLUS", ["VOP", "0", "VIP", "VIN"], "gain/2"),
-                e("EMINUS", ["VON", "0", "VIN", "VIP"], "gain/2"),
+                {
+                    id: deriveStableId("netlist-ideal-block-source", target, "VCM"),
+                    reference: "VCM",
+                    invocationKind: "primitive",
+                    deviceClass: "voltage-source",
+                    target: null,
+                    nodes: [
+                        { pinName: "+", netName: "ncm" },
+                        { pinName: "-", netName: "0" },
+                    ],
+                    parameters: [
+                        { name: "dc", rawValue: format === "spice" ? "{vocm}" : "vocm" },
+                    ],
+                },
+                e("EPLUS", ["VOP", "ncm", "VIP", "VIN"], "gain/2"),
+                e("EMINUS", ["VON", "ncm", "VIN", "VIP"], "gain/2"),
             ]
             : model.implementation === "voltage_amplifier"
                 ? [e("ECORE", ["VOUT", "0", "VIN", "0"])]
@@ -115,26 +120,22 @@ export function idealAnalogBlockCell(target, format) {
                 name: port,
                 scope: "local",
             })),
-            ...(adderSigns
+            ...(adderSigns || differential
                 ? [
                     {
-                        id: deriveStableId("netlist-ideal-block-net", target, "nsum"),
-                        name: "nsum",
+                        id: deriveStableId("netlist-ideal-block-net", target, adderSigns ? "nsum" : "ncm"),
+                        name: adderSigns ? "nsum" : "ncm",
                         scope: "local",
                     },
                 ]
                 : []),
         ],
-        formalParameters: parameter
-            ? [
-                {
-                    name: parameter.name,
-                    ...(parameter.defaultValue !== undefined
-                        ? { defaultValue: parameter.defaultValue }
-                        : {}),
-                },
-            ]
-            : [],
+        formalParameters: parameters.map((parameter) => ({
+            name: parameter.name,
+            ...(parameter.defaultValue !== undefined
+                ? { defaultValue: parameter.defaultValue }
+                : {}),
+        })),
         instances,
     };
 }

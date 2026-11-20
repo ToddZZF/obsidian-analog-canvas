@@ -1,4 +1,4 @@
-import { foldNetName } from "@icm/model";
+import { foldNetName, scalarCellTerminals, scalarConnectivityEvidence, } from "@icm/model";
 import { resolveDocumentLogicalNets, } from "./logical-net.js";
 function compareExactText(left, right) {
     return left < right ? -1 : left > right ? 1 : 0;
@@ -43,7 +43,7 @@ function candidatesForLogicalNet(document, logicalNet, documentDepth) {
         : undefined;
     const authoritative = [];
     const hints = [];
-    for (const evidence of document.connectivityEvidence) {
+    for (const evidence of scalarConnectivityEvidence(document)) {
         if (!memberNetIds.has(evidence.netId))
             continue;
         if (evidence.kind === "name-claim") {
@@ -68,7 +68,7 @@ function candidatesForLogicalNet(document, logicalNet, documentDepth) {
             });
         }
     }
-    for (const terminal of document.netlist?.terminals ?? []) {
+    for (const terminal of scalarCellTerminals(document.netlist)) {
         if (!memberNetIds.has(terminal.netId))
             continue;
         if (foldedIdentity && foldNetName(terminal.name) !== foldedIdentity) {

@@ -1,3 +1,4 @@
+import { projectHierarchyCalls } from "./project-hierarchy.js";
 import { registerDocumentCache } from "./document-caches.js";
 import { deriveStableId, foldNetName } from "@icm/model";
 import { deriveImportedRoutingGuidance, deriveNetConnectivity, deriveNetConnectivityContext, } from "./connectivity.js";
@@ -5,7 +6,12 @@ import { endpointKey, isVisibleEndpoint, netEndpoints } from "./endpoint.js";
 import { directObjectLocator, } from "./object-locator.js";
 import { resolveAnnotationName } from "./annotation-text.js";
 import { resolveDocumentLogicalNets, } from "./logical-net.js";
-const terminalEndpoint = (instanceId, pinName) => ({ kind: "terminal", instanceId, pinName });
+const terminalEndpoint = (instanceId, pinName, memberId) => ({
+    kind: "terminal",
+    instanceId,
+    pinName,
+    ...(memberId ? { memberId } : {}),
+});
 /** Derived-only cache: never persisted and invalidated by revision/resolver. */
 const documentIndexCache = registerDocumentCache(new WeakMap());
 /**
@@ -109,7 +115,7 @@ function uniqueRoutingGuidance(values) {
 }
 function buildNetRecord(document, resolver, net, routingGuidance, connectivityContext, routesForNet, junctionsForNet) {
     const logicalEndpoints = [
-        ...net.terminals.map((terminal) => terminalEndpoint(terminal.instanceId, terminal.pinName)),
+        ...net.terminals.map((terminal) => terminalEndpoint(terminal.instanceId, terminal.pinName, terminal.memberId)),
     ].sort((a, b) => endpointKey(a).localeCompare(endpointKey(b), "en"));
     const visibleEndpoints = netEndpoints(document, net).filter((endpoint) => isVisibleEndpoint(document, resolver, endpoint, connectivityContext));
     const routedComponents = deriveNetConnectivity(document, resolver, net, connectivityContext).components;
@@ -142,6 +148,9 @@ function deriveLabelVirtualEdges(document, net, bindings, logicalNets) {
     const groups = new Map();
     for (const binding of bindings) {
         const annotation = document.annotations.find((candidate) => candidate.id === binding.annotationId);
+        if (annotation.binding?.kind === "net-name" &&
+            (annotation.binding.memberEndpoint || annotation.binding.memberEndpoints))
+            continue;
         const label = resolveAnnotationName(document, annotation, logicalNets).trim();
         if (label.length === 0)
             continue;
@@ -186,18 +195,13 @@ function deriveLabelVirtualEdges(document, net, bindings, logicalNets) {
     return edges;
 }
 function buildHierarchyIndex(project, resolver, documents) {
-    const calls = [];
+    const calls = projectHierarchyCalls(project);
     const edges = [];
     for (const parent of project.documents) {
         for (const instance of parent.instances) {
             const childId = referencedDocumentId(project, instance);
             if (!childId)
                 continue;
-            calls.push({
-                parentDocumentId: parent.id,
-                instanceId: instance.id,
-                childDocumentId: childId,
-            });
             const child = project.documents.find((candidate) => candidate.id === childId);
             if (!child)
                 continue;
@@ -209,6 +213,33 @@ function buildHierarchyIndex(project, resolver, documents) {
                 continue;
             for (const pin of resolved.definition.pins) {
                 const childTerminals = (child.netlist?.terminals ?? []).filter((terminal) => foldNetName(terminal.name) === foldNetName(pin.name));
+                if (pin.signalMembers?.length) {
+                    for (const parentMember of pin.signalMembers) {
+                        const matches = childTerminals.flatMap((terminal) => (terminal.signal?.members ?? []).flatMap((member) => member.id === parentMember.id ? [{ terminal, member }] : []));
+                        // Use the captured formal identity, never a member's position or
+                        // spelling. Missing/ambiguous mappings cannot create trace edges.
+                        if (matches.length !== 1)
+                            continue;
+                        const { terminal, member } = matches[0];
+                        if (!childIndex.logicalNetByBaseNetId.has(member.netId))
+                            continue;
+                        edges.push({
+                            parentDocumentId: parent.id,
+                            instanceId: instance.id,
+                            parentPinName: pin.name,
+                            parentMemberId: parentMember.id,
+                            parentMemberName: parentMember.name,
+                            childDocumentId: childId,
+                            childTerminalName: terminal.name,
+                            childMemberId: member.id,
+                            childMemberName: member.name,
+                            childNetId: member.netId,
+                        });
+                    }
+                    continue;
+                }
+                if (childTerminals.some((terminal) => (terminal.signal?.members.length ?? 0) > 1))
+                    continue;
                 const childLogicalNets = childTerminals.map((terminal) => childIndex.logicalNetByBaseNetId.get(terminal.netId));
                 // A name identifies the projected interface pin, not electrical
                 // equivalence. Only preserve an edge when every authored member is
@@ -232,7 +263,8 @@ function buildHierarchyIndex(project, resolver, documents) {
     }
     edges.sort((a, b) => a.parentDocumentId.localeCompare(b.parentDocumentId, "en") ||
         a.instanceId.localeCompare(b.instanceId, "en") ||
-        a.parentPinName.localeCompare(b.parentPinName, "en"));
+        a.parentPinName.localeCompare(b.parentPinName, "en") ||
+        (a.parentMemberId ?? "").localeCompare(b.parentMemberId ?? "", "en"));
     calls.sort((a, b) => a.parentDocumentId.localeCompare(b.parentDocumentId, "en") ||
         a.instanceId.localeCompare(b.instanceId, "en") ||
         a.childDocumentId.localeCompare(b.childDocumentId, "en"));

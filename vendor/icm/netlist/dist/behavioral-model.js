@@ -7,6 +7,12 @@ export function current(name, positive, negative, expression) {
 export function passive(kind, name, positive, negative, value, expression = false) {
     return { kind, name, nodes: [positive, negative], value, expression };
 }
+/** The instance parameter a passive element's value sets, in Spectre and VACASK. */
+export const PASSIVE_VALUE = {
+    resistor: "r",
+    capacitor: "c",
+    inductor: "l",
+};
 export function printSpiceBehavioralModel(model) {
     return [
         ...(model.comment ? [`* ${model.comment}`] : []),
@@ -34,7 +40,7 @@ export function printSpectreBehavioralModel(model) {
             const prefix = `${element.name} (${element.nodes.join(" ")})`;
             return element.kind === "voltage" || element.kind === "current"
                 ? `${prefix} bsource ${element.kind === "voltage" ? "v" : "i"}=${projectBehavioralExpression(element.expression, (value) => value)}`
-                : `${prefix} ${element.kind} ${element.kind === "capacitor" ? "c" : "r"}=${element.value}`;
+                : `${prefix} ${element.kind} ${PASSIVE_VALUE[element.kind]}=${element.value}`;
         }),
         `ends ${model.name}`,
     ];

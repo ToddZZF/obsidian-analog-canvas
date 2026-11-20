@@ -27,6 +27,7 @@ export function createRoutePath(input) {
         id: input.id,
         netId: input.netId,
         start: input.start,
+        ...(input.members ? { members: structuredClone(input.members) } : {}),
         legs: input.modes.map((mode, index) => ({
             id: childIds[index * 2],
             to: index < input.bends.length
@@ -56,6 +57,37 @@ export function routeEnd(route) {
 }
 export function routeEndpoints(route) {
     return [route.start, routeEnd(route)];
+}
+/** One scalar graph edge per lane. Geometric aggregate anchors never form an edge. */
+export function routeElectricalConnections(route) {
+    const end = routeEnd(route);
+    return route.members
+        ? route.members.map((member) => ({
+            netId: member.netId,
+            memberId: member.id,
+            endpoints: [
+                { ...route.start, memberId: member.startMemberId },
+                { ...end, memberId: member.endMemberId },
+            ],
+        }))
+        : [{ netId: route.netId, endpoints: [route.start, end] }];
+}
+export function junctionElectricalEndpoints(junction) {
+    return junction.members
+        ? junction.members.map((member) => ({
+            netId: member.netId,
+            endpoint: {
+                kind: "junction",
+                junctionId: junction.id,
+                memberId: member.id,
+            },
+        }))
+        : [
+            {
+                netId: junction.netId,
+                endpoint: { kind: "junction", junctionId: junction.id },
+            },
+        ];
 }
 export function routeBends(route) {
     return route.legs.flatMap((leg) => leg.to.kind === "bend" ? [{ ...leg.to.position }] : []);

@@ -23,6 +23,10 @@ export function boundAnnotationName(document, annotation) {
     }
     if (binding.kind !== "net-name")
         return null;
+    // A selector may read a caller's formal interface through a Symbol Resolver.
+    // Its renderer accepts a format only while it still presents that live name.
+    if (binding.memberEndpoint || binding.memberEndpoints)
+        return null;
     // Pre-parse callers reach this before schema defaults are applied, so the
     // arrays this reads may legitimately be absent rather than empty.
     const nameClaim = (document.connectivityEvidence ?? []).find((evidence) => evidence.kind === "name-claim" &&

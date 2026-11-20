@@ -1,4 +1,5 @@
-import { boundAnnotationName, flattenRichText, hasRichTextOverbar, projectCellInterface, routeEnd, } from "@icm/model";
+import { boundAnnotationName, flattenRichText, hasRichTextOverbar, isOptionalSupplyPin, projectCellInterface, routeEnd, } from "@icm/model";
+import { variantHiddenPinNames } from "@icm/symbols";
 import { createEndpointConnectivityClassifier } from "../endpoint-connectivity.js";
 import { resolveDocumentLogicalNets, validateLogicalNetContract, } from "../logical-net.js";
 import { resolveMosBulkConnection } from "../mos-bulk.js";
@@ -6,8 +7,8 @@ import { resolveEndpointPoint } from "../endpoint.js";
 import { resolveDocumentRoutingGeometry } from "../resolved-route-geometry.js";
 import { findRouteSegmentsAtPoint } from "../route-query.js";
 import { directObjectLocator } from "../object-locator.js";
-import { findExternalMasterCollisions } from "../master-names.js";
-import { deviceDescriptor, gateCellBinding, instanceParameterContract, milliScaleReading, validateDeviceParameters, } from "@icm/devices";
+import { findExternalMasterCollisions, libraryPartRetarget, } from "../master-names.js";
+import { deviceDescriptor, gateCellBinding, gateExternalBinding, libraryPartBinding, instanceParameterContract, milliScaleReading, validateDeviceParameters, } from "@icm/devices";
 import { endpointKey } from "../endpoint.js";
 import { supplyMarkerForSymbol } from "../supply-marker.js";
 /**
@@ -30,6 +31,29 @@ function terminalLocator(documentId, instanceId, pinName) {
         endpoint: { kind: "terminal", instanceId, pinName },
     };
 }
+/**
+ * A Library part whose Cell or external definition does not meet its pins by
+ * name (#1450, #1928).
+ */
+function partPinMismatch(documentId, instanceId, match, target) {
+    return {
+        id: `erc:port-name-mismatch:${documentId}:${instanceId}`,
+        domain: "erc",
+        code: "ERC_PORT_NAME_MISMATCH",
+        severity: "error",
+        confidence: "high",
+        gateEligible: true,
+        message: match.message,
+        primary: directObjectLocator(documentId, "instance", instanceId),
+        related: [],
+        parameters: {
+            instanceId,
+            ...target,
+            unmatchedPortCount: match.extra.length,
+            unmatchedPinCount: match.missing.length,
+        },
+    };
+}
 export function runErcChecks(project, index, resolver) {
     const diagnostics = [];
     const documents = [...project.documents].sort((a, b) => a.id.localeCompare(b.id, "en"));
@@ -50,28 +74,6 @@ export function runErcChecks(project, index, resolver) {
         });
     }
     for (const document of documents) {
-        for (const issue of projectCellInterface(document.netlist).issues) {
-            const locations = issue.terminalIds.map((terminalId) => {
-                const terminal = document.netlist.terminals.find((item) => item.id === terminalId);
-                return terminal.interfaceInstanceIds.length
-                    ? directObjectLocator(document.id, "instance", terminal.interfaceInstanceIds[0])
-                    : terminal.interfaceAnnotationId
-                        ? directObjectLocator(document.id, "annotation", terminal.interfaceAnnotationId)
-                        : directObjectLocator(document.id, "net", terminal.netId);
-            });
-            diagnostics.push({
-                id: `erc:cell-port-direction-conflict:${document.id}:${issue.portKey}`,
-                domain: "erc",
-                code: `ERC_${issue.code}`,
-                severity: "error",
-                confidence: "high",
-                gateEligible: true,
-                message: `Port ${issue.portName} has conflicting directions: ${issue.directions.join(", ")}`,
-                primary: locations[0],
-                related: locations.slice(1),
-                parameters: { portName: issue.portName },
-            });
-        }
         const docIndex = index.documents.get(document.id);
         const endpointConnectivity = createEndpointConnectivityClassifier(document, docIndex, resolver);
         const logicalNets = docIndex?.logicalNetResolution ?? resolveDocumentLogicalNets(document);
@@ -248,6 +250,29 @@ export function runErcChecks(project, index, resolver) {
                     });
                 }
             }
+            // A Library part bound to an external definition meets its ports by
+            // name, as one bound to a Cell does below (#1928).
+            const external = gateExternalBinding(project, instance);
+            if (external && !external.match.ok)
+                diagnostics.push(partPinMismatch(document.id, instance.id, external.match, {
+                    definitionId: external.definition.id,
+                }));
+            // A part naming another master the Project defines is bound to it, as
+            // export binds it (#1928).
+            const retarget = libraryPartRetarget(project, instance);
+            const retargeted = retarget &&
+                libraryPartBinding(project, {
+                    ...instance,
+                    netlist: {
+                        parameters: {},
+                        ...instance.netlist,
+                        binding: retarget.binding,
+                    },
+                });
+            if (retarget && retargeted && !retargeted.match.ok)
+                diagnostics.push(partPinMismatch(document.id, instance.id, retargeted.match, retarget.binding.kind === "subcircuit"
+                    ? { childDocumentId: retarget.binding.childDocumentId }
+                    : { definitionId: retarget.binding.definitionId }));
             const childBinding = instance.netlist?.binding;
             if (childBinding?.kind !== "subcircuit")
                 continue;
@@ -275,23 +300,9 @@ export function runErcChecks(project, index, resolver) {
             const gate = gateCellBinding(project, instance);
             if (gate) {
                 if (!gate.match.ok)
-                    diagnostics.push({
-                        id: `erc:port-name-mismatch:${document.id}:${instance.id}`,
-                        domain: "erc",
-                        code: "ERC_PORT_NAME_MISMATCH",
-                        severity: "error",
-                        confidence: "high",
-                        gateEligible: true,
-                        message: gate.match.message,
-                        primary: directObjectLocator(document.id, "instance", instance.id),
-                        related: [],
-                        parameters: {
-                            instanceId: instance.id,
-                            childDocumentId: child.id,
-                            unmatchedPortCount: gate.match.extra.length,
-                            unmatchedPinCount: gate.match.missing.length,
-                        },
-                    });
+                    diagnostics.push(partPinMismatch(document.id, instance.id, gate.match, {
+                        childDocumentId: child.id,
+                    }));
                 continue;
             }
             const pinNames = new Set(resolved.definition.pins.map((pin) => pin.name));
@@ -446,8 +457,50 @@ export function runErcChecks(project, index, resolver) {
             const resolved = resolver.resolve(instance.symbolId, instance.symbolVariantId);
             if (!resolved)
                 continue;
-            const hidden = new Set(resolved.variant?.hiddenPinNames ?? []);
+            const hidden = variantHiddenPinNames(resolved.variant);
             for (const pin of resolved.definition.pins) {
+                const members = document.netlist?.terminals.find((terminal) => pin.name === "P" &&
+                    terminal.interfaceInstanceIds.includes(instance.id))?.signal?.members ?? pin.signalMembers;
+                if (members && members.length > 1) {
+                    if (hidden.has(pin.name))
+                        continue;
+                    for (const member of members) {
+                        const endpoint = {
+                            kind: "terminal",
+                            instanceId: instance.id,
+                            pinName: pin.name,
+                            memberId: member.id,
+                        };
+                        const assessment = endpointConnectivity.assess(endpoint);
+                        if (assessment.electricallySatisfied)
+                            continue;
+                        diagnostics.push({
+                            id: `erc:unconnected-pin:${document.id}:${instance.id}:${pin.name}:${member.id}`,
+                            domain: "erc",
+                            code: "ERC_UNCONNECTED_PIN",
+                            severity: "warning",
+                            confidence: "high",
+                            gateEligible: false,
+                            message: `Member ${instance.reference ?? instance.id}.${member.name} is not connected and has no No Connect`,
+                            primary: {
+                                ...terminalLocator(document.id, instance.id, pin.name),
+                                endpoint,
+                            },
+                            related: assessment.baseNetId
+                                ? [
+                                    directObjectLocator(document.id, "net", assessment.baseNetId),
+                                ]
+                                : [],
+                            parameters: {
+                                instanceId: instance.id,
+                                pinName: pin.name,
+                                memberId: member.id,
+                                memberName: member.name,
+                            },
+                        });
+                    }
+                    continue;
+                }
                 const endpoint = {
                     kind: "terminal",
                     instanceId: instance.id,
@@ -518,6 +571,11 @@ export function runErcChecks(project, index, resolver) {
                 if (hidden.has(pin.name))
                     continue;
                 if (assessment.electricallySatisfied)
+                    continue;
+                // A supply pin drawn on request, as a block's, left unwired takes
+                // its Net in Properties or Auto, as it does hidden (#1833);
+                // MISSING_BLOCK_SUPPLY reports one with no Cell supply.
+                if (isOptionalSupplyPin(resolved.definition, pin))
                     continue;
                 diagnostics.push({
                     id: `erc:unconnected-pin:${document.id}:${instance.id}:${pin.name}`,
@@ -787,7 +845,7 @@ function reportShortedTwoPinParts(document, logicalNets, resolver, diagnostics) 
         const resolved = resolver.resolve(instance.symbolId, instance.symbolVariantId);
         if (!resolved)
             continue;
-        const hidden = new Set(resolved.variant?.hiddenPinNames ?? []);
+        const hidden = variantHiddenPinNames(resolved.variant);
         const pins = resolved.definition.pins.filter((pin) => !hidden.has(pin.name));
         if (pins.length !== 2)
             continue;
@@ -1086,7 +1144,7 @@ function reportPinsTouchingAnotherNet(document, docIndex, logicalNets, resolver,
         const resolved = resolver.resolve(instance.symbolId, instance.symbolVariantId);
         if (!resolved)
             continue;
-        const hidden = new Set(resolved.variant?.hiddenPinNames ?? []);
+        const hidden = variantHiddenPinNames(resolved.variant);
         for (const pin of resolved.definition.pins) {
             if (hidden.has(pin.name))
                 continue;

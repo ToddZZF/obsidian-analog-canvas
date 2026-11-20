@@ -31,7 +31,9 @@ import { serializeProject } from '@icm/project-protocol'
 import { CircuitServer } from './server'
 import { EDITOR_FOLDER, ensureEditor } from './fetch-editor'
 import { log, setLogDirectory } from './debug'
+import { t } from './i18n'
 import { renderEmbeds, registerCircuitEmbeds, isCircuitName, projectIdOf } from './embeds'
+import type { FigureTarget } from './figure-target'
 import { registerRegionSuggest } from './suggest'
 import { CircuitView, VIEW_TYPE_CIRCUIT } from './views/circuit-view'
 import type { CircuitAutoSaveMode } from './bridge'
@@ -302,7 +304,7 @@ export default class AnalogCanvasPlugin extends Plugin {
 
     menu.addItem(item => {
       item
-        .setTitle('新建电路')
+        .setTitle(t('newDrawing'))
         .setIcon('circuit-board')
         .setSection('action-primary')
         .onClick(() => {
@@ -335,11 +337,11 @@ export default class AnalogCanvasPlugin extends Plugin {
    *
    * @param   {TFolder}  folder  The folder the drawing goes into
    *
-   * @return  {string}           The name, as `未命名电路.icproj` and up
+   * @return  {string}           The name, as `Untitled circuit.icproj` and up
    */
   private nextDrawingName (folder: TFolder): string {
     const taken = new Set(folder.children.map(child => child.name.toLowerCase()))
-    const base = '未命名电路'
+    const base = t('untitled')
     if (!taken.has(`${base}.icproj`.toLowerCase())) {
       return `${base}.icproj`
     }
@@ -355,33 +357,33 @@ export default class AnalogCanvasPlugin extends Plugin {
   /**
    * Shows a drawing in a pane of its own.
    *
-   * @param   {TFile}    file     The drawing to show
-   * @param   {string?}  region   The region a link pointed at, if any
+   * @param   {TFile}         file    The drawing to show
+   * @param   {FigureTarget?} target  The Cell and region a link pointed at, if any
    */
-  async openDrawing (file: TFile, region?: string): Promise<void> {
+  async openDrawing (file: TFile, target?: FigureTarget): Promise<void> {
     const leaf = await this.circuitLeaf()
     const view = leaf.view
     if (!(view instanceof CircuitView)) {
       return
     }
-    await view.showDrawing(file, region)
+    await view.showDrawing(file, target)
     this.app.workspace.revealLeaf(leaf)
   }
 
   /**
    * Shows a drawing in a tab of its own, never the one that is already open.
    *
-   * @param   {TFile}    file     The drawing to show
-   * @param   {string?}  region   The region a figure showed, if any
+   * @param   {TFile}         file    The drawing to show
+   * @param   {FigureTarget?} target  The Cell and region a figure showed, if any
    */
-  async openDrawingInTab (file: TFile, region?: string): Promise<void> {
+  async openDrawingInTab (file: TFile, target?: FigureTarget): Promise<void> {
     const leaf = this.app.workspace.getLeaf('tab')
     await leaf.setViewState({ type: VIEW_TYPE_CIRCUIT, active: true })
     const view = leaf.view
     if (!(view instanceof CircuitView)) {
       return
     }
-    await view.showDrawing(file, region)
+    await view.showDrawing(file, target)
     this.app.workspace.revealLeaf(leaf)
   }
 

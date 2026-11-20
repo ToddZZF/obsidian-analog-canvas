@@ -69,6 +69,7 @@ export function adaptVisualDiagnostic(visual, documentId, index) {
         message: visual.message,
         primary,
         related,
+        ...(visual.point ? { point: visual.point } : {}),
         parameters: visual.parameters ?? {},
     };
 }

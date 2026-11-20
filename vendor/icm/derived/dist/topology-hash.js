@@ -100,7 +100,7 @@ function electricalProjection(document) {
         .sort((left, right) => left.id.localeCompare(right.id))
         .map((net) => ({
         id: net.id,
-        terminals: [...net.terminals].sort((left, right) => `${left.instanceId}:${left.pinName}`.localeCompare(`${right.instanceId}:${right.pinName}`)),
+        terminals: [...net.terminals].sort((left, right) => `${left.instanceId}:${left.pinName}:${left.memberId ?? ""}`.localeCompare(`${right.instanceId}:${right.pinName}:${right.memberId ?? ""}`)),
     }));
     const logicalNets = resolveDocumentLogicalNets(document).groups.map((net) => ({
         id: net.id,
@@ -128,6 +128,14 @@ function electricalProjection(document) {
     return {
         instances,
         nets,
+        ...((document.netlist?.terminals.some((terminal) => terminal.signal) ??
+            false)
+            ? {
+                signals: document
+                    .netlist.terminals.filter((terminal) => terminal.signal)
+                    .map((terminal) => ({ id: terminal.id, signal: terminal.signal })),
+            }
+            : {}),
         logicalNets,
         noConnects,
         ...(couplings.length ? { inductorCouplings: couplings } : {}),

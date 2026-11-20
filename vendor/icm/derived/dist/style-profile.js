@@ -6,6 +6,18 @@ import { withSchematicRoundPeriodFont } from "./schematic-font.js";
  * them and not ICM Serif; DejaVu Sans for symbols none of them draw.
  */
 export const SERIF_FONT_FAMILY = "'ICM Serif','Liberation Serif','Times New Roman',Times,'DejaVu Sans',serif";
+/**
+ * The stack of each face a Document may choose instead of Metropolis
+ * (#1725): its served subset first (ICM Serif, ICM Sans, ICM Modern), then
+ * the face under its own name and the face it shares metrics with where a
+ * viewer has them and not the subset, then DejaVu Sans for symbols none of
+ * them draw.
+ */
+export const DOCUMENT_TEXT_FACE_FONT_FAMILIES = {
+    serif: SERIF_FONT_FAMILY,
+    sans: "'ICM Sans','Liberation Sans',Arial,Helvetica,'DejaVu Sans',sans-serif",
+    "latin-modern": "'ICM Modern','Latin Modern Roman','LM Roman 10','DejaVu Sans',serif",
+};
 /** The one typography system shared by all presentation profiles. */
 export const globalSchematicTypography = {
     fontFamily: withSchematicRoundPeriodFont("'Metropolis','DejaVu Sans',Arial,'Helvetica Neue',Helvetica,sans-serif"),
@@ -66,22 +78,25 @@ export function resolveSchematicStyleProfile(profileId) {
     return profile;
 }
 const overriddenProfiles = new WeakMap();
-const serifProfiles = new WeakMap();
-/** `profile` set in the serif face, one object per profile. */
-function withSerifFace(profile) {
-    const cached = serifProfiles.get(profile);
+const faceProfiles = new Map();
+/** `profile` set in a chosen face, one object per profile and face. */
+function withTextFace(profile, face) {
+    let profiles = faceProfiles.get(face);
+    if (!profiles)
+        faceProfiles.set(face, (profiles = new WeakMap()));
+    const cached = profiles.get(profile);
     if (cached)
         return cached;
-    const serif = {
+    const chosen = {
         ...profile,
         typography: {
             ...profile.typography,
-            face: "serif",
-            fontFamily: SERIF_FONT_FAMILY,
+            face,
+            fontFamily: DOCUMENT_TEXT_FACE_FONT_FAMILIES[face],
         },
     };
-    serifProfiles.set(profile, serif);
-    return serif;
+    profiles.set(profile, chosen);
+    return chosen;
 }
 /**
  * The document-facing profile resolution: the approved base profile with the
@@ -94,8 +109,10 @@ function withSerifFace(profile) {
  */
 export function resolveDocumentStyleProfile(presentation) {
     const scaled = scaledDocumentStyleProfile(presentation);
-    // One face for the whole canvas: the serif when the Document chose it.
-    return presentation.textFace === "serif" ? withSerifFace(scaled) : scaled;
+    // One face for the whole canvas: the one the Document chose, if any.
+    return presentation.textFace
+        ? withTextFace(scaled, presentation.textFace)
+        : scaled;
 }
 function scaledDocumentStyleProfile(presentation) {
     const base = resolveSchematicStyleProfile(presentation.styleProfileId);
@@ -152,8 +169,9 @@ export function objectStyleProfile(documentProfile, object) {
             styleProfileId: documentProfile.id,
             styleOverrides: kept,
             // A kept style scales; the face stays the canvas's.
-            ...(documentProfile.typography.face === "serif"
-                ? { textFace: "serif" }
+            ...(documentProfile.typography.face &&
+                documentProfile.typography.face !== "metropolis"
+                ? { textFace: documentProfile.typography.face }
                 : {}),
         })
         : documentProfile;

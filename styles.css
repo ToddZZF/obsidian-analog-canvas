@@ -124,3 +124,33 @@
   font-size: var(--font-ui-smaller);
   opacity: 0.55;
 }
+
+/* The candidates of a Cell: a small badge tells the top sheet from a child. */
+
+.analog-canvas-cell-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.analog-canvas-cell-badge {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--background-modifier-hover);
+  font-size: var(--font-ui-smaller);
+  opacity: 0.75;
+}
+
+.analog-canvas-cell-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.analog-canvas-cell-id {
+  margin-left: auto;
+  font-size: var(--font-ui-smaller);
+  opacity: 0.55;
+}

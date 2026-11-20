@@ -3,8 +3,11 @@
  *
  * `![[inv.icproj]]` shows the drawing, `![[inv.icproj#PFD]]` shows one
  * region of it, and `![[inv.icproj#]]` lists the regions the drawing
- * answers to. The figure is sized the way an image is sized, after a
- * bar: `![[inv.icproj|200x100]]` draws it 200 by 100 pixels, and
+ * answers to. A Cell below the top sheet is written after an `@`:
+ * `![[inv.icproj#@ota_5t]]` shows that Cell, `![[inv.icproj#@ota_5t#PFD]]`
+ * a region of it, and `![[inv.icproj#@]]` lists the Cells. The figure is
+ * sized the way an image is sized, after a bar:
+ * `![[inv.icproj|200x100]]` draws it 200 by 100 pixels, and
  * `![[inv.icproj|200]]` draws it 200 pixels wide with the height
  * following the drawing's own proportions. A size may stand beside a
  * region, `![[inv.icproj#PFD|200]]`.
@@ -21,10 +24,12 @@
  */
 
 import { MarkdownPostProcessorContext, MarkdownRenderChild, MarkdownView, Modal, TFile, setIcon, type App, type Editor } from 'obsidian'
-import { dropFiguresOf, hasRegion, listDrawingRegions, readDrawing, renderFigureCached } from './figure'
-import { RegionPickerModal, regionReference } from './suggest'
+import { cellReference, dropFiguresOf, hasCell, hasRegion, listDrawingCells, listDrawingRegions, readDrawing, renderFigureCached } from './figure'
+import { figureRequestKey, figureTargetKey, parseFigureRequest, targetOf, type FigureRequest, type FigureTarget } from './figure-target'
+import { CellPickerModal, RegionPickerModal, regionReference } from './suggest'
 import { log } from './debug'
-import type AnalogCanvasPlugin from '../main'
+import { t } from './i18n'
+import type AnalogCanvasPlugin from './main'
 
 /** The extensions a circuit drawing may have. */
 export const CIRCUIT_EXTENSIONS = ['icproj', 'icproj.json']
@@ -61,15 +66,6 @@ export function projectIdOf (text: string): string | null {
     return null
   }
 }
-
-/**
- * What an embed points at: the whole sheet, one region of it, or the list of
- * regions — `![[inv.icproj]]`, `![[inv.icproj#PFD]]`, `![[inv.icproj#]]`.
- */
-type RegionRequest =
-  | { kind: 'sheet' }
-  | { kind: 'region', name: string }
-  | { kind: 'picker' }
 
 /**
  * What stands between an embed's brackets: `inv.icproj#PFD|200` as it is
@@ -216,19 +212,25 @@ function embedSizeOf (element: HTMLElement, linktext: string): EmbedSize | undef
  *
  * A region is written after the name, `![[inv.icproj#PFD]]`; the hash marks
  * it, and a hash on its own asks for the names of the regions there are.
+ * A Cell is written after an `@`, `![[inv.icproj#@ota_5t]]`, and a second
+ * hash continues with a region of that Cell.
  */
-function regionRequest (subpath: string, element: HTMLElement): RegionRequest {
-  const fromMark = (name: string): RegionRequest =>
-    name.length > 0 ? { kind: 'region', name } : { kind: 'picker' }
-
+function figureRequest (subpath: string, element: HTMLElement): FigureRequest {
   const marked = subpath.trim()
+  const src = parseEmbedInner(element.getAttribute('src') ?? '')
   if (marked.startsWith('#')) {
-    return fromMark(decodeURIComponent(marked.slice(1)).trim())
+    const fragment = decodeURIComponent(marked.slice(1)).trim()
+    // The second hash of `#@cell#region` belongs to the subpath. Where a
+    // host hands the subpath over only up to that hash, the embed's own
+    // words still carry the whole target.
+    if (src.marked && !fragment.includes('#') && src.region.includes('#')) {
+      return parseFigureRequest(src.region)
+    }
+    return parseFigureRequest(fragment)
   }
 
-  const src = parseEmbedInner(element.getAttribute('src') ?? '')
   if (src.marked) {
-    return fromMark(src.region)
+    return parseFigureRequest(src.region)
   }
 
   return { kind: 'sheet' }
@@ -360,7 +362,7 @@ function paintFigure (element: HTMLElement, figure: string, size?: EmbedSize): v
  *
  * @param   {HTMLElement}         element   Where the figure goes
  * @param   {TFile}               file      The drawing
- * @param   {string?}             region    The region to show, if any
+ * @param   {FigureTarget?}       target    The Cell and region to show, if any
  * @param   {EmbedSize?}          size      How large the note asks for it
  * @param   {AnalogCanvasPlugin}  plugin    The plugin
  * @param   {boolean}             fresh     Whether to draw from the file
@@ -369,7 +371,7 @@ function paintFigure (element: HTMLElement, figure: string, size?: EmbedSize): v
 export async function drawInto (
   element: HTMLElement,
   file: TFile,
-  region: string | undefined,
+  target: FigureTarget | undefined,
   size: EmbedSize | undefined,
   plugin: AnalogCanvasPlugin,
   fresh = false
@@ -385,8 +387,8 @@ export async function drawInto (
 
   let figure: string
   try {
-    const key = `${file.path}@${file.stat.mtime}#${region ?? ''}`
-    figure = renderFigureCached(key, text, region).svg
+    const key = `${file.path}@${file.stat.mtime}#${figureTargetKey(target)}`
+    figure = renderFigureCached(key, text, target).svg
   } catch (error: any) {
     log(`the drawing could not be drawn: ${error?.stack ?? String(error)}`)
     element.setText(`The drawing could not be drawn: ${error?.message ?? String(error)}`)
@@ -410,10 +412,17 @@ export async function drawInto (
   paintFigure(element, figure, size)
 
   element.setAttribute('data-analog-canvas-path', file.path)
-  if (region !== undefined) {
-    element.setAttribute('data-analog-canvas-region', region)
+  element.removeAttribute('data-analog-canvas-cell')
+  element.removeAttribute('data-analog-canvas-region')
+  if (target?.cell !== undefined) {
+    element.setAttribute('data-analog-canvas-cell', target.cell)
   }
-  log(`the drawing was drawn into a note: ${file.path}${region !== undefined ? ` (${region})` : ''}`)
+  if (target?.region !== undefined) {
+    element.setAttribute('data-analog-canvas-region', target.region)
+  }
+  log(`the drawing was drawn into a note: ${file.path}` +
+    `${target?.cell !== undefined ? ` (cell ${target.cell})` : ''}` +
+    `${target?.region !== undefined ? ` (${target.region})` : ''}`)
 }
 
 /**
@@ -446,7 +455,7 @@ const shownFigures = new Set<CircuitFigure>()
 class CircuitFigure extends MarkdownRenderChild {
   /** The drawing, once its file is known. */
   file: TFile | null = null
-  /** The region the embed points at, as Obsidian parsed it. */
+  /** What the embed points at, as Obsidian parsed it. */
   subpath = ''
 
   constructor (
@@ -541,10 +550,9 @@ class CircuitFigure extends MarkdownRenderChild {
     }
   }
 
-  /** The region the embed shows right now, if it shows one. */
-  private region (): string | undefined {
-    const request = regionRequest(this.subpath, this.containerEl)
-    return request.kind === 'region' ? request.name : undefined
+  /** The Cell and region the embed shows right now, if it shows them. */
+  private target (): FigureTarget | undefined {
+    return targetOf(figureRequest(this.subpath, this.containerEl))
   }
 
   /** How large the note asks for the figure, where it says. */
@@ -565,10 +573,9 @@ class CircuitFigure extends MarkdownRenderChild {
       }
     }
 
-    const request = regionRequest(this.subpath, this.containerEl)
+    const request = figureRequest(this.subpath, this.containerEl)
     const size = this.size()
-    const asked = request.kind === 'region' ? request.name : ''
-    const key = `${this.file?.path ?? ''}|${request.kind}|${asked}|${size === undefined ? '' : sizeAsWritten(size)}`
+    const key = `${this.file?.path ?? ''}|${figureRequestKey(request)}|${size === undefined ? '' : sizeAsWritten(size)}`
     if (key === this.drawnKey && this.drawing !== null) {
       await this.drawing
       return
@@ -581,7 +588,7 @@ class CircuitFigure extends MarkdownRenderChild {
   }
 
   /** Draws what the embed asks for. */
-  private async draw (request: RegionRequest, size: EmbedSize | undefined, fresh = false): Promise<void> {
+  private async draw (request: FigureRequest, size: EmbedSize | undefined, fresh = false): Promise<void> {
     // Obsidian sets the embed's title — where a size may ride,
     // `![[inv.icproj|200]]` — only after the embed has been loaded. Waiting
     // for the stack to unwind lets it land before the figure is drawn.
@@ -591,26 +598,50 @@ class CircuitFigure extends MarkdownRenderChild {
       return
     }
 
-    if (request.kind === 'picker') {
-      await this.drawPicker(file)
+    if (request.kind === 'cell-picker') {
+      await this.drawCellPicker(file)
+      return
+    }
+    if (request.kind === 'region-picker') {
+      await this.drawRegionPicker(file, request.cell)
       return
     }
 
-    if (request.kind === 'region') {
-      const text = await readDrawing(this.plugin, file)
-      if (text !== null && !hasRegion(text, request.name)) {
-        await drawInto(this.containerEl, file, undefined, size, this.plugin, fresh)
-        this.containerEl.prepend(createDiv({
-          cls: 'analog-canvas-embed-warning',
-          text: `No annotation named “${request.name}” in ${file.name}`
-        }))
-        this.addHoverBar()
-        return
+    const target = targetOf(request)
+    const text = await readDrawing(this.plugin, file)
+    if (text !== null && target !== undefined) {
+      try {
+        if (target.cell !== undefined && !hasCell(text, target.cell)) {
+          await drawInto(this.containerEl, file, undefined, size, this.plugin, fresh)
+          this.warn(`No cell named “${target.cell}” in ${file.name}`)
+          this.addHoverBar()
+          return
+        }
+        if (target.region !== undefined && target.region.length > 0 &&
+          !hasRegion(text, target)) {
+          const cell = target.cell === undefined ? '' : ` in cell “${target.cell}”`
+          const fallback: FigureTarget | undefined =
+            target.cell === undefined ? undefined : { cell: target.cell }
+          await drawInto(this.containerEl, file, fallback, size, this.plugin, fresh)
+          this.warn(`No annotation named “${target.region}”${cell} in ${file.name}`)
+          this.addHoverBar()
+          return
+        }
+      } catch {
+        // A drawing that cannot be parsed is reported by the figure below.
       }
     }
 
-    await drawInto(this.containerEl, file, request.kind === 'region' ? request.name : undefined, size, this.plugin, fresh)
+    await drawInto(this.containerEl, file, target, size, this.plugin, fresh)
     this.addHoverBar()
+  }
+
+  /** Puts a warning above the figure. */
+  private warn (text: string): void {
+    this.containerEl.prepend(createDiv({
+      cls: 'analog-canvas-embed-warning',
+      text
+    }))
   }
 
   /**
@@ -638,10 +669,10 @@ class CircuitFigure extends MarkdownRenderChild {
       })
     }
 
-    make('zoom-in', '放大', () => { this.openQuickLook() })
-    make('refresh-cw', '刷新', () => { this.refresh() })
-    make('code-2', '编辑区块', () => { void this.editEmbedText() })
-    make('circuit-board', '编辑电路', () => { this.editCircuitInTab() })
+    make('zoom-in', t('enlarge'), () => { this.openQuickLook() })
+    make('refresh-cw', t('refresh'), () => { this.refresh() })
+    make('code-2', t('editEmbed'), () => { void this.editEmbedText() })
+    make('circuit-board', t('editCircuit'), () => { this.editCircuitInTab() })
   }
 
   /** Shows the figure large, the way clicking an image does. */
@@ -650,7 +681,7 @@ class CircuitFigure extends MarkdownRenderChild {
     if (file === null) {
       return
     }
-    new QuickLookModal(this.plugin.app, file, this.region(), this.plugin).open()
+    new QuickLookModal(this.plugin.app, file, this.target(), this.plugin).open()
   }
 
   /** Opens the drawing itself, in a pane of its own. */
@@ -659,7 +690,7 @@ class CircuitFigure extends MarkdownRenderChild {
     if (file === null) {
       return
     }
-    void this.plugin.openDrawingInTab(file, this.region())
+    void this.plugin.openDrawingInTab(file, this.target())
   }
 
   /**
@@ -752,7 +783,8 @@ class CircuitFigure extends MarkdownRenderChild {
    */
   private locateByText (view: MarkdownView): EmbedPlace | null {
     const editor = view.editor
-    const wanted = regionRequest(this.subpath, this.containerEl)
+    const wanted = figureRequest(this.subpath, this.containerEl)
+    const wantedKey = figureRequestKey(wanted)
     const lineCount = editor.lineCount()
 
     for (let line = 0; line < lineCount; line += 1) {
@@ -764,11 +796,10 @@ class CircuitFigure extends MarkdownRenderChild {
         if (drawing === null || drawing.path !== this.file?.path) {
           continue
         }
-        const name = ref.marked ? ref.region : ''
-        if (wanted.kind === 'region' && name.toLocaleLowerCase() !== wanted.name.toLocaleLowerCase()) {
-          continue
-        }
-        if (wanted.kind !== 'region' && name.length > 0) {
+        const candidate: FigureRequest = ref.marked
+          ? parseFigureRequest(ref.region)
+          : { kind: 'sheet' }
+        if (figureRequestKey(candidate) !== wantedKey) {
           continue
         }
         return { ...place, line }
@@ -778,27 +809,73 @@ class CircuitFigure extends MarkdownRenderChild {
   }
 
   /**
-   * Asks for one annotation of the drawing, in Obsidian's own popup: the
-   * fuzzy finder the command palette opens.
+   * Asks for one Cell of the drawing, in Obsidian's own popup.
    */
-  private async drawPicker (file: TFile): Promise<void> {
+  private async drawCellPicker (file: TFile): Promise<void> {
     this.containerEl.empty()
     this.containerEl.addClass('analog-canvas-embed')
 
-    const regions = await listDrawingRegions(this.plugin, file)
+    const cells = await listDrawingCells(this.plugin, file)
+    const button = this.containerEl.createEl('button', {
+      cls: 'analog-canvas-picker',
+      text: cells.length === 0
+        ? `${file.name} has no Cells to point at.`
+        : `Pick a Cell of ${file.name}…`
+    })
+    button.addEventListener('click', (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      const modal = new CellPickerModal(this.plugin.app, cells, (cell) => {
+        this.chooseFragment(`@${cellReference(cell)}`, '← All cells')
+      })
+      modal.setPlaceholder(`Cells in ${file.name}`)
+      modal.open()
+    })
+
+    log(`the Cells were listed for a note: ${file.path} (${cells.length})`)
+  }
+
+  /**
+   * Asks for one annotation of a sheet, in Obsidian's own popup.
+   */
+  private async drawRegionPicker (file: TFile, cell?: string): Promise<void> {
+    this.containerEl.empty()
+    this.containerEl.addClass('analog-canvas-embed')
+
+    // A Cell may have been named by its document id; the label and the
+    // fragment the note gets use the name the editor shows it by.
+    const wanted = cell?.trim() ?? ''
+    const cells = wanted.length === 0
+      ? []
+      : await listDrawingCells(this.plugin, file)
+    const chosenCell = cells.find(candidate =>
+      candidate.id === wanted ||
+      candidate.name.toLocaleLowerCase() === wanted.toLocaleLowerCase())
+    const reference = chosenCell === undefined
+      ? (wanted.length === 0 ? undefined : wanted)
+      : cellReference(chosenCell)
+    const regions = await listDrawingRegions(this.plugin, file, cell)
+    const where = reference === undefined || reference.length === 0
+      ? file.name
+      : `Cell “${chosenCell?.name ?? reference}” of ${file.name}`
     const button = this.containerEl.createEl('button', {
       cls: 'analog-canvas-picker',
       text: regions.length === 0
-        ? `${file.name} has no annotations to point at.`
-        : `Pick an annotation of ${file.name}…`
+        ? `${where} has no annotations to point at.`
+        : `Pick an annotation of ${where}…`
     })
     button.addEventListener('click', (event) => {
       event.preventDefault()
       event.stopPropagation()
       const modal = new RegionPickerModal(this.plugin.app, regions, (region) => {
-        this.chooseRegion(regionReference(region))
-      })
-      modal.setPlaceholder(`Annotations in ${file.name}`)
+        const fragment = reference === undefined || reference.length === 0
+          ? regionReference(region)
+          : `@${reference}#${regionReference(region)}`
+        this.chooseFragment(fragment, '← All annotations')
+      }, regions.length === 0
+        ? 'This drawing has no Rectangle or Circle annotations.'
+        : undefined)
+      modal.setPlaceholder(`Annotations in ${where}`)
       modal.open()
     })
 
@@ -806,24 +883,24 @@ class CircuitFigure extends MarkdownRenderChild {
   }
 
   /**
-   * Points the note at a region: into the note itself when the embed sits in
-   * an editor, and into the figure when it does not.
+   * Points the note at a Cell or a region: into the note itself when the
+   * embed sits in an editor, and into the figure when it does not.
    */
-  private chooseRegion (name: string): void {
+  private chooseFragment (fragment: string, backText: string): void {
     const file = this.file
     if (file === null) {
       return
     }
-    if (this.insertIntoNote(name)) {
+    if (this.insertIntoNote(fragment)) {
       return
     }
 
-    // The reading view has no editor to write to, so the region is shown
+    // The reading view has no editor to write to, so the target is shown
     // here, with a way back to the list.
     this.containerEl.empty()
     const back = this.containerEl.createEl('button', {
       cls: 'analog-canvas-picker analog-canvas-picker-back',
-      text: '← All annotations'
+      text: backText
     })
     back.addEventListener('click', (event) => {
       event.preventDefault()
@@ -832,11 +909,11 @@ class CircuitFigure extends MarkdownRenderChild {
       void this.ensureDrawn()
     })
     const holder = this.containerEl.createDiv()
-    void drawInto(holder, file, name, this.size(), this.plugin)
+    void drawInto(holder, file, targetOf(parseFigureRequest(fragment)), this.size(), this.plugin)
   }
 
   /**
-   * Writes the region into the note the embed belongs to.
+   * Writes a Cell or a region into the note the embed belongs to.
    *
    * The note is edited through its own editor, the way the person typing
    * would — never through the document's markup. Whether the embed is picked
@@ -844,7 +921,7 @@ class CircuitFigure extends MarkdownRenderChild {
    *
    * @return  {boolean}  Whether the note was written to.
    */
-  private insertIntoNote (name: string): boolean {
+  private insertIntoNote (fragment: string): boolean {
     const view = this.plugin.app.workspace.getLeavesOfType('markdown')
       .map(leaf => leaf.view)
       .find(candidate => candidate instanceof MarkdownView && candidate.file?.path === this.sourcePath)
@@ -891,20 +968,21 @@ class CircuitFigure extends MarkdownRenderChild {
       return false
     }
 
-    // The region is written the one way regions are written: `![[inv.icproj#]]`
-    // grows its region into `![[inv.icproj#PFD]]`. A size the note wrote after
-    // the bar is kept, `![[inv.icproj#|200]]` becoming `![[inv.icproj#PFD|200]]`.
+    // The target is written the one way targets are written: `![[inv.icproj#]]`
+    // grows a region into `![[inv.icproj#PFD]]`, and `![[inv.icproj#@]]`
+    // a Cell into `![[inv.icproj#@ota_5t]]`. A size the note wrote after the
+    // bar is kept, `![[inv.icproj#|200]]` becoming `![[inv.icproj#PFD|200]]`.
     const inside = lineText.slice(best.from + 3, best.to - 2)
     const ref = parseEmbedInner(inside)
     const size = parseEmbedSize(ref.alias)
-    const written = `![[${ref.target}#${name}${size === null ? '' : `|${sizeAsWritten(size)}`}]]`
+    const written = `![[${ref.target}#${fragment}${size === null ? '' : `|${sizeAsWritten(size)}`}]]`
 
     editor.replaceRange(
       written,
       { line: lineNumber, ch: best.from },
       { line: lineNumber, ch: best.to }
     )
-    log(`the note was pointed at a region: ${this.sourcePath} (${name})`)
+    log(`the note was pointed at a target: ${this.sourcePath} (${fragment})`)
     return true
   }
 }
@@ -919,18 +997,23 @@ class QuickLookModal extends Modal {
   constructor (
     app: App,
     private readonly file: TFile,
-    private readonly region: string | undefined,
+    private readonly target: FigureTarget | undefined,
     private readonly plugin: AnalogCanvasPlugin
   ) {
     super(app)
   }
 
   onOpen (): void {
-    this.titleEl.setText(this.region === undefined
-      ? this.file.name
-      : `${this.file.name} — ${this.region}`)
+    const parts = [this.file.name]
+    if (this.target?.cell !== undefined) {
+      parts.push(this.target.cell)
+    }
+    if (this.target?.region !== undefined) {
+      parts.push(this.target.region)
+    }
+    this.titleEl.setText(parts.join(' — '))
     this.modalEl.addClass('analog-canvas-quicklook')
-    void drawInto(this.contentEl, this.file, this.region, undefined, this.plugin)
+    void drawInto(this.contentEl, this.file, this.target, undefined, this.plugin)
   }
 }
 
@@ -978,9 +1061,9 @@ export function registerCircuitEmbeds (plugin: AnalogCanvasPlugin): void {
 /**
  * Handles the links of a note that point at a drawing.
  *
- * A link may point at a region of a drawing. Obsidian would open the file and
- * look for a heading of that name, which a drawing does not have, so the link
- * is handled here instead.
+ * A link may point at a Cell or a region of a drawing. Obsidian would open
+ * the file and look for a heading of that name, which a drawing does not
+ * have, so the link is handled here instead.
  *
  * @param   {HTMLElement}                el     The rendered note
  * @param   {MarkdownPostProcessorContext} _ctx What the note is (unused)
@@ -996,7 +1079,7 @@ export function renderEmbeds (
     const href = link.getAttribute('href') ?? ''
     const hash = href.indexOf('#')
     const target = hash >= 0 ? href.slice(0, hash) : href
-    const region = hash >= 0 ? decodeURIComponent(href.slice(hash + 1)).trim() : undefined
+    const fragment = hash >= 0 ? decodeURIComponent(href.slice(hash + 1)).trim() : ''
     if (!isCircuitName(target)) {
       continue
     }
@@ -1004,9 +1087,10 @@ export function renderEmbeds (
     if (file === null) {
       continue
     }
+    const figure = hash >= 0 ? targetOf(parseFigureRequest(fragment)) : undefined
     link.addEventListener('click', (event) => {
       event.preventDefault()
-      void plugin.openDrawing(file, region !== undefined && region.length > 0 ? region : undefined)
+      void plugin.openDrawing(file, figure)
     })
   }
 }

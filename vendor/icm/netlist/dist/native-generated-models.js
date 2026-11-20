@@ -1,10 +1,14 @@
 import { generatedBehavioralDefinition } from "./generated-models.js";
-import { projectBehavioralExpression } from "./behavioral-model.js";
-/** Native syntax projection, with no SPICE card parsing or model equations. */
-export function nativeBehavioralModel(target, scalar, models) {
+import { PASSIVE_VALUE, projectBehavioralExpression, } from "./behavioral-model.js";
+/**
+ * Native syntax projection, with no SPICE card parsing or model equations.
+ * `name` writes the body under another name, where an author's definition
+ * has its own (#1928).
+ */
+export function nativeBehavioralModel(target, scalar, models, name = target) {
     const model = generatedBehavioralDefinition(target);
     return [
-        `subckt ${target} (${model.ports.join(" ")})`,
+        `subckt ${name} (${model.ports.join(" ")})`,
         ...model.parameters.map((p) => `parameters ${p.name}=${scalar(p.defaultValue)}`),
         ...model.elements.map((element) => {
             // OSDI module loading canonicalizes names in VACASK 0.3.4. Keep only
@@ -14,7 +18,7 @@ export function nativeBehavioralModel(target, scalar, models) {
             const master = models.get(element.kind);
             if (!master)
                 throw new Error(`Missing native primitive for ${target}`);
-            return `${element.name} (${element.nodes.join(" ")}) ${master} ${element.kind === "capacitor" ? "c" : "r"}=${scalar(element.value)}`;
+            return `${element.name} (${element.nodes.join(" ")}) ${master} ${PASSIVE_VALUE[element.kind]}=${scalar(element.value)}`;
         }),
         "ends",
     ];

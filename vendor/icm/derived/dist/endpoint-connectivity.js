@@ -23,7 +23,9 @@ export function createEndpointConnectivityClassifier(document, index, resolver) 
             ? logicalResolution.byBaseNetId.get(baseNetId)
             : undefined;
         const formalBoundary = Boolean(logicalGroup &&
-            document.netlist?.terminals.some((terminal) => logicalGroup.baseNetIds.includes(terminal.netId)));
+            document.netlist?.terminals.some((terminal) => (terminal.signal?.members.map((member) => member.netId) ?? [
+                terminal.netId,
+            ]).some((netId) => logicalGroup.baseNetIds.includes(netId))));
         const globalSupply = Boolean(logicalGroup?.scope === "global" &&
             (logicalGroup.powerDomain === "vdd" ||
                 logicalGroup.powerDomain === "ground"));

@@ -25,6 +25,10 @@ export function deriveStableId(prefix, ...identityParts) {
         .join("|");
     return `${prefix}-${fnv1a64(framed)}`;
 }
+/** The block symbol a Cell's callers draw by default, keyed by its name without case. */
+export function hierarchicalSymbolId(cellName) {
+    return deriveStableId("hierarchical-symbol", cellName.toLowerCase());
+}
 export function createId(prefix, randomUuid) {
     assertPrefix(prefix);
     const uuidFactory = randomUuid ?? (() => globalThis.crypto.randomUUID());

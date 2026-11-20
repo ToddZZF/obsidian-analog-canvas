@@ -86,8 +86,6 @@ export function deckRequestsRawfile(deck) {
  * somewhere else. It is not a way to select a different one.
  */
 export const SKY130_LIBRARY_PATH = "/opt/sky130/continuous/sky130.lib.spice";
-/** The corner every surface defaults to. */
-export const SKY130_LIBRARY_SECTION = "tt";
 export function buildSimulationDeck(request, modelLibrary) {
     const lines = ["* Analog Canvas simulation deck"];
     if (modelLibrary) {

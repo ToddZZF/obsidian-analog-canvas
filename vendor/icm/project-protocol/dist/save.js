@@ -29,6 +29,7 @@ function sortKeys(value) {
                     "name",
                     "netlist",
                     "presentation",
+                    "drawingOrder",
                     "instances",
                     "routes",
                     "connections",
@@ -56,6 +57,7 @@ function sortKeys(value) {
                         "mirror",
                         "color",
                         "backgroundColor",
+                        "bodyFill",
                         "parameters",
                         "target",
                         "control",
@@ -70,9 +72,25 @@ function sortKeys(value) {
     }
     return value;
 }
+function orderedProjectFile(project) {
+    return sortKeys(encodeProjectFile(validateProjectReadSnapshot(withProjectComponentDefinitions(validateProjectReadSnapshot(project)))));
+}
 export function serializeProject(project) {
-    const value = sortKeys(encodeProjectFile(validateProjectReadSnapshot(withProjectComponentDefinitions(validateProjectReadSnapshot(project)))));
-    return `${projectJson(value)}\n`;
+    return `${projectJson(orderedProjectFile(project))}\n`;
+}
+export function serializeCompactProject(project) {
+    return `${JSON.stringify(orderedProjectFile(project))}\n`;
+}
+/** Reformat encoded Project JSON without changing its file schema. */
+export function formatProjectFile(projectText, layout = "readable") {
+    let value;
+    try {
+        value = JSON.parse(projectText);
+    }
+    catch {
+        return projectText;
+    }
+    return `${layout === "compact" ? JSON.stringify(value) : projectJson(value)}\n`;
 }
 function inlineJson(value) {
     if (Array.isArray(value))

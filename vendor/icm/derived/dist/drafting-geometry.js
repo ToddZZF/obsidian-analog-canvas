@@ -29,6 +29,12 @@ export function draftTextLayoutContent(document, object, metrics) {
 const TEXT_PADDING_X = 6;
 const TEXT_PADDING_Y = 8;
 export function resolveDraftingObjectGeometry(document, resolver, object, resolvedRoutingGeometry) {
+    if (object.kind === "rectangle")
+        return resolveRectangle(object);
+    if (object.kind === "circle")
+        return resolveCircle(object);
+    if (object.kind === "construction-line")
+        return resolveConstructionLine(object);
     // Resolving this per object rebuilt the whole Document's route geometry once
     // for every drafting object: a Project with 200 of them paid to resolve 1070
     // Routes 200 times, and the Scene build does it in both the bounds pass and
@@ -44,12 +50,6 @@ export function resolveDraftingObjectGeometry(document, resolver, object, resolv
             return resolveLeader(document, resolver, object, routingGeometry);
         case "callout":
             return resolveCallout(document, resolver, object, routingGeometry);
-        case "construction-line":
-            return resolveConstructionLine(object);
-        case "rectangle":
-            return resolveRectangle(object);
-        case "circle":
-            return resolveCircle(object);
         case "floating-symbol":
             return resolveFloatingSymbol(document, resolver, object, routingGeometry);
     }
@@ -80,6 +80,18 @@ function resolveAnchorWithRole(document, resolver, anchor, draftingObjectId, anc
 // For a "follow" route anchor the anchor's own rotation composes with the
 // object's persisted rotation; for free/object anchors the object rotation
 // stands alone. Glyphs and notation strokes themselves remain screen-upright.
+/**
+ * The turn a drawing text's glyphs take about its anchor: a free text at a
+ * quarter turn reads down (90) or up (270) the page. At any other turn, and
+ * with polarity marks, the glyphs stay upright, as all other text does.
+ */
+export function draftTextTurn(object) {
+    if (object.polarity)
+        return 0;
+    return object.rotation === 90 || object.rotation === 270
+        ? object.rotation
+        : 0;
+}
 function composeRotation(anchorRotation, objectRotation, follow) {
     if (!follow)
         return objectRotation;
@@ -147,15 +159,18 @@ function resolveTextWithInk(document, resolver, object, routingGeometry) {
         ? textBounds(textPosition, object.alignment, 0, content, metrics)
         : baselineTextBounds(textPosition, object.alignment, content, metrics, profile);
     const barePolarity = object.polarity === "positive" || object.polarity === "negative";
-    const bounds = polarity
-        ? unionRects([
-            ...(barePolarity ? [] : [resolvedTextBounds]),
-            paddedBounds(unionBounds(polarity.lines.flatMap((line) => [line.from, line.to])), STROKE_PADDING / 2),
-        ])
-        : resolvedTextBounds;
+    const turn = draftTextTurn(object);
+    const bounds = turn
+        ? rotatedRectBounds(resolvedTextBounds, textPosition, turn)
+        : polarity
+            ? unionRects([
+                ...(barePolarity ? [] : [resolvedTextBounds]),
+                paddedBounds(unionBounds(polarity.lines.flatMap((line) => [line.from, line.to])), STROKE_PADDING / 2),
+            ])
+            : resolvedTextBounds;
     // Measured only when asked for: the drawing and the Snapshot never need it.
     const ink = () => {
-        if (polarity || rotation !== 0 || formulaExtents(content, metrics))
+        if (polarity || rotation !== 0 || turn || formulaExtents(content, metrics))
             return bounds;
         const fontSize = metrics.fontSize;
         const layout = measureRichTextDocument(content, metrics);

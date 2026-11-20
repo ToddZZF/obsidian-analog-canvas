@@ -1,3 +1,5 @@
+import { schematicLatinModernTextMetrics } from "./schematic-latin-modern-text-metrics.generated.js";
+import { schematicSansTextMetrics } from "./schematic-sans-text-metrics.generated.js";
 import { schematicSerifTextMetrics } from "./schematic-serif-text-metrics.generated.js";
 import { schematicTextMetrics } from "./schematic-text-metrics.generated.js";
 function faceMetrics(table, style) {
@@ -20,6 +22,8 @@ const tableFaces = (table) => ({
 const faces = {
     metropolis: tableFaces(schematicTextMetrics),
     serif: tableFaces(schematicSerifTextMetrics),
+    sans: tableFaces(schematicSansTextMetrics),
+    "latin-modern": tableFaces(schematicLatinModernTextMetrics),
 };
 function metricsFor(weight, italic, face) {
     return faces[face][italic ? (weight === "bold" ? "boldItalic" : "italic") : weight];

@@ -18,6 +18,8 @@ import {
 import type AnalogCanvasPlugin from '../main'
 import { log } from '../debug'
 import { isCircuitName, projectIdOf } from '../embeds'
+import { cellDocumentId } from '../figure'
+import type { FigureTarget } from '../figure-target'
 
 export const VIEW_TYPE_CIRCUIT = 'analog-canvas-drawing'
 
@@ -37,8 +39,8 @@ export class CircuitView extends ItemView {
   private loadedText: string | null = null
   /** The name the editor knows the drawing by: its own answer names it again. */
   private openedPath: string | null = null
-  /** The region a link pointed at. */
-  private region: string | undefined = undefined
+  /** The Cell and region a link pointed at. */
+  private target: FigureTarget | undefined = undefined
   /** The timer of the pending automatic save. */
   private saveTimer: ReturnType<typeof setTimeout> | null = null
   /** Whether the plugin itself is writing the file at the moment. */
@@ -178,12 +180,12 @@ export class CircuitView extends ItemView {
   /**
    * Shows a drawing in this pane.
    *
-   * @param   {TFile}    file     The drawing to show
-   * @param   {string?}  region   The region a link pointed at, if any
+   * @param   {TFile}         file    The drawing to show
+   * @param   {FigureTarget?} target  The Cell and region a link pointed at, if any
    */
-  async showDrawing (file: TFile, region?: string): Promise<void> {
+  async showDrawing (file: TFile, target?: FigureTarget): Promise<void> {
     this.file = file
-    this.region = region
+    this.target = target
     this.drawingDirty = false
 
     const text = await this.plugin.app.vault.read(file)
@@ -225,14 +227,20 @@ export class CircuitView extends ItemView {
       return
     }
     this.openedPath = this.file.path
+    const cell = this.target?.cell
+    const documentId = cell === undefined || cell.length === 0
+      ? null
+      : cellDocumentId(text, cell)
     postToCircuit(frame, {
       channel: 'analog-canvas',
       type: 'open',
       path: this.file.path,
       text,
-      ...(this.region !== undefined ? { focus: this.region } : {})
+      ...(documentId !== null ? { documentId } : {}),
+      ...(this.target?.region !== undefined ? { focus: this.target.region } : {})
     })
-    log(`the drawing was handed to the editor: ${this.file.path} (${text.length} bytes)`)
+    log(`the drawing was handed to the editor: ${this.file.path} (${text.length} bytes)` +
+      `${documentId !== null ? ` (cell ${documentId})` : ''}`)
   }
 
   /**

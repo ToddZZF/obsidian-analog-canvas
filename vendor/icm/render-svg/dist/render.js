@@ -1,19 +1,21 @@
 /** Scene assembly: a Document's formal SVG scene and the SVG file around it. */
 import { renderFractionText } from "./fraction-text.js";
 import { RectSchema, SchematicDocumentSchema } from "@icm/model";
-import { contactRequiresJunctionDot, junctionForContact, deriveDocumentContactEvidence, deriveMosBulkRouteFamily, resolveDocumentRoutingGeometry, resolveAnnotationPresentation, annotationOwningInstanceId, resolveAnnotationTextColor, isSchematicAnnotationVisible, resolveAnnotationText, resolveDocumentStyleProfile, objectStyleProfile, sameDocumentStyle, resolveDocumentLogicalNets, schematicRoundPeriodFontFaceCss, } from "@icm/derived";
-import { resolveAdaptiveSignalFlowBlockLayout, resolveInstanceSymbol, signalFlowBodyUsesLabelTypography, } from "@icm/symbols";
+import { contactRequiresJunctionDot, junctionForContact, deriveDocumentContactEvidence, deriveMosBulkRouteFamily, resolveDocumentRoutingGeometry, resolveAnnotationPresentation, annotationOwningInstanceId, resolveAnnotationTextColor, isSchematicAnnotationVisible, resolveAnnotationText, resolveDocumentStyleProfile, resolveDrawingScene, objectStyleProfile, sameDocumentStyle, resolveDocumentLogicalNets, schematicRoundPeriodFontFaceCssFor, } from "@icm/derived";
+import { resolveInstanceSymbol, signalFlowBodyUsesLabelTypography, } from "@icm/symbols";
 import { schematicTextFontSize, schematicTextSizeAttribute, } from "./schematic-text.js";
 import { renderPositionedOverbarScriptDocument } from "./positioned-rich-text.js";
 import { renderFormulaDocument } from "./formula.js";
 import { renderUprightSignalFlowFormula } from "./signal-flow-formula.js";
 import { drawnRouteMarkerPlacement, renderAnnotationText, renderPositionedFractionAnnotation, rotateOffset, } from "./annotation-render.js";
-import { renderDraftingLayer } from "./drafting-render.js";
+import { renderDraftingObject } from "./drafting-render.js";
+import { composeDrawing } from "./compose-drawing.js";
 import { renderInductorCouplingLayer } from "./inductor-coupling-render.js";
-import { junctionMiterBridgePaths, renderNoConnectMarkers, renderRouteDirectionArrow, terminalMiterBridgePaths, } from "./route-render.js";
+import { busStrokeProfile, busTapMarks, junctionMiterBridgePaths, renderNoConnectMarkers, renderRouteDirectionArrow, terminalMiterBridgePaths, } from "./route-render.js";
 import { deriveBounds } from "./scene-bounds.js";
+import { wireHopPaths } from "./wire-hops.js";
 import { escapeXml, pointList } from "./svg-markup.js";
-import { instanceTransform, renderAdaptiveSignalFlowFrame, renderSymbolDefinitionBody, renderVisiblePinNames, } from "./symbol-render.js";
+import { instanceTransform, renderFilledRegion, renderSymbolDefinitionBody, renderVisiblePinNames, } from "./symbol-render.js";
 function profileMiterAttribute(profile) {
     return ` stroke-miterlimit="${profile.miterLimit}"`;
 }
@@ -22,6 +24,7 @@ export function buildSvgScene(input, resolver, options = {}) {
     const objectIds = options.objectIds;
     const included = (id) => !objectIds || objectIds.has(id);
     const profile = resolveDocumentStyleProfile(document.presentation);
+    const drawingScene = resolveDrawingScene(document, resolver, objectIds);
     const margin = options.margin ?? 40;
     if (!Number.isInteger(margin) || margin < 0) {
         throw new Error("SVG margin must be a non-negative integer");
@@ -61,9 +64,10 @@ export function buildSvgScene(input, resolver, options = {}) {
     // one the engine re-creates under a copied circuit still matches it.
     const junctionProfile = (junctionId) => {
         const junction = junctionsById.get(junctionId);
-        return junction?.documentStyle
+        const kept = junction?.documentStyle
             ? objectStyleProfile(profile, junction)
             : sharedProfile(routesAtJunction.get(junctionId) ?? []);
+        return busStrokeProfile(kept, junction?.members?.length ?? 0);
     };
     const contactProfile = (contact) => {
         const junction = contact.endpoints.find((endpoint) => endpoint.kind === "junction");
@@ -89,8 +93,8 @@ export function buildSvgScene(input, resolver, options = {}) {
     for (const annotation of document.annotations) {
         if (!included(annotation.id) || annotation.visible === false)
             continue;
-        const content = resolveAnnotationText(document, annotation, logicalNets);
-        if (!isSchematicAnnotationVisible(document, annotation, logicalNets, content))
+        const content = resolveAnnotationText(document, annotation, logicalNets, resolver);
+        if (!isSchematicAnnotationVisible(document, annotation, logicalNets, content, resolver))
             continue;
         resolvedAnnotations.push({
             annotation,
@@ -109,6 +113,13 @@ export function buildSvgScene(input, resolver, options = {}) {
             ? included(endpoint.junctionId)
             : included(endpoint.instanceId)))
         .filter((contact) => {
+        if (contact.endpoints.some((endpoint) => endpoint.memberId ||
+            (endpoint.kind === "junction" &&
+                (junctionsById.get(endpoint.junctionId)?.members?.length ?? 0) >
+                    1)) ||
+            contact.incidents.some((incident) => incident.kind === "route" &&
+                (routesById.get(incident.objectId)?.members?.length ?? 0) > 1))
+            return false;
         if (contact.incidents.some((incident) => incident.kind === "route" &&
             powerRailRouteIds.has(incident.objectId))) {
             return false;
@@ -119,7 +130,7 @@ export function buildSvgScene(input, resolver, options = {}) {
     const dottedJunctionIds = new Set(dottedContacts.flatMap((contact) => contact.endpoints.flatMap((endpoint) => endpoint.kind === "junction" ? [endpoint.junctionId] : [])));
     const viewBox = options.bounds
         ? RectSchema.parse(options.bounds)
-        : deriveBounds(document, resolver, routingGeometry, dottedJunctionIds, margin, resolvedAnnotations, profile, objectIds);
+        : deriveBounds(document, resolver, drawingScene, routingGeometry, dottedJunctionIds, margin, resolvedAnnotations, profile, objectIds);
     const joinedJunctionIds = new Set(routingGeometry.endpointJoins.flatMap((join) => join.kind === "junction-miter" ? [join.junctionId] : []));
     const bulkRouteIds = new Set();
     const bulkRouteColors = new Map();
@@ -185,6 +196,18 @@ export function buildSvgScene(input, resolver, options = {}) {
         inkOrder.push(key);
         ink.set(key, { strokeColor, strokeWidth, dash, d: [d] });
     };
+    // Wire hops are drawn ink only: a power rail never hops, and a hop
+    // crosses only wires this drawing includes.
+    const hopPaths = document.presentation.crossingStyle === "hop"
+        ? wireHopPaths(new Map(document.routes
+            .filter((route) => included(route.id))
+            .map((route) => [
+            route.id,
+            routingGeometry.routes.get(route.id)?.centerline ?? [],
+        ])), new Set(document.routes
+            .filter((route) => included(route.id) && !powerRailRouteIds.has(route.id))
+            .map((route) => route.id)), contactEvidence.contacts.map((contact) => contact.point))
+        : new Map();
     const routeIdentities = [...document.routes]
         .filter((route) => included(route.id))
         .sort((left, right) => left.id.localeCompare(right.id, "en"))
@@ -210,19 +233,30 @@ export function buildSvgScene(input, resolver, options = {}) {
         const presentationAttribute = presentation !== "wire"
             ? ` data-route-presentation="${presentation}"`
             : "";
-        const routeProfile = objectStyleProfile(profile, route);
+        const routeProfile = busStrokeProfile(objectStyleProfile(profile, route), route.members?.length ?? 0);
         const strokeWidth = isPowerRail
             ? routeProfile.strokes.powerRail
             : routeProfile.strokes.wire;
-        addInk(strokeColor, strokeWidth, dash, `M ${geometry.centerline
-            .map((point) => `${point.x} ${point.y}`)
-            .join(" L ")}`);
+        addInk(strokeColor, strokeWidth, dash, hopPaths.get(route.id) ??
+            `M ${geometry.centerline
+                .map((point) => `${point.x} ${point.y}`)
+                .join(" L ")}`);
         // The bridge belongs to the same paint as the Route it joins, so it
         // merges into that shape instead of being laid over it.
         for (const d of terminalMiterBridgePaths(geometry.endpointJoins, routeProfile))
             addInk(strokeColor, routeProfile.strokes.wire, dash, d);
         const directionArrow = renderRouteDirectionArrow(geometry.centerline, route.styleOverride?.arrow, strokeColor, routeProfile);
-        return `<polyline data-object-id="${escapeXml(route.id)}" data-net-id="${escapeXml(route.netId)}"${presentationAttribute} points="${pointList(geometry.centerline)}" fill="none" stroke="none"/>${directionArrow}`;
+        const taps = busTapMarks(document, resolver, route, geometry.centerline)
+            .map((mark) => {
+            const d = `M ${mark.from.x} ${mark.from.y} L ${mark.to.x} ${mark.to.y}`;
+            addInk(strokeColor, routeProfile.strokes.wire, "", d);
+            const members = mark.memberIds.length === 1
+                ? `data-member-id="${escapeXml(mark.memberIds[0])}"`
+                : `data-member-ids="${escapeXml(mark.memberIds.join(" "))}"`;
+            return `<path data-role="bus-tap" data-route-id="${escapeXml(route.id)}" ${members} d="${d}" fill="none" stroke="none"/>`;
+        })
+            .join("");
+        return `<polyline data-object-id="${escapeXml(route.id)}" data-net-id="${escapeXml(route.netId)}"${presentationAttribute} points="${pointList(geometry.centerline)}" fill="none" stroke="none"/>${directionArrow}${taps}`;
     })
         .join("");
     for (const bridge of junctionMiterBridgePaths(routingGeometry.endpointJoins.filter((join) => {
@@ -271,10 +305,9 @@ export function buildSvgScene(input, resolver, options = {}) {
     const noConnectLayer = noConnectMarkers
         ? `<g data-layer="no-connects">${noConnectMarkers}</g>`
         : "";
-    const symbols = [...document.instances]
+    const symbols = new Map(document.instances
         .filter((instance) => included(instance.id))
         .filter((instance) => instance.placement !== null)
-        .sort((left, right) => left.id.localeCompare(right.id, "en"))
         .map((instance) => {
         const resolved = resolveInstanceSymbol(resolver, instance);
         if (!resolved) {
@@ -299,26 +332,35 @@ export function buildSvgScene(input, resolver, options = {}) {
                 : {}),
         });
         const strokeColor = foregroundOverride ?? instanceProfile.foreground;
-        // Background fill: drawn inside the instance transform using the
-        // symbol's local viewBox so it moves with the instance and stays
-        // aligned with the artwork in all orientations and mirrors. When no
-        // override is set, no rect is emitted (identical markup to pre-override
-        // rendering).
-        const viewBox = resolved.definition.viewBox;
-        const adaptiveLayout = resolveAdaptiveSignalFlowBlockLayout(resolved.definition, instance.signalFlowParameters);
-        const background = adaptiveLayout?.body ?? viewBox;
-        const backgroundRect = styleOverride?.background === undefined
-            ? ""
-            : adaptiveLayout
-                ? renderAdaptiveSignalFlowFrame(adaptiveLayout, `data-role="instance-background" fill="${styleOverride.background}" stroke="none"`)
-                : `<rect data-role="instance-background" x="${background.x}" y="${background.y}" width="${background.width}" height="${background.height}" fill="${styleOverride.background}"/>`;
+        const fill = drawingScene.instanceFills.get(instance.id);
+        const fillColor = fill?.color === "background"
+            ? instanceProfile.background
+            : fill?.color;
+        const background = fill?.regions
+            .map((region) => {
+            if (fill.legacy &&
+                !fill.adaptive &&
+                region.kind === "rectangle") {
+                const { x, y, width, height } = region.bounds;
+                return `<rect data-role="instance-background" x="${x}" y="${y}" width="${width}" height="${height}" fill="${fillColor}"/>`;
+            }
+            const role = fill.legacy
+                ? "instance-background"
+                : "instance-body-fill";
+            return renderFilledRegion(region, `data-role="${role}" fill="${fillColor}" stroke="none"`);
+        })
+            .join("") ?? "";
         const symbolRole = styleOverride === undefined ? "" : ' data-role="instance-symbol"';
-        return `<g data-object-id="${escapeXml(instance.id)}" data-symbol-id="${escapeXml(resolved.definition.id)}"><g transform="${instanceTransform(instance)}">${backgroundRect}<g${symbolRole} fill="none" stroke="${strokeColor}" stroke-width="${instanceProfile.strokes.symbol}" stroke-linecap="${instanceProfile.lineCap}" stroke-linejoin="${instanceProfile.lineJoin}"${profileMiterAttribute(instanceProfile)}>${primitives}</g></g>${formula}${pinNames}</g>`;
-    })
-        .join("");
-    const annotations = resolvedAnnotations
-        .sort((left, right) => left.annotation.id.localeCompare(right.annotation.id, "en"))
-        .map(({ annotation, content, presentation }) => {
+        return [
+            instance.id,
+            `<g data-object-id="${escapeXml(instance.id)}" data-symbol-id="${escapeXml(resolved.definition.id)}"><g transform="${instanceTransform(instance)}">${background}<g${symbolRole} fill="none" stroke="${strokeColor}" stroke-width="${instanceProfile.strokes.symbol}" stroke-linecap="${instanceProfile.lineCap}" stroke-linejoin="${instanceProfile.lineJoin}"${profileMiterAttribute(instanceProfile)}>${primitives}</g></g>${formula}${pinNames}</g>`,
+        ];
+    }));
+    const annotations = new Map(resolvedAnnotations.map((resolved) => [
+        resolved.annotation.id,
+        renderAnnotation(resolved),
+    ]));
+    function renderAnnotation({ annotation, content, presentation, }) {
         const annotationProfile = objectStyleProfile(profile, annotation);
         const attachment = ` data-anchor-kind="${annotation.anchor.kind}"`;
         const routeMarkerPlacement = drawnRouteMarkerPlacement(annotation, presentation, routingGeometry);
@@ -459,11 +501,24 @@ export function buildSvgScene(input, resolver, options = {}) {
             return `<g transform="${transform}"><text ${attributes} x="${position.x}" y="${position.y}" text-anchor="start"${emphasis}${colorOverride ? ` fill="${colorOverride}"` : ""}${schematicTextSizeAttribute(annotation.kind, annotationProfile, annotation.sizeScale)}>${positioned.tspans}</text>${positioned.decorations}</g>${globalBadge}`;
         }
         return `<text ${attributes} x="${position.x}" y="${position.y}" text-anchor="${annotation.alignment}" transform="${transform}"${emphasis}${colorOverride ? ` fill="${colorOverride}" color="${colorOverride}"` : ""}${schematicTextSizeAttribute(annotation.kind, annotationProfile, annotation.sizeScale)}>${renderAnnotationText(content, annotation, annotationProfile)}</text>${globalBadge}`;
-    })
-        .join("");
+    }
+    const drafting = new Map((document.drafting?.objects ?? [])
+        .filter((object) => included(object.id))
+        .map((object) => [
+        object.id,
+        renderDraftingObject(document, resolver, profile, routingGeometry, object),
+    ]));
+    const drawing = composeDrawing(drawingScene.order, {
+        electrical: `<g data-layer="routes">${routes}</g><g data-layer="junctions">${junctions}</g>`,
+        circuitMarks: `${renderInductorCouplingLayer(document, resolver, profile, objectIds)}${noConnectLayer}`,
+        instances: symbols,
+        annotations,
+        drafting,
+    }, !document.drawingOrder);
     return {
         viewBox,
-        formalBody: `<g data-layer="formal">${renderDraftingLayer(document, resolver, profile, routingGeometry, "background", objectIds)}<g data-layer="routes">${routes}</g><g data-layer="junctions">${junctions}</g><g data-layer="symbols">${symbols}</g>${renderInductorCouplingLayer(document, resolver, profile, objectIds)}${noConnectLayer}<g data-layer="annotations">${annotations}</g>${renderDraftingLayer(document, resolver, profile, routingGeometry, "foreground", objectIds)}</g>`,
+        formalBody: `<g data-layer="formal">${drawing}</g>`,
+        drawingScene,
     };
 }
 export function renderDocumentSvg(document, resolver, options = {}) {
@@ -478,5 +533,5 @@ export function renderDocumentSvg(document, resolver, options = {}) {
     const background = options.background === "transparent"
         ? ""
         : `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${profile.background}"/>`;
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${width} ${height}" role="img" aria-labelledby="title" data-style-profile="${profile.id}"${profile.typography.face === "serif" ? ' data-text-face="serif"' : ""}><title id="title">${title}</title>${background}<style>${schematicRoundPeriodFontFaceCss}svg{font-size:${profile.typography.annotationFontSize}px;fill:${profile.foreground}}text{font-family:${profile.typography.fontFamily}}</style>${scene.formalBody}</svg>\n`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${width} ${height}" role="img" aria-labelledby="title" data-style-profile="${profile.id}"${profile.typography.face && profile.typography.face !== "metropolis" ? ` data-text-face="${profile.typography.face}"` : ""}><title id="title">${title}</title>${background}<style>${schematicRoundPeriodFontFaceCssFor(scene.formalBody)}svg{font-size:${profile.typography.annotationFontSize}px;fill:${profile.foreground}}text{font-family:${profile.typography.fontFamily}}</style>${scene.formalBody}</svg>\n`;
 }

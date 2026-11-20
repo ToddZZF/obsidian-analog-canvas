@@ -35,6 +35,7 @@ function collectDefinitions(bundle, diagnostics) {
     const opaque = [];
     const preserved = [];
     const topInstances = [];
+    const topParameters = [];
     const globalSymbols = new Map();
     const selectedSectionsByFile = new Map();
     for (const dependency of bundle.dependencies) {
@@ -168,6 +169,7 @@ function collectDefinitions(bundle, diagnostics) {
                     }
                     else {
                         parameters.push(...statement.parameters.map(declaration));
+                        topParameters.push(...statement.parameters);
                     }
                     for (const parameter of statement.parameters) {
                         const target = current ? currentSymbols : globalSymbols;
@@ -220,10 +222,14 @@ function collectDefinitions(bundle, diagnostics) {
         }
     }
     if (topInstances.length > 0) {
+        // The circuit's own file-level .param assignments are its top Cell's
+        // parameters, which export prints back as .param. An included library's
+        // stay with the library.
+        const circuitFiles = new Set(topInstances.map((instance) => instance.sourceRef.fileId));
         definitions.push({
             name: "__flat__",
             ports: [],
-            parameters: [],
+            parameters: topParameters.filter((parameter) => circuitFiles.has(parameter.sourceRef.fileId)),
             instances: topInstances,
             sourceRef: fullSpan(topInstances[0].sourceRef, topInstances.at(-1).sourceRef),
         });
@@ -445,5 +451,5 @@ export function compileSourceBundle(bundle, options = {}) {
     };
 }
 export async function compileSpiceSources(inputs, entryPath, options = {}) {
-    return compileSourceBundle(await createSourceBundle(inputs, entryPath), options);
+    return compileSourceBundle(await createSourceBundle(inputs, entryPath, options.includeRoot), options);
 }

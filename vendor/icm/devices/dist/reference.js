@@ -1,3 +1,4 @@
+import { bindsProjectCell } from "./gate-cell.js";
 import { deviceDescriptor, subcircuitDescriptor } from "./registry.js";
 export const hierarchyReferencePolicy = {
     kind: "required",
@@ -5,14 +6,17 @@ export const hierarchyReferencePolicy = {
 };
 export function referencePolicyForInstance(instance, project) {
     const binding = instance.netlist?.binding;
-    if (binding?.kind === "subcircuit" ||
+    const prefix = deviceDescriptor(instance.symbolId, project)?.referencePrefix;
+    // A chopper bound to a Cell keeps its look, and so its References (#1928).
+    const keepsDevicePrefix = binding?.kind === "subcircuit" &&
+        bindsProjectCell(instance.symbolId) &&
+        Boolean(prefix);
+    if ((binding?.kind === "subcircuit" && !keepsDevicePrefix) ||
         binding?.kind === "unresolved-subcircuit" ||
-        (binding?.kind === "external-subcircuit" &&
-            !deviceDescriptor(instance.symbolId, project)?.referencePrefix) ||
+        (binding?.kind === "external-subcircuit" && !prefix) ||
         subcircuitDescriptor(instance.symbolId, project)) {
         return hierarchyReferencePolicy;
     }
-    const prefix = deviceDescriptor(instance.symbolId, project)?.referencePrefix;
     return prefix ? { kind: "required", prefix } : { kind: "none" };
 }
 export function referencePolicyForSymbol(symbolId) {
@@ -72,8 +76,15 @@ export function createReferenceIndex(document, project) {
         // New native devices, including PDK wrappers, still allocate M/R/C/etc.
         const retainedExternalReference = Boolean(deviceDescriptor(instance.symbolId, project)?.referencePrefix) &&
             /^x/iu.test(reference);
+        // A call of an external subcircuit (a model source's) keeps any name, as
+        // Spectre writes it (A1, U1): SPICE puts its X before the name when it
+        // prints the card. A Cell's call keeps to X and draws another name with
+        // a display alias (#1254).
+        const anyCallName = policy === hierarchyReferencePolicy &&
+            instance.netlist?.binding?.kind === "external-subcircuit";
         if (!reference.toUpperCase().startsWith(policy.prefix.toUpperCase()) &&
-            !retainedExternalReference) {
+            !retainedExternalReference &&
+            !anyCallName) {
             issues.push({
                 code: "WRONG_REFERENCE_PREFIX",
                 instanceId: instance.id,

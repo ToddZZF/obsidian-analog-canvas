@@ -22,10 +22,11 @@ import { objectStyleProfile, } from "./style-profile.js";
  * session rather than in the annotation. So there is no empty-but-wanted
  * annotation to exempt, including one mid-edit.
  */
-export function isSchematicAnnotationVisible(document, annotation, logicalNets, resolvedText) {
+export function isSchematicAnnotationVisible(document, annotation, logicalNets, resolvedText, resolver) {
     if (annotation.visible === false)
         return false;
-    if (!flattenRichText(resolvedText ?? resolveAnnotationText(document, annotation, logicalNets)).trim()) {
+    if (!flattenRichText(resolvedText ??
+        resolveAnnotationText(document, annotation, logicalNets, resolver)).trim()) {
         return false;
     }
     const anchoredInstanceId = annotation.anchor.kind === "object"
@@ -40,12 +41,11 @@ export function isSchematicAnnotationVisible(document, annotation, logicalNets, 
     // only while the W/L is hidden, so the count is never drawn twice (#1423).
     if (binding?.kind === "instance-value" &&
         binding.parameter !== undefined &&
-        valuePrintsMultiplier(document.instances.find((item) => item.id === binding.instanceId)
-            ?.symbolId, binding.parameter) &&
+        valuePrintsMultiplier(document.instances.find((item) => item.id === binding.instanceId), binding.parameter, resolver) &&
         document.annotations.some((other) => other.binding?.kind === "instance-value" &&
             other.binding.instanceId === binding.instanceId &&
             other.binding.parameter === undefined &&
-            isSchematicAnnotationVisible(document, other, logicalNets)))
+            isSchematicAnnotationVisible(document, other, logicalNets, undefined, resolver)))
         return false;
     return !(binding?.kind === "instance-reference" &&
         document.netlist?.terminals.some((terminal) => terminal.interfaceInstanceIds.includes(binding.instanceId)));
@@ -56,7 +56,8 @@ export function resolveAnnotationPresentation(document, resolver, annotation, do
     const anchor = resolveVisualAnchor(document, resolver, annotation.anchor, routingGeometry);
     const sizeScale = annotation.sizeScale ?? 1;
     const fontSize = annotationFontSize(annotation, styleProfile) * sizeScale;
-    const text = resolvedText ?? resolveAnnotationText(document, annotation, logicalNets);
+    const text = resolvedText ??
+        resolveAnnotationText(document, annotation, logicalNets, resolver);
     const metrics = {
         ...richTextMetrics(styleProfile, "label", sizeScale),
         fontSize,

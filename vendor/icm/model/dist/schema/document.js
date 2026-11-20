@@ -1,18 +1,23 @@
 import { richTextPresentsIdentifier } from "../identifier-text.js";
 import { cellSymbolPinContainmentProblems } from "../cell-symbol-layout.js";
 import { projectCellInterface } from "../cell-interface-projection.js";
+import { cellSymbolArtworkIssues } from "../circuit-component.js";
+import { isPowerMarkerSymbol, isSupplyPortSymbol, } from "../supply-port-symbol.js";
 import { z } from "zod";
 import { StableIdSchema } from "./common.js";
 import { SourceSpanSchema, ImportReferenceSchema } from "./source.js";
 import { InstanceSchema, NetlistIdentifierSchema, NetlistParameterValueSchema, } from "./instance.js";
-import { ConnectivityEvidenceSchema, NetSchema, InductorCouplingSchema, NoConnectSchema, } from "./connectivity.js";
+import { ConnectivityEvidenceSchema, NetSchema, InductorCouplingSchema, NoConnectSchema, SignalDeclarationSchema, } from "./connectivity.js";
 import { JunctionSchema, RouteBranchSchema } from "./routing.js";
 import { AnnotationSchema } from "./annotations.js";
 import { DraftingLayerSchema } from "./drafting.js";
+import { DrawingOrderEntrySchema } from "./drawing-presentation.js";
+import { drawingOrderEntries, drawingOrderKey } from "../drawing-order.js";
 import { boundAnnotationName } from "./bound-annotation-text.js";
 import { LayoutConstraintSchema, LayoutGroupSchema, MosBulkDefaultsSchema, PresentationIntentSchema, } from "./presentation.js";
 import { reportDuplicateIds } from "./validation.js";
 import { electricalConnectionGrid } from "../coordinate-domain.js";
+import { routeElectricalConnections } from "../route-path.js";
 const SourceBindingSchema = z.strictObject({
     cellName: z.string().min(1),
     sourceRef: SourceSpanSchema,
@@ -25,8 +30,18 @@ export const CellNetlistTerminalSchema = z
     direction: z.enum(["input", "output", "inout", "passive"]),
     interfaceInstanceIds: z.array(StableIdSchema).max(1),
     interfaceAnnotationId: StableIdSchema.optional(),
+    signal: SignalDeclarationSchema.optional(),
 })
     .superRefine((terminal, context) => {
+    if (terminal.signal &&
+        (terminal.signal.expression !== terminal.name ||
+            terminal.signal.members[0]?.netId !== terminal.netId)) {
+        context.addIssue({
+            code: "custom",
+            message: "Cell signal must match its displayed name and first member Net",
+            path: ["signal"],
+        });
+    }
     if (terminal.interfaceInstanceIds.length +
         (terminal.interfaceAnnotationId ? 1 : 0) !==
         1) {
@@ -79,6 +94,8 @@ const SchematicDocumentBaseSchema = z.strictObject({
     // Drafting remains optional for programmatic in-memory Documents; canonical
     // factories and persisted fixtures write an explicit empty layer.
     drafting: DraftingLayerSchema.optional(),
+    /** Back to front. Omission retains the historical default arrangement. */
+    drawingOrder: z.array(DrawingOrderEntrySchema).optional(),
 });
 function reportGridPoint(point, grid, path, context) {
     for (const axis of ["x", "y"]) {
@@ -92,6 +109,24 @@ function reportGridPoint(point, grid, path, context) {
     }
 }
 export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((document, context) => {
+    if (document.drawingOrder) {
+        const remaining = new Set(drawingOrderEntries(document).map(drawingOrderKey));
+        for (const [index, entry] of document.drawingOrder.entries()) {
+            const key = drawingOrderKey(entry);
+            if (!remaining.delete(key))
+                context.addIssue({
+                    code: "custom",
+                    path: ["drawingOrder", index],
+                    message: `Drawing order contains a duplicate or unknown entry: ${key}`,
+                });
+        }
+        if (remaining.size)
+            context.addIssue({
+                code: "custom",
+                path: ["drawingOrder"],
+                message: `Drawing order is missing ${remaining.values().next().value}`,
+            });
+    }
     const objectCollections = [
         ...document.instances,
         ...document.nets,
@@ -216,10 +251,11 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
             for (const [markerIndex, interfaceInstanceId,] of terminal.interfaceInstanceIds.entries()) {
                 const interfaceInstance = document.instances.find((instance) => instance.id === interfaceInstanceId);
                 if (!interfaceInstance ||
-                    !["port", "port-filled", "vdd-port"].includes(interfaceInstance.symbolId)) {
+                    !(["port", "port-filled"].includes(interfaceInstance.symbolId) ||
+                        isSupplyPortSymbol(interfaceInstance.symbolId))) {
                     context.addIssue({
                         code: "custom",
-                        message: `Cell terminal requires a Port or VDD Power interface Instance: ${interfaceInstanceId}`,
+                        message: `Cell terminal requires a Port or supply port interface Instance: ${interfaceInstanceId}`,
                         path: [
                             "netlist",
                             "terminals",
@@ -304,6 +340,13 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
                 }
                 occupiedSlots.add(slot);
             }
+            if (cellSymbol.artwork)
+                for (const issue of cellSymbolArtworkIssues(cellSymbol.artwork, projectCellInterface(document.netlist).ports))
+                    context.addIssue({
+                        code: "custom",
+                        message: `${document.netlist.name}'s custom symbol: ${issue.message}`,
+                        path: ["presentation", "cellSymbol", "artwork", ...issue.path],
+                    });
         }
     }
     const instanceReferences = new Set();
@@ -325,7 +368,7 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
                 path: ["instances", instanceIndex, "reference"],
             });
         }
-        if ((instance.symbolId === "ground" || instance.symbolId === "vdd-port") &&
+        if (isPowerMarkerSymbol(instance.symbolId) &&
             instance.reference !== undefined) {
             context.addIssue({
                 code: "custom",
@@ -347,6 +390,35 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
     }
     for (const [annotationIndex, annotation,] of document.annotations.entries()) {
         const binding = annotation.binding;
+        if (binding?.kind === "net-name" &&
+            (binding.memberEndpoint || binding.memberEndpoints)) {
+            const selectedMembers = binding.memberEndpoints ?? [
+                binding.memberEndpoint,
+            ];
+            const route = annotation.anchor.kind === "route"
+                ? document.routes.find((route) => annotation.anchor.kind === "route" &&
+                    route.id === annotation.anchor.routeId)
+                : undefined;
+            const edges = route ? routeElectricalConnections(route) : [];
+            const matches = route &&
+                route.netId === binding.netId &&
+                !(binding.memberEndpoint && binding.memberEndpoints) &&
+                edges.length === selectedMembers.length &&
+                selectedMembers.every((selected, index) => edges[index].endpoints.some((endpoint) => endpoint.kind === selected.kind &&
+                    endpoint.memberId === selected.memberId &&
+                    (endpoint.kind === "terminal" && selected.kind === "terminal"
+                        ? endpoint.instanceId === selected.instanceId &&
+                            endpoint.pinName === selected.pinName
+                        : endpoint.kind === "junction" &&
+                            selected.kind === "junction" &&
+                            endpoint.junctionId === selected.junctionId)));
+            if (!matches)
+                context.addIssue({
+                    code: "custom",
+                    message: "Bus selector must reference its branch's selected endpoint and Net",
+                    path: ["annotations", annotationIndex, "binding"],
+                });
+        }
         if (binding?.kind === "instance-reference" &&
             formalPortInstanceIds.has(binding.instanceId)) {
             context.addIssue({
@@ -432,6 +504,27 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
         }
         if (evidence.kind !== "name-claim")
             continue;
+        if (evidence.signal &&
+            (evidence.signal.expression !== evidence.name ||
+                evidence.signal.members[0]?.netId !== evidence.netId ||
+                evidence.signal.members.some((member) => !netIds.has(member.netId)))) {
+            context.addIssue({
+                code: "custom",
+                message: "Signal name claim must match its name and member Nets",
+                path: [...evidencePath, "signal"],
+            });
+        }
+        if (evidence.signal &&
+            evidence.signal.members.length > 1 &&
+            !document.routes.some((route) => route.members?.length === evidence.signal.members.length &&
+                route.members.every((member, index) => member.id === evidence.signal.members[index].id &&
+                    member.netId === evidence.signal.members[index].netId))) {
+            context.addIssue({
+                code: "custom",
+                message: "Bus Label members must follow one authored conductor in order",
+                path: [...evidencePath, "signal", "members"],
+            });
+        }
         const claimedNet = netById.get(evidence.netId);
         const owner = evidence.owner;
         if (owner.kind === "net-label") {
@@ -530,7 +623,7 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
     for (const [netIndex, net] of document.nets.entries()) {
         const terminalKeys = new Set();
         for (const [terminalIndex, terminal] of net.terminals.entries()) {
-            const terminalKey = `${terminal.instanceId}\u0000${terminal.pinName}`;
+            const terminalKey = `${terminal.instanceId}\u0000${terminal.pinName}\u0000${terminal.memberId ?? ""}`;
             if (terminalKeys.has(terminalKey)) {
                 context.addIssue({
                     code: "custom",
@@ -571,7 +664,7 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
                 path: ["noConnects", noConnectIndex, "endpoint", "instanceId"],
             });
         }
-        key = `${endpoint.instanceId}\u0000${endpoint.pinName}`;
+        key = `${endpoint.instanceId}\u0000${endpoint.pinName}\u0000${endpoint.memberId ?? ""}`;
         netOwner = terminalNetByKey.get(key);
         if (netOwner) {
             context.addIssue({
@@ -626,6 +719,17 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
         couplingNames.add(name);
     }
     for (const [junctionIndex, junction] of document.junctions.entries()) {
+        if (junction.members &&
+            (junction.members[0]?.netId !== junction.netId ||
+                new Set(junction.members.map((member) => member.id)).size !==
+                    junction.members.length ||
+                junction.members.some((member) => !netIds.has(member.netId)))) {
+            context.addIssue({
+                code: "custom",
+                message: "Bus junction requires unique members on existing Nets",
+                path: ["junctions", junctionIndex, "members"],
+            });
+        }
         if (junction.contactAnchor &&
             !document.nets.some((net) => net.id === junction.netId &&
                 net.terminals.some((terminal) => terminal.instanceId === junction.contactAnchor.instanceId &&
@@ -645,6 +749,30 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
         }
     }
     for (const [routeIndex, route] of document.routes.entries()) {
+        if (route.legs.at(-1)?.to.kind !== "endpoint")
+            continue;
+        for (const edge of routeElectricalConnections(route)) {
+            const memberNet = netById.get(edge.netId);
+            for (const endpoint of edge.endpoints) {
+                const belongs = endpoint.kind === "terminal"
+                    ? memberNet?.terminals.some((terminal) => terminal.instanceId === endpoint.instanceId &&
+                        terminal.pinName === endpoint.pinName &&
+                        terminal.memberId === endpoint.memberId)
+                    : endpoint.memberId
+                        ? junctionById
+                            .get(endpoint.junctionId)
+                            ?.members?.some((member) => member.id === endpoint.memberId &&
+                            member.netId === edge.netId)
+                        : !junctionById.get(endpoint.junctionId)?.members &&
+                            junctionById.get(endpoint.junctionId)?.netId === edge.netId;
+                if (!belongs)
+                    context.addIssue({
+                        code: "custom",
+                        message: "Route electrical endpoint must belong to its member Net",
+                        path: ["routes", routeIndex],
+                    });
+            }
+        }
         if (!netIds.has(route.netId)) {
             context.addIssue({
                 code: "custom",
@@ -684,6 +812,7 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
                 });
             }
             else if (endpoint.kind === "terminal" &&
+                !route.members &&
                 routeNet &&
                 !routeNet.terminals.some((terminal) => terminal.instanceId === endpoint.instanceId &&
                     terminal.pinName === endpoint.pinName)) {
@@ -702,7 +831,10 @@ export const SchematicDocumentSchema = SchematicDocumentBaseSchema.superRefine((
                         path: [...path, "junctionId"],
                     });
                 }
-                else if (junction.netId !== route.netId) {
+                else if (!route.members &&
+                    (endpoint.memberId
+                        ? junction.members?.find((member) => member.id === endpoint.memberId)?.netId
+                        : junction.netId) !== route.netId) {
                     context.addIssue({
                         code: "custom",
                         message: "Route and endpoint junction must belong to the same net",

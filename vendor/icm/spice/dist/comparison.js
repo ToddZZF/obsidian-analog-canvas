@@ -67,6 +67,46 @@ function targetName(instance) {
 function declaresTypeOnly(model) {
     return model.rawParameters.replace(/[()\s]/gu, "") === "";
 }
+/** A title line and .end say nothing about the circuit. */
+function describesCircuit(statement) {
+    return !(statement.kind === "directive" &&
+        (statement.name === "title" || statement.name === "end"));
+}
+/** The reference's declarations a comparison without them leaves out, by kind. */
+function uncomparedDeclarations(ir) {
+    const line = (label, items) => {
+        const unique = [...new Set(items)];
+        if (!unique.length)
+            return [];
+        const shown = unique.slice(0, 8).join(", ");
+        return [
+            `${label}: ${shown}${unique.length > 8 ? `, and ${unique.length - 8} more` : ""}`,
+        ];
+    };
+    const preserved = ir.preservedStatements.filter(describesCircuit);
+    const includes = preserved.filter(({ kind, name }) => kind === "library" ||
+        (kind === "directive" && ["include", "inc", "lib"].includes(name)));
+    return [
+        ...line("Includes not read", includes.map(({ rawText }) => rawText.trim().slice(0, 160))),
+        ...line("Model cards not compared", ir.models
+            .filter((model) => !declaresTypeOnly(model))
+            .map(({ name }) => name)),
+        ...line("Parameters not compared", [
+            ...ir.parameters.map(({ name }) => name),
+            ...ir.cells.flatMap((cell) => cell.parameters.map(({ name }) => `${cell.name}.${name}`)),
+        ]),
+        ...line("Statements not compared", preserved
+            .filter((statement) => !includes.includes(statement))
+            .map(({ name }) => `.${name}`)),
+    ];
+}
+/** A parameter value as compared: its exact literal, or, with declarations
+ * out of scope, the text of an expression. */
+function comparedValue(value, literalValue) {
+    if (literalValue !== null || value === undefined)
+        return literalValue;
+    return `text:${value.replace(/\s+/gu, "").toLowerCase()}`;
+}
 function summarize(comparison) {
     if (comparison.status === "equal")
         return "equal";
@@ -112,9 +152,16 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
     let comparedCells = 0;
     const lower = (s) => s.toLowerCase();
     const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-    const difference = (kind, cell, object, a, e) => {
+    const difference = (kind, cell, object, a, e, expectedSource) => {
         if (!same(a, e))
-            differences.push({ kind, cell, object, expected: e, actual: a });
+            differences.push({
+                kind,
+                cell,
+                object,
+                expected: e,
+                actual: a,
+                ...(options.referenceSpans && expectedSource ? { expectedSource } : {}),
+            });
     };
     for (const [label, ir] of [
         ["actual", actual],
@@ -124,10 +171,9 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
             structural(`${label}: unparsed statements need manual comparison`);
         if (options.declarations === false)
             continue;
-        // A title line and .end say nothing about the circuit; nearly every
-        // file has them, and they made every comparison inconclusive.
-        const preserved = ir.preservedStatements.some((statement) => !(statement.kind === "directive" &&
-            (statement.name === "title" || statement.name === "end")));
+        // Nearly every file has a title line and .end, and they made every
+        // comparison inconclusive.
+        const preserved = ir.preservedStatements.some(describesCircuit);
         // Conditionals and includes can add devices; bodies and .param cannot.
         if (preserved)
             structural(`${label}: declarations, model bodies or preserved statements need manual comparison`);
@@ -138,9 +184,12 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
     // A model both sides declare must be the same kind of device.
     const actualModels = new Map(actual.models.map((model) => [lower(model.name), lower(model.modelType)]));
     for (const model of expected.models) {
-        const type = actualModels.get(lower(model.name));
+        const name = lower(model.name);
+        const type = actualModels.get(name) ?? options.actualModelTypes?.get(name);
         if (type !== undefined)
-            difference("declaration", expectedRoot, `model ${lower(model.name)}`, type, lower(model.modelType));
+            difference("declaration", expectedRoot, `model ${name}`, type, lower(model.modelType), model.sourceRef);
+        else if (options.actualModelTypes?.has(name))
+            structural(`The drawing's model type for ${model.name} could not be checked`);
     }
     const seen = new Set();
     const pair = (an, en, ancestors) => {
@@ -163,6 +212,7 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
             return;
         }
         if (options.parameters !== false &&
+            options.declarations !== false &&
             (a.parameters.length || e.parameters.length))
             reasons.add(`${en}: parameterized hierarchy needs manual comparison`);
         // Formal names identify endpoints; order is the exported ABI, which a
@@ -170,9 +220,9 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
         const actualPorts = a.ports.map((p) => lower(p.name));
         const expectedPorts = e.ports.map((p) => lower(p.name));
         if (!same(actualPorts.toSorted(), expectedPorts.toSorted()))
-            difference("interface", en, "ports", actualPorts, expectedPorts);
+            difference("interface", en, "ports", actualPorts, expectedPorts, e.sourceRef);
         else if (options.portOrder !== false)
-            difference("port-order", en, "ports", actualPorts, expectedPorts);
+            difference("port-order", en, "ports", actualPorts, expectedPorts, e.sourceRef);
         const devicesOf = (cell) => {
             const devices = new Map();
             for (const instance of cell.instances) {
@@ -243,11 +293,15 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
         const project = (cell, devices, nameOf, turned = new Set()) => {
             const nodes = new Map();
             const endpoints = new Map();
-            const add = (endpoint, netId) => {
+            const sources = cell === e && options.referenceSpans
+                ? new Map()
+                : undefined;
+            const add = (endpoint, netId, source) => {
                 const list = nodes.get(netId) ?? [];
                 list.push(endpoint);
                 nodes.set(netId, list);
                 endpoints.set(endpoint, netId);
+                sources?.set(endpoint, source);
             };
             const named = new Map();
             for (const [name, instance] of devices) {
@@ -258,12 +312,12 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
                     const position = turned.has(instance)
                         ? 1 - pin.position
                         : pin.position;
-                    add(`${canonical}:${pins?.[position] ?? position}`, pin.netId);
+                    add(`${canonical}:${pins?.[position] ?? position}`, pin.netId, instance.sourceRef);
                 }
             }
             for (const p of cell.ports)
-                add(`port:${lower(p.name)}`, p.netId);
-            return { devices: named, endpoints, nodes };
+                add(`port:${lower(p.name)}`, p.netId, p.sourceRef ?? cell.sourceRef);
+            return { devices: named, endpoints, nodes, sources };
         };
         // A paired device goes by the reference's name on both sides.
         const actualName = (name) => partner.get(name) ?? name;
@@ -346,7 +400,21 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
         for (const ref of new Set([...ap.devices.keys(), ...ep.devices.keys()])) {
             const ai = ap.devices.get(ref), ei = ep.devices.get(ref);
             if (!ai || !ei) {
-                difference("device", en, ref, Boolean(ai), Boolean(ei));
+                const added = ai && options.referenceSpans
+                    ? {
+                        reference: ai.name,
+                        target: ai.target,
+                        parameters: Object.fromEntries(Object.entries(ai.parameters).map(([key, value]) => [
+                            key,
+                            value.rawText,
+                        ])),
+                        terminals: ai.terminals.map(({ name, position, netId }) => ({
+                            name: name ?? position,
+                            net: a.nets.find(({ id }) => id === netId)?.name ?? netId,
+                        })),
+                    }
+                    : Boolean(ai);
+                difference("device", en, ref, added, Boolean(ei), ei?.sourceRef);
                 continue;
             }
             const actualTarget = target(ai);
@@ -356,13 +424,19 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
                 // The same model or subcircuit name, bound as a card or a call.
                 if (name !== undefined && name === targetName(ei)) {
                     if (options.bindings !== false)
-                        difference("binding", en, ref, ai.target.kind, ei.target.kind);
+                        difference("binding", en, ref, ai.target.kind, ei.target.kind, ei.sourceRef);
                 }
                 else
-                    difference("target", en, ref, actualTarget, expectedTarget);
+                    difference("target", en, ref, actualTarget, expectedTarget, ei.sourceRef);
             }
-            if (ai.target.kind === "subcircuit" && ei.target.kind === "subcircuit")
-                pair(ai.target.cellName, ei.target.cellName, new Set([...ancestors, key]));
+            if (ai.target.kind === "subcircuit" && ei.target.kind === "subcircuit") {
+                const actualCell = ai.target.cellName;
+                const expectedCell = ei.target.cellName;
+                if (options.referenceSpans && lower(actualCell) !== lower(expectedCell))
+                    reasons.add(`${en}/${ref}: review the definition of the new Cell ${actualCell} separately`);
+                else
+                    pair(actualCell, expectedCell, new Set([...ancestors, key]));
+            }
             if (options.parameters === false)
                 continue;
             for (const param of new Set([
@@ -372,15 +446,16 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
                 const av = ai.parameters[param]?.rawText, ev = ei.parameters[param]?.rawText;
                 const avn = av === undefined ? absentLiteral(ai, param) : literal(ai, param, av);
                 const evn = ev === undefined ? absentLiteral(ei, param) : literal(ei, param, ev);
-                if ((av !== undefined && avn === null) ||
-                    (ev !== undefined && evn === null)) {
+                if (options.declarations !== false &&
+                    ((av !== undefined && avn === null) ||
+                        (ev !== undefined && evn === null))) {
                     reasons.add(`${en}/${ref}/${param}: expression, nonliteral or over-budget literal needs manual comparison`);
                     continue;
                 }
                 // Compare exact decimal identities, but retain source evidence instead
                 // of reporting rounded values (which could even look equal).
-                if (avn !== evn)
-                    difference("parameter", en, `${ref}.${param}`, av ?? null, ev ?? null);
+                if (comparedValue(av, avn) !== comparedValue(ev, evn))
+                    difference("parameter", en, `${ref}.${param}`, av ?? null, ev ?? null, ei.sourceRef);
             }
         }
         for (const endpoint of new Set([
@@ -388,7 +463,7 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
             ...ep.endpoints.keys(),
         ])) {
             const aid = ap.endpoints.get(endpoint), eid = ep.endpoints.get(endpoint);
-            difference("connection", en, endpoint, aid ? [...(ap.nodes.get(aid) ?? [])].sort() : null, eid ? [...(ep.nodes.get(eid) ?? [])].sort() : null);
+            difference("connection", en, endpoint, aid ? [...(ap.nodes.get(aid) ?? [])].sort() : null, eid ? [...(ep.nodes.get(eid) ?? [])].sort() : null, ep.sources?.get(endpoint));
             const scope = (cell, id) => {
                 const net = cell.nets.find((n) => n.id === id);
                 return net?.scope === "global"
@@ -397,7 +472,7 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
                         ? ["local"]
                         : null;
             };
-            difference("scope", en, endpoint, scope(a, aid), scope(e, eid));
+            difference("scope", en, endpoint, scope(a, aid), scope(e, eid), ep.sources?.get(endpoint));
         }
     };
     pair(actualRoot, expectedRoot, new Set());
@@ -416,6 +491,7 @@ export function compareCircuitIR(actual, expected, actualRoot, expectedRoot = ac
                 : "equal",
         differences,
         reasons: [...reasons],
+        notes: options.declarations === false ? uncomparedDeclarations(expected) : [],
         comparedCells,
     };
     return { ...comparison, summary: summarize(comparison) };

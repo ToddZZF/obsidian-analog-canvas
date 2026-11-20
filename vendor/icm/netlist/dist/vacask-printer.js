@@ -2,7 +2,7 @@ import { directObjectLocator } from "@icm/derived";
 import { parameterExpressionBody, builtInModelContract, reviewedExternalBindingForMaster, } from "@icm/devices";
 import { expressionIsStructurallyValid, parseSpiceNumber } from "@icm/spice";
 import { normalizeIndependentSource } from "./source-waveform.js";
-import { generatedBehavioralDefinition } from "./generated-models.js";
+import { definitionBody, generatedBehavioralDefinition, } from "./generated-models.js";
 import { nativeBehavioralModel } from "./native-generated-models.js";
 import { switchBehavioralDefinition } from "./ideal-switch-model.js";
 const RESERVED = new Set("include section endsection load model global ground subckt ends parameters control endc analysis sweep embed save".split(" "));
@@ -160,7 +160,8 @@ export function printVacaskWithLocations(ir, rootAsTopLevel = false, emission = 
             // that reads VDD takes no vhigh.
             formalParameters: definition.kind === "magnetic"
                 ? definition.formalParameters
-                : generatedBehavioralDefinition(definition.name).parameters,
+                : generatedBehavioralDefinition(definitionBody(definition))
+                    .parameters,
         })),
     ].map((master) => [master.name, master]));
     // Only generated definitions with an actual IR multiplicity call acquire
@@ -241,9 +242,16 @@ export function printVacaskWithLocations(ir, rootAsTopLevel = false, emission = 
             if (definition.capacitors.length)
                 classes.add("capacitor");
         }
-        else if (builtInModelContract(definition.name)?.family === "logic") {
+        else if (builtInModelContract(definitionBody(definition))?.family === "logic") {
             classes.add("resistor");
             classes.add("capacitor");
+        }
+        else if (builtInModelContract(definitionBody(definition))?.family === "passive") {
+            // A passive body loads the primitives it holds: the crystal's R, L
+            // and C, the potentiometer's two resistors.
+            for (const element of generatedBehavioralDefinition(definitionBody(definition)).elements)
+                if (element.kind !== "voltage" && element.kind !== "current")
+                    classes.add(element.kind);
         }
     }
     for (const deviceClass of classes) {
@@ -466,7 +474,7 @@ export function printVacaskWithLocations(ir, rootAsTopLevel = false, emission = 
             !emission.definitionNames.has(definition.name))
             continue;
         if (definition.kind === "behavioral") {
-            for (const line of nativeBehavioralModel(definition.name, (raw) => vacaskProjectValue(raw), models))
+            for (const line of nativeBehavioralModel(definitionBody(definition), (raw) => vacaskProjectValue(raw), models, definition.name))
                 append(line);
         }
         else {

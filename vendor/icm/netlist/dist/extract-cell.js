@@ -1,8 +1,8 @@
 // One Cell as the netlist sees it: its pins and ground pin, references,
 // instances and the model cards it carries.
-import { deriveStableId, foldNetName, projectCellInterface, spellGreekLetters, } from "@icm/model";
+import { deriveStableId, foldNetName, projectScalarCellInterface, spellGreekLetters, } from "@icm/model";
 import { portableCellIdentifier, resolveCommittedDocumentLogicalNets, } from "@icm/derived";
-import { createReferenceIndex, instanceBuiltInSubcircuit, hasBuiltInSubcircuitInterface, nextReference, } from "@icm/devices";
+import { createReferenceIndex, instanceBuiltInSubcircuit, hasBuiltInSubcircuitInterface, isLibraryPart, nextReference, } from "@icm/devices";
 import { bodySupplies } from "./implicit-mos-supplies.js";
 import { builtInBlockCallTarget } from "./ideal-analog-block-models.js";
 import { extractInductorCouplings } from "./extract-coupling.js";
@@ -15,11 +15,9 @@ import { builtInZenerModelName, zenerParameter, extractDeviceInstance, } from ".
 import { extractHierarchyInstance, extractExternalSubcircuitInstance, } from "./extract-subcircuit.js";
 import { extractBuiltInSubcircuitInstance } from "./extract-block.js";
 import { reportSubstratesAboveNegativeSupply, reportDefaultBodySupplies, reportBodiesOffSourceSupply, } from "./extract-findings.js";
-import { GENERIC_DIODE_MODEL, GENERIC_NMOS_MODEL, GENERIC_NPN_MODEL, GENERIC_PMOS_MODEL, GENERIC_PNP_MODEL, definesGenericModel, reportGenericDiodes, reportUndefinedGenericModels, reportGenericBjts, reportGenericMos, } from "./extract-generic-models.js";
+import { GENERIC_DIODE_MODEL, GENERIC_NJF_MODEL, GENERIC_NMOS_DEPLETION_MODEL, GENERIC_NMOS_MODEL, GENERIC_NPN_MODEL, GENERIC_PJF_MODEL, GENERIC_PMOS_DEPLETION_MODEL, GENERIC_PMOS_MODEL, GENERIC_PNP_MODEL, GENERIC_SCHOTTKY_MODEL, definesGenericModel, reportGenericDiodes, reportGenericSchottkys, reportUndefinedGenericModels, reportGenericBjts, reportGenericDepletionMos, reportGenericJfets, reportGenericMos, } from "./extract-generic-models.js";
 const MAX_INSTANCES_PER_CELL = 100_000;
-export function extractCell(project, document, documentsById, cellNameByDocumentId, 
-/** The Project's own subcircuit names; see projectSubcircuitNames. */
-projectNames, projectedNames, placedBodies, options, diagnostics) {
+export function extractCell(project, document, documentsById, cellNameByDocumentId, projectedNames, placedBodies, options, diagnostics) {
     if (!document.netlist) {
         diagnostic(diagnostics, document.id, "MISSING_CELL_INTERFACE", `Document ${document.id} has no netlist interface`);
         return null;
@@ -36,13 +34,10 @@ projectNames, projectedNames, placedBodies, options, diagnostics) {
         definition.id,
         definition,
     ])), projectedNames, options, diagnostics);
-    const interfaceProjection = projectCellInterface(document.netlist);
+    const interfaceProjection = projectScalarCellInterface(document.netlist);
     // Formal pins read the authored Document, not buildNetContext's recovered
     // power-marker claims. All pins share that same logical projection.
     const interfaceLogicalNets = resolveCommittedDocumentLogicalNets(document);
-    for (const issue of interfaceProjection.issues) {
-        diagnostic(diagnostics, document.id, issue.code, `Port ${issue.portName} has conflicting directions: ${issue.directions.join(", ")}`, [...issue.terminalIds]);
-    }
     const ports = interfaceProjection.ports.flatMap((port) => {
         let hasMissingNet = false;
         for (const netId of port.netIds) {
@@ -214,12 +209,14 @@ projectNames, projectedNames, placedBodies, options, diagnostics) {
             !hasBuiltInSubcircuitInterface(captured))
             diagnostic(diagnostics, document.id, "MODEL_IMPLEMENTATION_MISSING", `${instance.reference ?? instance.id} has an interface-only component definition. Repair its implementation and Pin mapping in User Components.`, [instance.id]);
         const builtInSubcircuit = instanceBuiltInSubcircuit(project, instance);
+        const libraryPart = isLibraryPart(project, instance.symbolId);
         const extracted = builtInSubcircuit
-            ? extractBuiltInSubcircuitInstance(document, instance, builtInSubcircuit, instance.reference ?? syntheticReferences.get(instance.id), context, options, diagnostics, projectNames, bodySupplies(builtInBlockCallTarget(instance, builtInSubcircuit, projectNames), projectNames, options.format).length === 0)
+            ? extractBuiltInSubcircuitInstance(document, instance, builtInSubcircuit, instance.reference ?? syntheticReferences.get(instance.id), context, options, diagnostics, libraryPart, libraryPart &&
+                bodySupplies(builtInBlockCallTarget(instance, builtInSubcircuit), options.format).length === 0)
             : binding?.kind === "subcircuit"
                 ? extractHierarchyInstance(document, instance, documentsById, cellNameByDocumentId, context, options, diagnostics)
                 : binding?.kind === "external-subcircuit"
-                    ? extractExternalSubcircuitInstance(document, instance, project.externalSubcircuitDefinitions.find((definition) => definition.id === binding.definitionId), captured, context, diagnostics)
+                    ? extractExternalSubcircuitInstance(document, instance, project.externalSubcircuitDefinitions.find((definition) => definition.id === binding.definitionId), captured, context, options, diagnostics)
                     : extractDeviceInstance(project, document, instance, context, options, diagnostics);
         if (extracted)
             instances.push(extracted);
@@ -249,6 +246,9 @@ projectNames, projectedNames, placedBodies, options, diagnostics) {
     const genericDiodes = carryGenericCard(GENERIC_DIODE_MODEL, "diode", !options.run);
     if (genericDiodes.length)
         reportGenericDiodes(document, genericDiodes, diagnostics);
+    const genericSchottkys = carryGenericCard(GENERIC_SCHOTTKY_MODEL, "diode", !options.run);
+    if (genericSchottkys.length)
+        reportGenericSchottkys(document, genericSchottkys, diagnostics);
     const genericBjts = [GENERIC_NPN_MODEL, GENERIC_PNP_MODEL]
         .map((model) => ({
         model,
@@ -257,6 +257,25 @@ projectNames, projectedNames, placedBodies, options, diagnostics) {
         .filter(({ parts }) => parts.length);
     if (genericBjts.length)
         reportGenericBjts(document, genericBjts, diagnostics);
+    const genericJfets = [GENERIC_NJF_MODEL, GENERIC_PJF_MODEL]
+        .map((model) => ({
+        model,
+        parts: carryGenericCard(model, "jfet", !options.run),
+    }))
+        .filter(({ parts }) => parts.length);
+    if (genericJfets.length)
+        reportGenericJfets(document, genericJfets, diagnostics);
+    const genericDepletion = [
+        GENERIC_NMOS_DEPLETION_MODEL,
+        GENERIC_PMOS_DEPLETION_MODEL,
+    ]
+        .map((model) => ({
+        model,
+        parts: carryGenericCard(model, "mos", !options.run),
+    }))
+        .filter(({ parts }) => parts.length);
+    if (genericDepletion.length)
+        reportGenericDepletionMos(document, genericDepletion, diagnostics);
     // A netlist handed out carries the MOS stand-ins, in either dialect, so it
     // reads back with each part's channel; a run's deck does not (#1420).
     const genericMos = options.run

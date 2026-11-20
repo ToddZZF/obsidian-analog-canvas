@@ -8,8 +8,11 @@ import { builtInBlockCallTarget } from "./ideal-analog-block-models.js";
 import { isIdentifier, compareText, diagnostic, } from "./extract-common.js";
 import { terminalNetName } from "./extract-nets.js";
 export function extractBuiltInSubcircuitInstance(document, instance, definition, reference, context, _options, diagnostics, 
-/** The Project's own subcircuit names; see projectSubcircuitNames. */
-projectNames, 
+/**
+ * A Library part, whose call reaches its generated body, not a User
+ * Component calling the author's own subcircuit (#1928).
+ */
+libraryPart, 
 /** The body never reads VDD/VSS, so an undrawn supply is tied to ground. */
 supplyFree = false) {
     const netlist = instance.netlist;
@@ -18,7 +21,7 @@ supplyFree = false) {
         diagnostic(diagnostics, document.id, "BUILTIN_SUBCIRCUIT_BINDING_MISMATCH", `Analog Block ${reference} requires a black-box subcircuit target`, [instance.id]);
         return null;
     }
-    const target = builtInBlockCallTarget(instance, definition, projectNames);
+    const target = builtInBlockCallTarget(instance, definition);
     if (!isIdentifier(reference) || !isIdentifier(target)) {
         diagnostic(diagnostics, document.id, "INVALID_SUBCIRCUIT_IDENTIFIER", `Analog Block ${reference} or target ${target} is outside the portable identifier subset`, [instance.id]);
     }
@@ -33,11 +36,11 @@ supplyFree = false) {
             diagnostic(diagnostics, document.id, "INVALID_ADDER_SIGN", `Adder ${reference}'s ${input.parameter} must be + or -; received ${netlist?.parameters[input.parameter]}`, [instance.id], "error", input.parameter);
     }
     // The signs choose among the generated adder bodies only. A call that
-    // reaches anything else must subtract as drawn: a subcircuit the adder
-    // was retargeted to, or the Project's own definition of the name.
+    // reaches anything else must subtract as drawn: a subcircuit of the
+    // reader's libraries the adder was retargeted to, or the author's own.
     const retargeted = binding?.kind === "unresolved-subcircuit" &&
         binding.name.toLowerCase() !== definition.target;
-    const ownDefinition = projectNames.has(target.toLowerCase());
+    const ownDefinition = !libraryPart;
     if (target.toLowerCase() === "delay_cell" && !ownDefinition) {
         const seen = new Set();
         for (const [name, value] of Object.entries(netlist?.parameters ?? {})) {
@@ -90,9 +93,8 @@ supplyFree = false) {
                 : `Ideal comparator ${reference} requires numeric ${name}${folded === "vtransition" ? " > 0" : ""}`, [instance.id], "error", name);
         }
     }
-    // A Project's own definition of the op-amp's name replaces every body.
-    const idealOpamp = callsIdealOpampBody(definition, target) &&
-        !projectNames.has(target.toLowerCase());
+    // A Library op-amp calls its ideal body, whatever the Project defines.
+    const idealOpamp = libraryPart && callsIdealOpampBody(definition, target);
     const opampParameters = Object.fromEntries(parameters);
     const followsSupply = idealOpamp && {
         VDD: limitFollowsSupply(opampParameters, OPAMP_HIGH_LIMIT),

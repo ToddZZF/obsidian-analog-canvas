@@ -1,11 +1,15 @@
 import { registerDocumentCache } from "./document-caches.js";
-import { routeEnd, transformPoint } from "@icm/model";
-import { resolveAdaptiveSignalFlowBlockLayout, resolveInstanceSymbol, resolveSignalFlowPinAt, } from "@icm/symbols";
+import { flattenRichText, routeEnd, transformPoint } from "@icm/model";
+import { adaptiveSignalFlowBounds, drawnAdaptiveBodyParts, resolveAdaptiveSignalFlowBlockLayout, relocatedPin, resolveInstanceSymbol, resolveSignalFlowPinAt, withShownSupplies, variantHidesPin, variantPinAt, } from "@icm/symbols";
+import { closedSymbolPathBounds } from "./drawing-scene.js";
 import { endpointKey, resolveEndpointOutwardDirection, resolveEndpointPoint, } from "./endpoint.js";
 import { resolveDocumentRoutingGeometry, } from "./resolved-route-geometry.js";
 import { resolveDocumentStyleProfile } from "./style-profile.js";
 import { deriveDocumentContactEvidence, } from "./contact.js";
 import { isSchematicAnnotationVisible, resolveAnnotationPresentation, } from "./annotation-presentation.js";
+import { resolveAnnotationText } from "./annotation-text.js";
+import { resolveDrawingScene } from "./drawing-scene.js";
+import { drawingOcclusionFindings } from "./drawing-occlusion.js";
 import { drawnFreeTexts, resolveDraftingTextInkBounds, } from "./drafting-geometry.js";
 import { pointOnSegment } from "./segment-geometry.js";
 import { buildBoundsSpatialIndex, buildDocumentSpatialIndex, } from "./spatial-index.js";
@@ -25,6 +29,16 @@ function enclosingBounds(input) {
     const right = Math.max(...input.map((item) => item.x + item.width));
     const bottom = Math.max(...input.map((item) => item.y + item.height));
     return { x, y, width: right - x, height: bottom - y };
+}
+function orderedOverlap(items, rank) {
+    return [...items].sort((left, right) => rank(left.id) - rank(right.id));
+}
+function frontBackDescription(names) {
+    const rear = names[0];
+    const front = names.at(-1);
+    return names.length === 2
+        ? `${front} is in front of ${rear}`
+        : `${front} is foremost and ${rear} is rearmost`;
 }
 function overlappingClusters(items, overlaps = (left, right) => rectanglesOverlap(left.bounds, right.bounds)) {
     const parents = items.map((_, index) => index);
@@ -110,9 +124,8 @@ function isExactPowerPinContact(document, resolver, leftId, rightId) {
     const powerPoint = resolveEndpointPoint(document, resolver, powerEndpoint);
     if (!powerPoint)
         return false;
-    const hiddenPins = new Set(otherSymbol.variant?.hiddenPinNames ?? []);
     return otherSymbol.definition.pins.some((pin) => {
-        if (hiddenPins.has(pin.name) ||
+        if (variantHidesPin(otherSymbol.variant, pin.name) ||
             pin.presentation.visibility === "implicit") {
             return false;
         }
@@ -146,15 +159,17 @@ function primitivePoints(primitive) {
                 },
             ];
         case "path":
-            return primitive.bounds
+        case "rectangle": {
+            const bounds = primitive.kind === "path"
+                ? (primitive.bounds ?? closedSymbolPathBounds(primitive))
+                : primitive.bounds;
+            return bounds
                 ? [
-                    { x: primitive.bounds.x, y: primitive.bounds.y },
-                    {
-                        x: primitive.bounds.x + primitive.bounds.width,
-                        y: primitive.bounds.y + primitive.bounds.height,
-                    },
+                    { x: bounds.x, y: bounds.y },
+                    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
                 ]
                 : null;
+        }
     }
 }
 /**
@@ -166,23 +181,34 @@ function primitivePoints(primitive) {
  */
 export function visibleSymbolInkBounds(resolved, signalFlowParameters) {
     const adaptive = resolveAdaptiveSignalFlowBlockLayout(resolved.definition, signalFlowParameters);
-    if (adaptive)
-        return adaptive.bounds;
+    // Supply leads a variant draws reach past the grown body (#1941).
+    if (adaptive) {
+        const bounds = adaptiveSignalFlowBounds(resolved.definition, adaptive, resolved.variant?.hiddenPrimitiveParts);
+        const { extraBodies } = drawnAdaptiveBodyParts(resolved.definition, resolved.variant?.hiddenPrimitiveParts, resolved.variant?.additionalPrimitives);
+        if (!extraBodies.length)
+            return bounds;
+        const points = extraBodies.flatMap((primitive) => primitivePoints(primitive) ?? []);
+        const x = Math.min(bounds.x, ...points.map((point) => point.x));
+        const y = Math.min(bounds.y, ...points.map((point) => point.y));
+        const right = Math.max(bounds.x + bounds.width, ...points.map((point) => point.x));
+        const bottom = Math.max(bounds.y + bounds.height, ...points.map((point) => point.y));
+        return { x, y, width: right - x, height: bottom - y };
+    }
     const hiddenParts = new Set(resolved.variant?.hiddenPrimitiveParts ?? []);
-    const hiddenPins = new Set(resolved.variant?.hiddenPinNames ?? []);
     const primitives = [
         ...resolved.definition.primitives,
         ...(resolved.variant?.additionalPrimitives ?? []),
     ].filter((primitive) => !primitive.part || !hiddenParts.has(primitive.part));
     const primitivePointSets = primitives.map(primitivePoints);
     if (primitivePointSets.some((points) => points === null)) {
-        return resolved.definition.viewBox;
+        // A shown supply's stub may stand past the viewBox (#1941).
+        return withShownSupplies(resolved.definition.viewBox, resolved);
     }
     const points = [
         ...primitivePointSets.flatMap((entry) => entry ?? []),
         ...resolved.definition.pins
-            .filter((pin) => !hiddenPins.has(pin.name))
-            .map((pin) => pin.at),
+            .filter((pin) => !variantHidesPin(resolved.variant, pin.name))
+            .map((pin) => variantPinAt(resolved.variant, pin)),
     ];
     if (points.length === 0)
         return resolved.definition.viewBox;
@@ -218,21 +244,24 @@ export function visibleSymbolLocalBounds(resolved, signalFlowParameters) {
  */
 function symbolOverlapLocalBounds(resolved, signalFlowParameters) {
     const box = visibleSymbolLocalBounds(resolved, signalFlowParameters);
-    const hiddenPins = new Set(resolved.variant?.hiddenPinNames ?? []);
     // The outermost pin each way, should a side carry several.
     let north = Infinity;
     let south = -Infinity;
     let west = Infinity;
     let east = -Infinity;
     for (const pin of resolved.definition.pins) {
-        if (hiddenPins.has(pin.name) || pin.presentation.visibility === "implicit")
+        if (variantHidesPin(resolved.variant, pin.name) ||
+            pin.presentation.visibility === "implicit")
             continue;
-        const at = resolveSignalFlowPinAt(resolved.definition, pin, signalFlowParameters);
-        if (pin.direction === "north")
+        const moved = relocatedPin(resolved.variant, pin.name);
+        const at = moved?.at ??
+            resolveSignalFlowPinAt(resolved.definition, pin, signalFlowParameters);
+        const direction = moved?.direction ?? pin.direction;
+        if (direction === "north")
             north = Math.min(north, at.y);
-        else if (pin.direction === "south")
+        else if (direction === "south")
             south = Math.max(south, at.y);
-        else if (pin.direction === "west")
+        else if (direction === "west")
             west = Math.min(west, at.x);
         else
             east = Math.max(east, at.x);
@@ -637,6 +666,12 @@ export function diagnoseVisualQuality(document, resolver, options = {}) {
         return cached.diagnostics;
     }
     const diagnostics = [];
+    const drawingScene = resolveDrawingScene(document, resolver);
+    const paintRanks = {
+        instance: (id) => drawingScene.rank({ kind: "instance", id }),
+        annotation: (id) => drawingScene.rank({ kind: "annotation", id }),
+        drafting: (id) => drawingScene.rank({ kind: "drafting", id }),
+    };
     const minimumSegmentLength = options.minimumSegmentLength ?? document.presentation.grid;
     const bounds = visibleInstanceBounds(document, resolver);
     const boundsById = new Map(bounds.map((item) => [item.id, item.bounds]));
@@ -686,16 +721,16 @@ export function diagnoseVisualQuality(document, resolver, options = {}) {
     }
     for (const cluster of overlappingClusters(placedInstanceBounds(document, resolver, symbolOverlapLocalBounds), (left, right) => rectanglesOverlap(left.bounds, right.bounds) &&
         !isExactPowerPinContact(document, resolver, left.id, right.id))) {
-        const objectIds = cluster
-            .map((item) => item.id)
-            .sort((left, right) => left.localeCompare(right, "en"));
+        const inOrder = orderedOverlap(cluster, paintRanks.instance);
+        const objectIds = inOrder.map((item) => item.id);
+        const names = objectIds.map((id) => partName(document, id));
         diagnostics.push({
             code: "VISUAL_SYMBOL_OVERLAP",
             severity: "warning",
             category: "observation",
             confidence: "low",
             gateEligible: false,
-            message: `${objectIds.length} visible symbol bounds overlap`,
+            message: `${frontBackDescription(names)} where their symbol bounds overlap`,
             objectIds,
             bounds: enclosingBounds(cluster.map((item) => item.bounds)),
             parameters: { clusteredObjectCount: objectIds.length },
@@ -703,10 +738,11 @@ export function diagnoseVisualQuality(document, resolver, options = {}) {
     }
     const styleProfile = resolveDocumentStyleProfile(document.presentation);
     const annotationBounds = document.annotations
-        .filter((annotation) => isSchematicAnnotationVisible(document, annotation, options.logicalNetResolution))
+        .filter((annotation) => isSchematicAnnotationVisible(document, annotation, options.logicalNetResolution, undefined, resolver))
         .map((annotation) => {
         return {
             id: annotation.id,
+            name: flattenRichText(resolveAnnotationText(document, annotation, options.logicalNetResolution, resolver)).trim(),
             // What is drawn, capitals to subscripts: the line box's extra ascent
             // and descent made two stacked rows, or a label and its part, read
             // as overlapping when nothing touched (#1105).
@@ -714,16 +750,15 @@ export function diagnoseVisualQuality(document, resolver, options = {}) {
         };
     });
     for (const cluster of overlappingClusters(annotationBounds)) {
-        const objectIds = cluster
-            .map((item) => item.id)
-            .sort((left, right) => left.localeCompare(right, "en"));
+        const inOrder = orderedOverlap(cluster, paintRanks.annotation);
+        const objectIds = inOrder.map((item) => item.id);
         diagnostics.push({
             code: "VISUAL_LABEL_OVERLAP",
             severity: "warning",
             category: "observation",
             confidence: "low",
             gateEligible: false,
-            message: `${objectIds.length} measured annotation bounds overlap`,
+            message: `${frontBackDescription(inOrder.map(({ name }) => name))} where the text bounds overlap`,
             objectIds,
             bounds: enclosingBounds(cluster.map((item) => item.bounds)),
             parameters: { clusteredObjectCount: objectIds.length },
@@ -736,24 +771,31 @@ export function diagnoseVisualQuality(document, resolver, options = {}) {
         const covered = annotationBounds.filter((label) => rectanglesOverlap(ink, label.bounds));
         if (!covered.length)
             continue;
-        const objectIds = [
-            object.id,
-            ...covered
-                .map((label) => label.id)
-                .sort((left, right) => left.localeCompare(right, "en")),
-        ];
+        const inOrder = orderedOverlap([
+            {
+                id: object.id,
+                name: flattenRichText(object.content).trim() || "Drawing text",
+            },
+            ...covered,
+        ], (id) => id === object.id ? paintRanks.drafting(id) : paintRanks.annotation(id));
+        const objectIds = inOrder.map(({ id }) => id);
         diagnostics.push({
             code: "VISUAL_LABEL_OVERLAP",
             severity: "warning",
             category: "observation",
             confidence: "low",
             gateEligible: false,
-            message: `Free text is drawn over ${covered.length === 1 ? "a label" : `${covered.length} labels`}`,
+            message: `${frontBackDescription(inOrder.map(({ name }) => name))} where the text bounds overlap`,
             objectIds,
             bounds: enclosingBounds([ink, ...covered.map((label) => label.bounds)]),
-            parameters: { clusteredObjectCount: objectIds.length },
+            parameters: {
+                clusteredObjectCount: objectIds.length,
+                ...(objectIds[0] === object.id ? { drawingTargetId: object.id } : {}),
+            },
         });
     }
+    for (const finding of drawingOcclusionFindings(document, resolver, drawingScene, styleProfile, routingGeometry, annotationBounds, (id) => partName(document, id)))
+        diagnostics.push(finding);
     for (const route of document.routes) {
         const centerline = routingGeometry.routes.get(route.id)?.centerline;
         if (!centerline)
@@ -784,6 +826,10 @@ export function diagnoseVisualQuality(document, resolver, options = {}) {
         }
     }
     for (const junction of document.junctions) {
+        // Aggregate anchors have no junction dot: each scalar contact is explicit
+        // in a member-qualified endpoint, and crossings retain their plain ink.
+        if (junction.members)
+            continue;
         for (const route of candidateRoutesAtPoint(document, routesById, junction.position, spatialIndex, candidateSearch)) {
             if (route.netId === junction.netId)
                 continue;
@@ -820,10 +866,15 @@ export function diagnoseVisualQuality(document, resolver, options = {}) {
     const terminalNetIds = new Map();
     for (const net of document.nets) {
         for (const terminal of net.terminals) {
-            terminalNetIds.set(`${terminal.instanceId}\0${terminal.pinName}`, net.id);
+            const key = `${terminal.instanceId}\0${terminal.pinName}`;
+            const ids = terminalNetIds.get(key) ?? new Set();
+            ids.add(net.id);
+            terminalNetIds.set(key, ids);
         }
     }
-    const noConnectKeys = new Set(document.noConnects.map((noConnect) => `${noConnect.endpoint.instanceId}\0${noConnect.endpoint.pinName}`));
+    const noConnectKeys = new Set(document.noConnects
+        .filter((noConnect) => !noConnect.endpoint.memberId)
+        .map((noConnect) => `${noConnect.endpoint.instanceId}\0${noConnect.endpoint.pinName}`));
     for (const instance of document.instances) {
         if (!instance.placement)
             continue;
@@ -833,7 +884,7 @@ export function diagnoseVisualQuality(document, resolver, options = {}) {
         for (const pin of resolved.definition.pins) {
             if (pin.presentation.visibility === "implicit")
                 continue;
-            if (resolved.variant?.hiddenPinNames.includes(pin.name))
+            if (variantHidesPin(resolved.variant, pin.name))
                 continue;
             const key = `${instance.id}\0${pin.name}`;
             if (noConnectKeys.has(key))
@@ -849,7 +900,7 @@ export function diagnoseVisualQuality(document, resolver, options = {}) {
             if (!contactPoint)
                 continue;
             for (const route of candidateRoutesAtPoint(document, routesById, contactPoint, spatialIndex, candidateSearch)) {
-                if (route.netId === terminalNetId)
+                if ((route.members?.map((member) => member.netId) ?? [route.netId]).some((netId) => terminalNetId?.has(netId)))
                     continue;
                 const centerline = routingGeometry.routes.get(route.id)?.centerline;
                 if (centerline
@@ -867,7 +918,9 @@ export function diagnoseVisualQuality(document, resolver, options = {}) {
                         parameters: {
                             instanceId: instance.id,
                             pinName: pin.name,
-                            ...(terminalNetId === undefined ? {} : { terminalNetId }),
+                            ...(terminalNetId === undefined
+                                ? {}
+                                : { terminalNetId: [...terminalNetId].join(",") }),
                             routeNetId: route.netId,
                         },
                     });

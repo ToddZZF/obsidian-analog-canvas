@@ -2,38 +2,79 @@
  * A scene's formal bounds: placed symbols with their formulas, routes,
  * Junctions, annotation room and ink, and drafting objects.
  */
-import { objectStyleProfile, resolveDraftingObjectGeometry, } from "@icm/derived";
+import { closedSymbolPathBounds, objectStyleProfile, resolveDraftingObjectGeometry, visibleSymbolInkBounds, } from "@icm/derived";
 import { flattenRichText, transformPoint } from "@icm/model";
-import { resolveAdaptiveSignalFlowBlockLayout, resolveInstanceSymbol, } from "@icm/symbols";
+import { resolveAdaptiveSignalFlowBlockLayout, resolveInstanceSymbol, withShownSupplies, } from "@icm/symbols";
 import { drawnRouteMarkerPlacement, rotateOffset, } from "./annotation-render.js";
 import { signalFlowFormulaLocalBounds } from "./signal-flow-formula.js";
 import { inductorCouplingBounds } from "./inductor-coupling-render.js";
-function symbolBounds(definition, instance) {
+import { busStrokeProfile, busTapMarks, noConnectMarkerLayouts, } from "./route-render.js";
+function transformedPointBounds(points, placement) {
+    let left = Infinity;
+    let right = -Infinity;
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (const point of points) {
+        const world = transformPoint(point, placement.position, placement);
+        left = Math.min(left, world.x);
+        top = Math.min(top, world.y);
+        right = Math.max(right, world.x);
+        bottom = Math.max(bottom, world.y);
+    }
+    return { x: left, y: top, width: right - left, height: bottom - top };
+}
+function rectCorners({ x, y, width, height }) {
+    return [
+        { x, y },
+        { x: x + width, y },
+        { x, y: y + height },
+        { x: x + width, y: y + height },
+    ];
+}
+function filledRegionBounds(region, placement) {
+    if (region.kind === "circle") {
+        const center = transformPoint(region.center, placement.position, placement);
+        const { radius } = region;
+        return {
+            x: center.x - radius,
+            y: center.y - radius,
+            width: 2 * radius,
+            height: 2 * radius,
+        };
+    }
+    return transformedPointBounds(region.kind === "polygon" ? region.points : rectCorners(region.bounds), placement);
+}
+function symbolBounds(resolved, instance) {
+    const definition = resolved.definition;
     const placement = instance.placement;
     if (!placement) {
         throw new Error(`Cannot derive bounds for unplaced instance: ${instance.id}`);
     }
-    const viewBox = definition.viewBox;
-    const adaptiveBounds = resolveAdaptiveSignalFlowBlockLayout(definition, instance.signalFlowParameters)?.bounds;
-    const localBounds = adaptiveBounds ?? viewBox;
-    const left = Math.min(viewBox.x, localBounds.x);
-    const top = Math.min(viewBox.y, localBounds.y);
-    const right = Math.max(viewBox.x + viewBox.width, localBounds.x + localBounds.width);
-    const bottom = Math.max(viewBox.y + viewBox.height, localBounds.y + localBounds.height);
-    const corners = [
-        { x: left, y: top },
-        { x: right, y: top },
-        { x: left, y: bottom },
-        { x: right, y: bottom },
-    ].map((point) => transformPoint(point, placement.position, placement));
-    const xs = corners.map((point) => point.x);
-    const ys = corners.map((point) => point.y);
-    const transformedBounds = {
-        x: Math.min(...xs),
-        y: Math.min(...ys),
-        width: Math.max(...xs) - Math.min(...xs),
-        height: Math.max(...ys) - Math.min(...ys),
-    };
+    // A shown supply's stub may stand past the viewBox (#1941).
+    const viewBox = withShownSupplies(definition.viewBox, resolved);
+    const adaptive = resolveAdaptiveSignalFlowBlockLayout(definition, instance.signalFlowParameters);
+    const localPoints = rectCorners(viewBox);
+    if (adaptive) {
+        localPoints.push(...rectCorners(visibleSymbolInkBounds(resolved, instance.signalFlowParameters)));
+    }
+    else {
+        const hidden = new Set(resolved.variant?.hiddenPrimitiveParts);
+        for (const primitive of [
+            ...definition.primitives,
+            ...(resolved.variant?.additionalPrimitives ?? []),
+        ]) {
+            if (primitive.part && hidden.has(primitive.part))
+                continue;
+            const bounds = primitive.kind === "rectangle"
+                ? primitive.bounds
+                : primitive.kind === "path"
+                    ? closedSymbolPathBounds(primitive)
+                    : undefined;
+            if (bounds)
+                localPoints.push(...rectCorners(bounds));
+        }
+    }
+    const transformedBounds = transformedPointBounds(localPoints, placement);
     const formulaBounds = signalFlowFormulaLocalBounds(definition.formulaPresentation, instance.signalFlowParameters);
     const presentation = definition.formulaPresentation;
     if (!formulaBounds || !presentation)
@@ -56,7 +97,7 @@ function symbolBounds(definition, instance) {
         height: unionBottom - unionTop,
     };
 }
-export function deriveBounds(document, resolver, routingGeometry, dottedJunctionIds, margin, annotations, profile, objectIds) {
+export function deriveBounds(document, resolver, drawingScene, routingGeometry, dottedJunctionIds, margin, annotations, profile, objectIds) {
     const bounds = [];
     const estimatedTextBounds = (text, x, y, alignment, sizeScale) => {
         const width = Math.max(7 * sizeScale, text.length * 7 * sizeScale);
@@ -72,15 +113,21 @@ export function deriveBounds(document, resolver, routingGeometry, dottedJunction
             height: Math.ceil(17 * sizeScale),
         };
     };
-    for (const instance of document.instances.filter((candidate) => candidate.placement !== null &&
-        (!objectIds || objectIds.has(candidate.id)))) {
+    for (const instance of document.instances) {
+        const placement = instance.placement;
+        if (!placement || (objectIds && !objectIds.has(instance.id)))
+            continue;
         // An adder's sign marks reach past its circle; its box includes them.
         const resolved = resolveInstanceSymbol(resolver, instance);
         if (!resolved) {
             throw new Error(`Unresolved symbol: ${instance.symbolId}`);
         }
-        const instanceBox = symbolBounds(resolved.definition, instance);
+        const instanceBox = symbolBounds(resolved, instance);
         bounds.push(instanceBox);
+        // The declared body can extend past the Symbol's original viewBox.
+        for (const region of drawingScene.instanceFills.get(instance.id)?.regions ??
+            [])
+            bounds.push(filledRegionBounds(region, placement));
     }
     for (const route of document.routes) {
         if (objectIds && !objectIds.has(route.id))
@@ -91,6 +138,15 @@ export function deriveBounds(document, resolver, routingGeometry, dottedJunction
         }
         for (const point of geometry.centerline) {
             bounds.push({ x: point.x, y: point.y, width: 0, height: 0 });
+        }
+        const strokeRadius = busStrokeProfile(objectStyleProfile(profile, route), route.members?.length ?? 0).strokes.wire / 2;
+        for (const mark of busTapMarks(document, resolver, route, geometry.centerline)) {
+            bounds.push({
+                x: Math.min(mark.from.x, mark.to.x) - strokeRadius,
+                y: Math.min(mark.from.y, mark.to.y) - strokeRadius,
+                width: Math.abs(mark.to.x - mark.from.x) + 2 * strokeRadius,
+                height: Math.abs(mark.to.y - mark.from.y) + 2 * strokeRadius,
+            });
         }
     }
     // A Route's own points cover the Junctions it meets; a Junction adds ink
@@ -176,6 +232,19 @@ export function deriveBounds(document, resolver, routingGeometry, dottedJunction
         bounds.push(geometry.bounds);
     }
     bounds.push(...inductorCouplingBounds(document, resolver, profile, objectIds));
+    // Member declarations extend beyond their shared pin. Measure the same
+    // upright names that the formal renderer paints, including cropped exports.
+    for (const mark of noConnectMarkerLayouts(document, resolver, profile, objectIds)) {
+        if (!mark.label)
+            continue;
+        const radius = mark.halfExtent + mark.profile.strokes.normal / 2;
+        bounds.push(mark.label.bounds, {
+            x: mark.point.x - radius,
+            y: mark.point.y - radius,
+            width: 2 * radius,
+            height: 2 * radius,
+        });
+    }
     if (bounds.length === 0) {
         if (objectIds)
             throw new Error("Select visible objects before copying");

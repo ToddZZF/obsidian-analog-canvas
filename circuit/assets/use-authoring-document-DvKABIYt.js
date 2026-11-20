@@ -1,0 +1,1 @@
+import{n as e}from"./jsx-runtime-DE3RlOCf.js";import{t}from"./component-authoring-workspace-Wya8QlFM.js";var n=e();function r(e,r){let[i]=(0,n.useState)(()=>r??new t(e()));return{document:i,...(0,n.useSyncExternalStore)(i.subscribe,i.snapshot,i.snapshot)}}export{r as t};

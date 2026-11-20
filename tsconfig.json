@@ -19,7 +19,9 @@
     "paths": {
       "@icm/model": ["vendor/icm/model/dist/index.d.ts"],
       "@icm/derived": ["vendor/icm/derived/dist/index.d.ts"],
-      "@icm/symbols": ["vendor/icm/symbols/dist/index.d.ts"]
+      "@icm/symbols": ["vendor/icm/symbols/dist/index.d.ts"],
+      "@icm/project-protocol": ["vendor/icm/project-protocol/dist/index.d.ts"],
+      "@icm/render-svg": ["vendor/icm/render-svg/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"]

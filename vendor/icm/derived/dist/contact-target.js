@@ -1,3 +1,4 @@
+import { routeEnd } from "@icm/model";
 import { endpointKey } from "./endpoint.js";
 import { deriveVisibleConnectivity } from "./connectivity.js";
 import { resolveDocumentRoutingGeometry, } from "./resolved-route-geometry.js";
@@ -33,6 +34,34 @@ export function createElectricalContactResolver(document, resolver, precomputedC
                     routeComponents.set(routeId, component.id);
                 }
             }
+            // A bundle is selectable as one conductor only when all of its lanes
+            // match. Its first scalar Net cannot identify the aggregate contact.
+            for (const route of document.routes) {
+                if (!route.members)
+                    continue;
+                const laneComponents = components
+                    .filter((component) => component.routes.includes(route.id))
+                    .map((component) => component.id)
+                    .sort();
+                const bundleId = `bundle:${laneComponents.join("|")}`;
+                routeComponents.set(route.id, bundleId);
+                endpointComponents.set(endpointKey(route.start), bundleId);
+                endpointComponents.set(endpointKey(routeEnd(route)), bundleId);
+            }
+            // A first scalar tap can precede every whole-bus Route. Its explicit
+            // member reference still identifies the aggregate at this contact.
+            for (const route of document.routes) {
+                if (route.members)
+                    continue;
+                for (const endpoint of [route.start, routeEnd(route)]) {
+                    if (!endpoint.memberId)
+                        continue;
+                    const { memberId: _, ...aggregate } = endpoint;
+                    const key = endpointKey(aggregate);
+                    if (!endpointComponents.get(key)?.startsWith("bundle:"))
+                        endpointComponents.set(key, `bundle:${key}`);
+                }
+            }
             lookup = {
                 endpointComponents,
                 routeComponents,
@@ -53,7 +82,9 @@ export function createElectricalContactResolver(document, resolver, precomputedC
                 ? { x: -direction.x, y: -direction.y }
                 : direction;
             return [
-                candidate.netId,
+                routeComponents.get(candidate.routeId)?.startsWith("bundle:")
+                    ? routeComponents.get(candidate.routeId)
+                    : candidate.netId,
                 candidate.point.x,
                 candidate.point.y,
                 canonical.x.toFixed(9),
@@ -86,11 +117,35 @@ export function createElectricalContactResolver(document, resolver, precomputedC
             const componentId = candidate.kind === "endpoint"
                 ? endpointComponents.get(endpointKey(candidate.endpoint))
                 : routeComponents.get(candidate.routeId);
+            const memberContactBundles = [];
+            const addMemberContact = (endpoint, point) => {
+                if (!endpoint.memberId ||
+                    !point ||
+                    point.x !== candidate.point.x ||
+                    point.y !== candidate.point.y)
+                    return;
+                const { memberId: _, ...aggregate } = endpoint;
+                const bundle = endpointComponents.get(endpointKey(aggregate));
+                if (bundle?.startsWith("bundle:"))
+                    memberContactBundles.push(bundle);
+            };
+            if (candidate.kind === "endpoint") {
+                addMemberContact(candidate.endpoint, candidate.point);
+            }
+            else {
+                const route = document.routes.find((item) => item.id === candidate.routeId);
+                const centerline = routingGeometry.routes.get(candidate.routeId)?.centerline;
+                if (route && !route.members) {
+                    addMemberContact(route.start, centerline?.[0]);
+                    addMemberContact(routeEnd(route), centerline?.at(-1));
+                }
+            }
             const candidateKeys = [
                 componentId ??
                     (candidate.kind === "endpoint"
                         ? `endpoint:${endpointKey(candidate.endpoint)}`
                         : `route:${candidate.routeId}`),
+                ...memberContactBundles,
                 ...(signature && (collinearCounts.get(signature) ?? 0) > 1
                     ? [`collinear:${signature}`]
                     : []),

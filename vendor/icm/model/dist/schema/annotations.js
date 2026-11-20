@@ -3,6 +3,7 @@ import { HexColorSchema, PointSchema, RotationSchema, StableIdSchema, } from "./
 import { RichTextDocumentSchema } from "./rich-text.js";
 import { NetlistParameterNameSchema } from "./instance.js";
 import { ObjectDocumentStyleSchema } from "./presentation.js";
+import { RouteEndpointSchema } from "./routing.js";
 export const VisualAnchorSchema = z.discriminatedUnion("kind", [
     z.strictObject({ kind: z.literal("free"), position: PointSchema }),
     z.strictObject({
@@ -48,7 +49,18 @@ export const AnnotationTextBindingSchema = z.discriminatedUnion("kind", [
         /** False keeps the named parameter label visible without drawing its value. */
         showValue: z.literal(false).optional(),
     }),
-    z.strictObject({ kind: z.literal("net-name"), netId: StableIdSchema }),
+    z.strictObject({
+        kind: z.literal("net-name"),
+        netId: StableIdSchema,
+        /** A selector reads this stable member when its parent Net has no name. */
+        memberEndpoint: RouteEndpointSchema.refine((endpoint) => Boolean(endpoint.memberId), "A selector requires an explicit member").optional(),
+        /** A subset selector reads these ordered, stable electrical endpoints. */
+        memberEndpoints: z
+            .array(RouteEndpointSchema.refine((endpoint) => Boolean(endpoint.memberId), "A selector requires explicit members"))
+            .min(2)
+            .max(256)
+            .optional(),
+    }),
     z.strictObject({
         kind: z.literal("cell-terminal-name"),
         terminalId: StableIdSchema,

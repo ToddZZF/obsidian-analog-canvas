@@ -30,8 +30,24 @@ function searchLocator(documentId, kind, objectId, objectIndex) {
         return resolved;
     return directObjectLocator(documentId, kind, objectId);
 }
-function collectCandidates(project, objectIndex) {
+/**
+ * The component name a person sees in Library and Properties: a Project
+ * component's own, else its symbol's, else its external owner's.
+ */
+function componentName(project, definitionNames, instance, resolver) {
+    const binding = instance.netlist?.binding;
+    return (definitionNames.get(instance.symbolId) ??
+        resolver?.resolve(instance.symbolId)?.definition.name ??
+        (binding?.kind === "external-subcircuit"
+            ? project.externalSubcircuitDefinitions.find((item) => item.id === binding.definitionId)?.name
+            : undefined));
+}
+function collectCandidates(project, objectIndex, resolver) {
     const candidates = [];
+    const definitionNames = new Map((project.componentDefinitions ?? []).map((item) => [
+        item.symbol.id,
+        item.symbol.name,
+    ]));
     for (const document of project.documents) {
         for (const instance of document.instances) {
             const locator = searchLocator(document.id, "instance", instance.id, objectIndex);
@@ -48,6 +64,15 @@ function collectCandidates(project, objectIndex) {
                 field: "symbol",
                 value: instance.symbolId.toLowerCase(),
             });
+            const name = componentName(project, definitionNames, instance, resolver);
+            if (name) {
+                candidates.push({
+                    locator,
+                    label,
+                    field: "component-name",
+                    value: name.toLowerCase(),
+                });
+            }
             const reference = instance.reference;
             if (reference) {
                 candidates.push({
@@ -94,7 +119,7 @@ function collectCandidates(project, objectIndex) {
     return candidates;
 }
 export function buildProjectSearchIndex(project, options = {}) {
-    const candidates = collectCandidates(project, options.connectivityIndex?.objectIndex);
+    const candidates = collectCandidates(project, options.connectivityIndex?.objectIndex, options.resolver);
     return {
         search(query) {
             const normalized = query.trim().toLowerCase();

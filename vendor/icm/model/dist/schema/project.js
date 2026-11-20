@@ -10,6 +10,8 @@ import { ProjectModelSourceSchema } from "./model-source.js";
 import { reportDuplicateIds } from "./validation.js";
 import { projectCellInterface } from "../cell-interface-projection.js";
 import { foldNetName } from "../net-name.js";
+import { cellPinsByUsualName } from "../part-pin-names.js";
+import { hierarchicalSymbolId } from "../ids.js";
 import { circuitComponentIssues } from "../circuit-component.js";
 export const ComponentAuthoringDraftSchema = z.strictObject({
     id: StableIdSchema,
@@ -68,6 +70,12 @@ export const ExternalSubcircuitDefinitionSchema = z
         .optional(),
 })
     .superRefine((definition, context) => {
+    if (definition.presentation?.artwork)
+        context.addIssue({
+            code: "custom",
+            message: "An external definition's custom artwork is a circuitBinding component, not block presentation",
+            path: ["presentation", "artwork"],
+        });
     for (const [index, pin] of (definition.presentation?.pinPlacements ?? []).entries())
         if (!definition.terminals.some((terminal) => terminal.id === pin.terminalId))
             context.addIssue({
@@ -252,6 +260,75 @@ export const CircuitProjectSchema = z
     const documentById = new Map(project.documents.map((document) => [document.id, document]));
     const childrenByDocument = new Map();
     for (const [documentIndex, document] of project.documents.entries()) {
+        const memberReferences = [
+            ...document.nets.flatMap((net, netIndex) => net.terminals.map((terminal, terminalIndex) => ({
+                terminal,
+                path: [
+                    "documents",
+                    documentIndex,
+                    "nets",
+                    netIndex,
+                    "terminals",
+                    terminalIndex,
+                ],
+            }))),
+            ...document.noConnects.map((item, noConnectIndex) => ({
+                terminal: item.endpoint,
+                path: [
+                    "documents",
+                    documentIndex,
+                    "noConnects",
+                    noConnectIndex,
+                    "endpoint",
+                ],
+            })),
+        ];
+        for (const { terminal, path } of memberReferences) {
+            const instance = document.instances.find((item) => item.id === terminal.instanceId);
+            const binding = instance?.netlist?.binding;
+            const declaration = binding?.kind === "subcircuit"
+                ? documentById
+                    .get(binding.childDocumentId)
+                    ?.netlist?.terminals.find((item) => foldNetName(item.name) === foldNetName(terminal.pinName))
+                : document.netlist?.terminals.find((item) => item.interfaceInstanceIds.includes(terminal.instanceId) &&
+                    terminal.pinName === "P");
+            const members = declaration?.signal?.members;
+            const vector = members && members.length > 1;
+            if (vector
+                ? !members.some((member) => member.id === terminal.memberId)
+                : terminal.memberId !== undefined) {
+                context.addIssue({
+                    code: "custom",
+                    message: "Terminal endpoint must select an existing scalar member of its declared interface",
+                    path,
+                });
+            }
+        }
+        for (const [terminalIndex, terminal] of (document.netlist?.terminals ?? []).entries()) {
+            for (const member of terminal.signal?.members ?? []) {
+                const net = document.nets.find((item) => item.id === member.netId);
+                if (!net ||
+                    terminal.interfaceInstanceIds.some((instanceId) => !net.terminals.some((endpoint) => endpoint.instanceId === instanceId &&
+                        endpoint.pinName === "P" &&
+                        endpoint.memberId ===
+                            (terminal.signal.members.length > 1
+                                ? member.id
+                                : undefined)))) {
+                    context.addIssue({
+                        code: "custom",
+                        message: "Cell signal member must own its interface endpoint on an existing Net",
+                        path: [
+                            "documents",
+                            documentIndex,
+                            "netlist",
+                            "terminals",
+                            terminalIndex,
+                            "signal",
+                        ],
+                    });
+                }
+            }
+        }
         const children = [];
         for (const [instanceIndex, instance] of document.instances.entries()) {
             const binding = instance.netlist?.binding;
@@ -308,6 +385,19 @@ export const CircuitProjectSchema = z
             // A Cell's Pins are named without case, as its interface groups them:
             // a Library gate bound to the Cell keeps its own pins' spelling (#1450).
             const childPinNames = new Set(projectCellInterface(child.netlist).ports.map((port) => port.key));
+            // A part drawn with its own symbol rather than the Cell's block (a
+            // Library op-amp or gate) meets the Cell's VDD and VSS Pins where the
+            // Cell has them: one that takes a supply globally leaves the part's
+            // drawn supply pin on the Net its wire gives it (#2337).
+            const ownSymbol = instance.symbolId !== hierarchicalSymbolId(child.netlist.name);
+            const optionalPin = (pinName) => ownSymbol && ["vdd", "vss"].includes(foldNetName(pinName));
+            // Such a part's inputs and outputs also meet Pins named as netlists
+            // usually name them: an op-amp's IN+ the Cell's INP (#2350).
+            const usualPins = new Set(ownSymbol
+                ? [
+                    ...cellPinsByUsualName(projectCellInterface(child.netlist).ports.map((port) => port.name)).byName.values(),
+                ].map(foldNetName)
+                : []);
             const referencedPins = [];
             for (const [netIndex, net] of document.nets.entries()) {
                 for (const [terminalIndex, terminal] of net.terminals.entries()) {
@@ -374,7 +464,9 @@ export const CircuitProjectSchema = z
                 });
             }
             for (const reference of referencedPins) {
-                if (childPinNames.has(foldNetName(reference.pinName)))
+                if (childPinNames.has(foldNetName(reference.pinName)) ||
+                    usualPins.has(foldNetName(reference.pinName)) ||
+                    optionalPin(reference.pinName))
                     continue;
                 context.addIssue({
                     code: "custom",

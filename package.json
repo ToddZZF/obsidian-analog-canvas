@@ -1,6 +1,6 @@
 {
   "name": "obsidian-analog-canvas",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Open Analog Canvas circuit drawings and embed them in your notes.",
   "main": "main.js",
   "private": true,
@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "fflate": "^0.8.3",
+    "svg-pathdata": "8.0.0",
     "zod": "4.4.3"
   }
 }

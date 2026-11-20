@@ -2,7 +2,7 @@
  * The drafting layer: text, construction lines, shapes, arrows, leaders,
  * callouts and floating symbols drawn under or over the circuit.
  */
-import { arrowArtwork, arrowPathData, centeredFirstBaselineY, draftTextLayoutContent, objectStyleProfile, resolveDraftingObjectGeometry, richTextMetrics, } from "@icm/derived";
+import { arrowArtwork, arrowPathData, centeredFirstBaselineY, draftTextLayoutContent, draftTextTurn, objectStyleProfile, resolveDraftingObjectGeometry, richTextMetrics, } from "@icm/derived";
 import { mirrorScale } from "@icm/model";
 import { renderFormulaDocument } from "./formula.js";
 import { renderFractionText } from "./fraction-text.js";
@@ -14,44 +14,28 @@ import { renderSymbolDefinitionBody } from "./symbol-render.js";
 // consuming the single derived-geometry entry. An unresolved anchor still
 // exports using its fallback position and
 // carries a data-anchor-resolved="false" attribute for diagnostics.
-export function renderDraftingLayer(document, resolver, profile, routingGeometry, layer, objectIds) {
-    const objects = document.drafting?.objects ?? [];
-    if (objects.length === 0)
-        return "";
-    const sorted = [...objects].sort((left, right) => left.zIndex - right.zIndex);
-    const body = sorted
-        .filter((object) => (!objectIds || objectIds.has(object.id)) &&
-        ((object.kind === "rectangle" || object.kind === "circle") &&
-            object.layer === "background"
-            ? layer === "background"
-            : layer === "foreground"))
-        .map((object) => {
-        const objectProfile = objectStyleProfile(profile, object);
-        const geometry = resolveDraftingObjectGeometry(document, resolver, object, routingGeometry);
-        const unresolved = geometry.diagnostics.length > 0 ? ' data-anchor-resolved="false"' : "";
-        switch (object.kind) {
-            case "text":
-                return renderDraftText(document, object, geometry, objectProfile, unresolved);
-            case "construction-line":
-                return renderConstructionLine(object, objectProfile);
-            case "rectangle":
-                return renderDraftRectangle(object, geometry, objectProfile);
-            case "circle":
-                return renderDraftCircle(object, geometry, objectProfile);
-            case "arrow":
-                return renderDraftArrow(object, geometry, objectProfile, unresolved);
-            case "leader":
-                return renderDraftLeader(object, geometry, objectProfile, unresolved);
-            case "callout":
-                return renderDraftCallout(object, geometry, objectProfile, unresolved);
-            case "floating-symbol":
-                return renderFloatingSymbol(object, geometry, resolver, objectProfile, unresolved);
-        }
-    })
-        .join("");
-    return body
-        ? `<g data-layer="drafting" data-drafting-layer="${layer}">${body}</g>`
-        : "";
+export function renderDraftingObject(document, resolver, profile, routingGeometry, object) {
+    const objectProfile = objectStyleProfile(profile, object);
+    const geometry = resolveDraftingObjectGeometry(document, resolver, object, routingGeometry);
+    const unresolved = geometry.diagnostics.length > 0 ? ' data-anchor-resolved="false"' : "";
+    switch (object.kind) {
+        case "text":
+            return renderDraftText(document, object, geometry, objectProfile, unresolved);
+        case "construction-line":
+            return renderConstructionLine(object, objectProfile);
+        case "rectangle":
+            return renderDraftRectangle(object, geometry, objectProfile);
+        case "circle":
+            return renderDraftCircle(object, geometry, objectProfile);
+        case "arrow":
+            return renderDraftArrow(object, geometry, objectProfile, unresolved);
+        case "leader":
+            return renderDraftLeader(object, geometry, objectProfile, unresolved);
+        case "callout":
+            return renderDraftCallout(object, geometry, objectProfile, unresolved);
+        case "floating-symbol":
+            return renderFloatingSymbol(object, geometry, resolver, objectProfile, unresolved);
+    }
 }
 function renderDraftText(document, object, geometry, profile, unresolved) {
     const { textPosition } = geometry;
@@ -117,17 +101,22 @@ function renderDraftText(document, object, geometry, profile, unresolved) {
                     : `<text x="${textPosition.x}" y="${baselineY}" text-anchor="${object.alignment}" font-size="${fontSize}" font-weight="${weight}" font-style="${italic}" fill="${color}">${renderRichTextDocument(content, profile, { lineOriginX: textPosition.x, fontSize, defaultBold: weight === "bold", defaultItalic: italic === "italic" })}</text>`);
         return `<g data-object-id="${object.id}" data-kind="draft-text" data-polarity="${object.polarity}"${unresolved}>${markers}${text}</g>`;
     }
-    // Drafting text is notation: its glyphs stay upright at every persisted or
-    // route-follow rotation. Multipart polarity layout is already resolved into
-    // screen coordinates by the shared derived geometry.
+    // A free text at a quarter turn reads down or up the page, turned about
+    // its anchor; at any other rotation, as on a route it follows, its glyphs
+    // stay upright. Polarity layout is already resolved into screen
+    // coordinates by the shared derived geometry.
+    const turn = draftTextTurn(object);
+    const turned = turn
+        ? ` transform="rotate(${turn} ${textPosition.x} ${textPosition.y})"`
+        : "";
     if (fractions) {
-        return `<g data-object-id="${object.id}" data-kind="draft-text"${unresolved}>${fractions}</g>`;
+        return `<g data-object-id="${object.id}" data-kind="draft-text"${unresolved}${turned}>${fractions}</g>`;
     }
     if (formula) {
-        return `<g data-object-id="${object.id}" data-kind="draft-text"${unresolved}>${formula}</g>`;
+        return `<g data-object-id="${object.id}" data-kind="draft-text"${unresolved}${turned}>${formula}</g>`;
     }
     if (positioned) {
-        return `<g><text data-object-id="${object.id}" data-kind="draft-text"${unresolved} x="${textPosition.x}" y="${baselineY}" text-anchor="start" font-size="${fontSize}" font-weight="${weight}" font-style="${italic}" fill="${color}">${positioned.tspans}</text>${positioned.decorations}</g>`;
+        return `<g${turned}><text data-object-id="${object.id}" data-kind="draft-text"${unresolved} x="${textPosition.x}" y="${baselineY}" text-anchor="start" font-size="${fontSize}" font-weight="${weight}" font-style="${italic}" fill="${color}">${positioned.tspans}</text>${positioned.decorations}</g>`;
     }
     const markup = renderRichTextDocument(content, profile, {
         lineOriginX: textPosition.x,
@@ -135,7 +124,7 @@ function renderDraftText(document, object, geometry, profile, unresolved) {
         defaultBold: weight === "bold",
         defaultItalic: italic === "italic",
     });
-    return `<text data-object-id="${object.id}" data-kind="draft-text"${unresolved} x="${textPosition.x}" y="${baselineY}" text-anchor="${object.alignment}" font-size="${fontSize}" font-weight="${weight}" font-style="${italic}" fill="${color}">${markup}</text>`;
+    return `<text data-object-id="${object.id}" data-kind="draft-text"${unresolved} x="${textPosition.x}" y="${baselineY}" text-anchor="${object.alignment}"${turned} font-size="${fontSize}" font-weight="${weight}" font-style="${italic}" fill="${color}">${markup}</text>`;
 }
 function renderConstructionLine(object, profile) {
     const points = object.points

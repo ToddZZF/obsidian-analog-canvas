@@ -14,7 +14,7 @@ function defineDeviceRegistry(descriptors) {
     };
 }
 export const deviceRegistry = defineDeviceRegistry(componentDeviceDescriptors);
-/** @internal Registry tests validate every built-in descriptor. */
+/** Registry tests validate every built-in descriptor. */
 export const builtInDeviceDescriptors = deviceRegistry.descriptors;
 export function deviceDescriptor(symbolId, project) {
     const local = project?.componentDefinitions?.find((definition) => definition.symbol.id === symbolId);

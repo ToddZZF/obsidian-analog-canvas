@@ -6,6 +6,7 @@ export * from "./expression.js";
 export * from "./importer.js";
 export * from "./ir.js";
 export * from "./source.js";
+export * from "./local-dependencies.js";
 export * from "./source-parameters.js";
 export * from "./syntax.js";
 export * from "./simulation-language.js";

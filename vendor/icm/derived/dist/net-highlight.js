@@ -41,7 +41,7 @@ export function computeNetHighlight(index, documentId, netId, origin, hierarchyP
 }
 /**
  * Traverse hierarchy connectivity in both directions. The visited key is the
- * logical document/net pair, preventing cyclic hierarchy projects from looping;
+ * concrete occurrence path and logical document/net pair;
  * hops are retained independently so two parent instances of one child Cell
  * remain distinguishable to a later hierarchy-aware UI.
  */
@@ -86,6 +86,7 @@ export function traceHierarchyNet(index, documentId, netId, origin, hierarchyPat
                     kind: "terminal",
                     instanceId: edge.instanceId,
                     pinName: edge.parentPinName,
+                    ...(edge.parentMemberId ? { memberId: edge.parentMemberId } : {}),
                 }));
                 if (!parentNetId || !currentRecord?.baseNetIds.includes(parentNetId)) {
                     continue;
@@ -122,6 +123,7 @@ export function traceHierarchyNet(index, documentId, netId, origin, hierarchyPat
                     kind: "terminal",
                     instanceId: edge.instanceId,
                     pinName: edge.parentPinName,
+                    ...(edge.parentMemberId ? { memberId: edge.parentMemberId } : {}),
                 }));
                 if (!parentNetId)
                     continue;
@@ -167,10 +169,10 @@ export function traceHierarchyNet(index, documentId, netId, origin, hierarchyPat
     hops.sort((left, right) => {
         const leftSuffix = left.direction === "global"
             ? left.foldedName
-            : `${left.frame.instanceId}\u0000${left.frame.parentPinName}`;
+            : `${left.frame.instanceId}\u0000${left.frame.parentPinName}\u0000${left.frame.parentMemberId ?? ""}`;
         const rightSuffix = right.direction === "global"
             ? right.foldedName
-            : `${right.frame.instanceId}\u0000${right.frame.parentPinName}`;
+            : `${right.frame.instanceId}\u0000${right.frame.parentPinName}\u0000${right.frame.parentMemberId ?? ""}`;
         return `${left.direction}\u0000${left.from.hierarchyPath.map((frame) => frame.instanceId).join("/")}\u0000${left.from.documentId}\u0000${left.from.netId}\u0000${leftSuffix}`.localeCompare(`${right.direction}\u0000${right.from.hierarchyPath.map((frame) => frame.instanceId).join("/")}\u0000${right.from.documentId}\u0000${right.from.netId}\u0000${rightSuffix}`, "en");
     });
     return { primary, highlights, hops };

@@ -1,4 +1,4 @@
-import { deriveStableId, routeEnd } from "@icm/model";
+import { deriveStableId, routeEnd, routeElectricalConnections, } from "@icm/model";
 import { assessImportReference } from "./import-reference.js";
 import { endpointKey, isVisibleEndpoint, netEndpoints, resolveEndpointPoint, } from "./endpoint.js";
 import { deriveDocumentContactEvidence } from "./contact.js";
@@ -68,12 +68,16 @@ export function deriveNetConnectivity(document, resolver, net, context) {
     for (const key of nodes.keys())
         sets.add(key);
     const routesForNet = context?.routesByNetId.get(net.id) ??
-        document.routes.filter((candidate) => candidate.netId === net.id);
+        document.routes.filter((candidate) => routeElectricalConnections(candidate).some((edge) => edge.netId === net.id));
     for (const route of routesForNet) {
-        const from = endpointKey(route.start);
-        const to = endpointKey(routeEnd(route));
-        if (nodes.has(from) && nodes.has(to))
-            sets.union(from, to);
+        for (const edge of routeElectricalConnections(route)) {
+            if (edge.netId !== net.id)
+                continue;
+            const from = endpointKey(edge.endpoints[0]);
+            const to = endpointKey(edge.endpoints[1]);
+            if (nodes.has(from) && nodes.has(to))
+                sets.union(from, to);
+        }
     }
     const contacts = context
         ? (context.contactsByNetId.get(net.id) ?? [])
@@ -95,6 +99,9 @@ export function deriveNetConnectivity(document, resolver, net, context) {
     for (const binding of netLabelBindings) {
         const annotation = context?.annotationsById.get(binding.annotationId) ??
             document.annotations.find((candidate) => candidate.id === binding.annotationId);
+        if (annotation.binding?.kind === "net-name" &&
+            (annotation.binding.memberEndpoint || annotation.binding.memberEndpoints))
+            continue;
         const label = resolveAnnotationName(document, annotation, context?.logicalNetResolution).trim();
         const key = endpointKey(binding.endpoint);
         if (label.length === 0 || !nodes.has(key))

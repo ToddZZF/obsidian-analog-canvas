@@ -27,6 +27,7 @@ SOFTWARE.
  * Pure strict-subset translation: no file access, model discovery or execution.
  */
 import { reviewedExternalBindingForMaster } from "@icm/devices";
+import { parseSpiceSource } from "./syntax.js";
 export const MAX_CONVERSION_BYTES = 512 * 1024;
 export const isNetlistDialect = (value) => value === "spice" || value === "ngspice" || value === "spectre";
 class ConversionError extends Error {
@@ -121,6 +122,42 @@ function unescapeSpectreNames(text) {
     }
     return out;
 }
+function spectreInclude(f, s) {
+    if (f.length < 2 || f.length > 3 || !/^"[^"\r\n]+"$/u.test(f[1]))
+        refuse(s, "Include requires a quoted path and optional section.");
+    if (f[2] && !/^section=[A-Za-z_]\w*$/u.test(f[2]))
+        refuse(s, "Unsupported include option.");
+    return {
+        path: f[1].slice(1, -1),
+        ...(f[2] ? { section: f[2].slice(8) } : {}),
+    };
+}
+/** File references from the same logical statements the converter reads. */
+export function spectreSourceIncludes(text) {
+    return statements(text, "spectre", true).flatMap((s) => {
+        if (s.dialect === "spectre") {
+            if (!/^include\s/iu.test(s.text))
+                return [];
+            return [
+                { path: spectreInclude(fields(s.text, s), s).path, line: s.line },
+            ];
+        }
+        if (!/^\.(?:include|incpslt|lib)\s/iu.test(s.text))
+            return [];
+        const directive = parseSpiceSource({
+            text: s.text,
+            path: "",
+            id: "",
+            hash: "",
+            encoding: "utf-8",
+        }).statements[0];
+        const path = directive?.kind === "include" ||
+            (directive?.kind === "library" && directive.mode === "include")
+            ? directive.requestedPath
+            : undefined;
+        return path ? [{ path, line: s.line }] : [];
+    });
+}
 function uncomment(text, dialect) {
     let quote = "", depth = 0;
     for (let i = 0; i < text.length; i++) {
@@ -148,7 +185,7 @@ function uncomment(text, dialect) {
     }
     return text;
 }
-function statements(text, source) {
+function statements(text, source, uncountedSpiceSections = false, bounded = true) {
     const result = [];
     let dialect = source === "spectre" ? "spectre" : "spice";
     let pending;
@@ -194,8 +231,11 @@ function statements(text, source) {
     }
     if (pending)
         refuse(pending, "Unfinished continuation line.");
-    if (result.length > 10000)
-        refuse(result[10000], "Conversion is limited to 10,000 statements.", "RESOURCE_LIMIT");
+    const translated = uncountedSpiceSections && source === "spectre"
+        ? result.filter((statement) => statement.dialect === "spectre")
+        : result;
+    if (bounded && translated.length > 10000)
+        refuse(translated[10000], "Conversion is limited to 10,000 statements.", "RESOURCE_LIMIT");
     return result;
 }
 /**
@@ -315,6 +355,34 @@ function noParameters(p, s) {
 function prefix(name, wanted) {
     return name.toUpperCase().startsWith(wanted) ? name : wanted + name;
 }
+/** Native MOS models a Spectre netlist may carry from a foundry's library. */
+const EXTERNAL_NATIVE_MOS = new Set([
+    "bsim3",
+    "bsim3v3",
+    "bsimsoi",
+    "bsimcmg",
+    "bsimimg",
+    "bsimbulk",
+    "psp102",
+    "psp103",
+    "psp104",
+    "hisim2",
+    "hisimhv",
+    "ekv",
+    "mos1",
+    "mos2",
+    "mos3",
+    "mos9",
+    "mos11",
+]);
+function isExternalNativeMos(kind) {
+    return !!kind && EXTERNAL_NATIVE_MOS.has(kind.toLowerCase());
+}
+/** A binned model `nch.1` is called by its group's name `nch` as well. */
+function modelGroupNames(name) {
+    const group = /^(.+)\.\d+$/u.exec(name)?.[1];
+    return group ? [name, group] : [name];
+}
 function spectreInstance(s, ctx) {
     const match = /^(\S+)\s*\(([^()]*)\)\s+(\S+)(?:\s+(.*))?$/u.exec(s.text);
     if (!match)
@@ -402,15 +470,19 @@ function spectreInstance(s, ctx) {
     ].includes(kind))
         refuse(s, `Unsupported native Spectre primitive ${master}.`);
     const declared = ctx.models.get(kind);
-    const isSubckt = ctx.subckts.has(kind) || !!reviewedExternalBindingForMaster(master);
-    const conventional = /^[MDQ]/iu.test(name) ? name[0].toUpperCase() : "X";
-    if (!isSubckt && !declared && !/^[MDQX]/iu.test(name))
+    const isSubckt = ctx.subckts.has(kind) ||
+        !!reviewedExternalBindingForMaster(master) ||
+        (!declared && ctx.externalCalls.has(kind));
+    const conventional = /^[MDQJX]/iu.exec(name)?.[0].toUpperCase();
+    if (!isSubckt && !declared && !conventional && !ctx.externalSubckts.has(kind))
         refuse(s, `Declare the external subcircuit ${master} or use an explicit X reference before conversion.`, "TARGET_KIND_REQUIRED");
-    const designator = isSubckt ? "X" : (declared ?? conventional);
+    const designator = isSubckt ? "X" : (declared ?? conventional ?? "X");
     if (designator === "M")
         arity(4);
     else if (designator === "D")
         arity(2);
+    else if (designator === "J")
+        arity(3);
     else if (designator === "Q" && ![3, 4].includes(nodes.length))
         refuse(s, "BJT requires three or four nodes.", "PIN_ARITY");
     return output(designator, `${master} ${emitParameters(p, s)}`);
@@ -497,7 +569,7 @@ function spiceInstance(s) {
         const rest = f.slice(pos).filter((t) => t.toLowerCase() !== "params:");
         return output(f.slice(1, pos - 1), f[pos - 1], emitParameters(parameters(rest, s), s));
     }
-    const nodeCount = kind === "M" ? 4 : kind === "D" ? 2 : kind === "Q" ? 3 : 0;
+    const nodeCount = kind === "M" ? 4 : kind === "D" ? 2 : kind === "Q" || kind === "J" ? 3 : 0;
     if (nodeCount && f.length >= nodeCount + 2) {
         // Four-terminal BJTs are not distinguishable from an optional area without
         // consulting model declarations. Reject that ambiguous shape here.
@@ -529,11 +601,8 @@ function translate(s, ctx) {
         if (head === "parameters")
             return [".param " + emitParameters(parameters(f.slice(1), s), s)];
         if (head === "include") {
-            if (f.length < 2 || f.length > 3 || !/^"[^"\r\n]+"$/u.test(f[1]))
-                refuse(s, "Include requires a quoted path and optional section.");
-            if (f[2] && !/^section=[A-Za-z_]\w*$/u.test(f[2]))
-                refuse(s, "Unsupported include option.");
-            return [f[2] ? `.lib ${f[1]} ${f[2].slice(8)}` : `.include ${f[1]}`];
+            const { path, section } = spectreInclude(f, s);
+            return [section ? `.lib "${path}" ${section}` : `.include "${path}"`];
         }
         if (f[1]?.toLowerCase() === "op") {
             noParameters(parameters(f.slice(2), s), s);
@@ -549,8 +618,19 @@ function translate(s, ctx) {
                     refuse(s, "AC requires dec, oct or lin.");
                 out = `.ac ${sweep} ${get(sweep)} ${get("start")} ${get("stop")}`;
             }
-            else if (analysis === "dc")
-                out = `.dc ${take(p, "source", s)} ${get("start")} ${get("stop")} ${get("step")}`;
+            else if (analysis === "dc") {
+                // Spectre names the swept source as dev=V1 param=dc; source= is the
+                // form this converter once wrote, still read.
+                let source;
+                if (p.has("dev")) {
+                    source = take(p, "dev", s);
+                    if (take(p, "param", s, "dc").toLowerCase() !== "dc")
+                        refuse(s, "Only a sweep of a source's dc value is supported.");
+                }
+                else
+                    source = take(p, "source", s);
+                out = `.dc ${source} ${get("start")} ${get("stop")} ${get("step")}`;
+            }
             else
                 out = `.tran ${get("step")} ${get("stop")}${p.has("start") || p.has("maxstep") ? " " + get("start", "0") : ""}${p.has("maxstep") ? " " + get("maxstep") : ""}`;
             noParameters(p, s);
@@ -558,6 +638,27 @@ function translate(s, ctx) {
         }
         if (head === "model") {
             const native = f[2]?.toLowerCase();
+            if (native === "jfet") {
+                // Reviewed export subset: the Shichman-Hodges pinch-off voltage,
+                // transconductance coefficient and channel-length modulation have
+                // the same names and units in SPICE's NJF/PJF.
+                const p = parameters(f.slice(3), s);
+                const type = take(p, "type", s).toLowerCase();
+                if (type !== "n" && type !== "p")
+                    refuse(s, "A jfet model needs type=n or type=p.");
+                const mapped = new Map();
+                for (const key of ["vto", "beta", "lambda"]) {
+                    const entry = p.get(key);
+                    if (entry) {
+                        mapped.set(key, entry);
+                        p.delete(key);
+                    }
+                }
+                noParameters(p, s);
+                return [
+                    `.model ${f[1]} ${type === "n" ? "njf" : "pjf"}${mapped.size ? " " + emitParameters(mapped, s) : ""}`,
+                ];
+            }
             if (native === "bjt" || native === "diode") {
                 // Reviewed export subset: the classical junction (IS, N) and
                 // Gummel-Poon bipolar (IS, BF, VAF) parameters have the same names
@@ -579,6 +680,21 @@ function translate(s, ctx) {
                 return [
                     `.model ${f[1]} ${type}${mapped.size ? " " + emitParameters(mapped, s) : ""}`,
                 ];
+            }
+            if (ctx.externalModels && f[1] && f[2] && isExternalNativeMos(f[2])) {
+                const p = parameters(f.slice(3), s);
+                const type = take(p, "type", s, "").toLowerCase();
+                if (type !== "n" && type !== "p")
+                    refuse(s, `A ${f[2]} model needs type=n or type=p.`);
+                for (const name of modelGroupNames(f[1]))
+                    if (!ctx.externalModels.some((model) => model.name === name))
+                        ctx.externalModels.push({
+                            name,
+                            type: type === "n" ? "nmos" : "pmos",
+                            native: f[2],
+                            line: s.line,
+                        });
+                return [];
             }
             // Spectre's BSIM4, as a netlist this editor hands out defines a MOS
             // stand-in: SPICE's BSIM4 is level 54. Other native models remain unreviewed.
@@ -649,7 +765,7 @@ function translate(s, ctx) {
         ];
     if (head === ".dc" && f.length === 5)
         return [
-            `dc1 dc source=${f[1]} start=${value(f[2], "spice", s)} stop=${value(f[3], "spice", s)} step=${value(f[4], "spice", s)}`,
+            `dc1 dc dev=${f[1]} param=dc start=${value(f[2], "spice", s)} stop=${value(f[3], "spice", s)} step=${value(f[4], "spice", s)}`,
         ];
     if (head === ".tran" &&
         f.length >= 3 &&
@@ -751,6 +867,22 @@ function checkSpiceReferenceCase(records, externalSubckts) {
                 defaults.get("")?.get(name.toLowerCase()), statement);
     }
 }
+/** The bytes of a Spectre source's SPICE sections, which pass through as they are. */
+function passedThroughBytes(text, source) {
+    if (source !== "spectre" || typeof text !== "string")
+        return 0;
+    const encoder = new TextEncoder();
+    let spice = false;
+    let bytes = 0;
+    for (const line of text.split(/\r\n?|\n/u)) {
+        const language = /^simulator\s+lang\s*=\s*(\w+)$/iu.exec(line.trim());
+        if (language)
+            spice = language[1].toLowerCase() === "spice";
+        else if (spice)
+            bytes += encoder.encode(line).length + 1;
+    }
+    return bytes;
+}
 export function convertNetlist(options) {
     const { text, source, target } = options;
     try {
@@ -763,7 +895,11 @@ export function convertNetlist(options) {
             !isNetlistDialect(target) ||
             typeof text !== "string")
             refuse(root, "Supply text and supported source/target dialects.", "INVALID_REQUEST");
-        if (new TextEncoder().encode(text).length > MAX_CONVERSION_BYTES)
+        const passed = options.uncountedSpiceSections
+            ? passedThroughBytes(text, source)
+            : 0;
+        if (!options.unbounded &&
+            new TextEncoder().encode(text).length - passed > MAX_CONVERSION_BYTES)
             refuse(root, "Netlist exceeds the 512 KiB conversion limit.", "RESOURCE_LIMIT");
         if (source === target || (source !== "spectre" && target !== "spectre"))
             return { status: "converted", text, source, target, issues: [] };
@@ -772,11 +908,14 @@ export function convertNetlist(options) {
         const inputText = source !== "spectre" && options.fragment === false
             ? text.replace(/^[^\r\n]*/u, "")
             : text;
-        const input = statements(inputText, source);
+        const input = statements(inputText, source, options.uncountedSpiceSections, !options.unbounded);
         const ctx = {
             subckts: new Set(options.subcircuitNames?.map((name) => name.toLowerCase())),
+            externalSubckts: new Set(options.externalSubcircuitNames?.map((name) => name.toLowerCase())),
+            externalCalls: new Set(options.externalSubcircuitCalls?.map((name) => name.toLowerCase())),
             models: new Map(),
             ownedIncludes: new Set(options.ownedIncludes),
+            ...(options.externalNativeModels ? { externalModels: [] } : {}),
         };
         const declared = new Set();
         const globals = new Map();
@@ -806,9 +945,11 @@ export function convertNetlist(options) {
                     ? "M"
                     : ["npn", "pnp"].includes(modelClass)
                         ? "Q"
-                        : modelClass === "d"
-                            ? "D"
-                            : undefined;
+                        : ["njf", "pjf"].includes(modelClass)
+                            ? "J"
+                            : modelClass === "d"
+                                ? "D"
+                                : undefined;
                 if (designator)
                     ctx.models.set(f[1].toLowerCase(), designator);
             }
@@ -816,9 +957,14 @@ export function convertNetlist(options) {
                 f[0]?.toLowerCase() === "model" &&
                 f[1] &&
                 f[2]) {
-                const designator = { bsim4: "M", bjt: "Q", diode: "D" }[f[2].toLowerCase()];
+                const designator = { bsim4: "M", bjt: "Q", diode: "D", jfet: "J" }[f[2].toLowerCase()] ??
+                    (ctx.externalModels && isExternalNativeMos(f[2]) ? "M" : undefined);
+                // Only the editor's import calls a binned card by its group's name.
                 if (designator)
-                    ctx.models.set(f[1].toLowerCase(), designator);
+                    for (const name of ctx.externalModels
+                        ? modelGroupNames(f[1])
+                        : [f[1]])
+                        ctx.models.set(name.toLowerCase(), designator);
             }
         }
         const out = [
@@ -897,7 +1043,9 @@ export function convertNetlist(options) {
             lineOrigins.push(0);
         }
         const converted = out.join("\n") + "\n";
-        if (new TextEncoder().encode(converted).length > MAX_CONVERSION_BYTES * 2)
+        if (!options.unbounded &&
+            new TextEncoder().encode(converted).length - passed >
+                MAX_CONVERSION_BYTES * 2)
             refuse(root, "Converted output exceeds the size limit.", "RESOURCE_LIMIT");
         return {
             status: "converted",
@@ -906,6 +1054,7 @@ export function convertNetlist(options) {
             target,
             issues: [],
             ...(options.withLineOrigins ? { lineOrigins } : {}),
+            ...(ctx.externalModels ? { externalModels: ctx.externalModels } : {}),
         };
     }
     catch (error) {

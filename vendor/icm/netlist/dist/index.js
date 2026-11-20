@@ -1,5 +1,5 @@
 export * from "./extract.js";
-export { GENERIC_DIODE_MODEL, GENERIC_NPN_MODEL, GENERIC_PNP_MODEL, } from "./extract-generic-models.js";
+export { GENERIC_DIODE_MODEL, GENERIC_NJF_MODEL, GENERIC_NMOS_DEPLETION_MODEL, GENERIC_NPN_MODEL, GENERIC_PJF_MODEL, GENERIC_PMOS_DEPLETION_MODEL, GENERIC_PNP_MODEL, GENERIC_SCHOTTKY_MODEL, } from "./extract-generic-models.js";
 export * from "./export.js";
 export * from "./project-model-source.js";
 export * from "./model-source-variant.js";
@@ -11,8 +11,10 @@ export * from "./topology-correspondence.js";
 export * from "./net-name-codec.js";
 export * from "./net-export-name.js";
 export { withNetlistPowerMarkerClaims } from "./extract-nets.js";
+export { plainBodyName } from "./library-part-calls.js";
 export * from "./printers.js";
 export * from "./printed-netlist.js";
+export { spectreSourceField, spectreSourceFieldName, spectreSourceFromText, } from "./printed-card.js";
 export * from "./parameter-projection.js";
 export * from "./vacask-printer.js";
 export * from "./vacask-source.js";

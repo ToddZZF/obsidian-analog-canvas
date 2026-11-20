@@ -1,6 +1,8 @@
 import { deviceDescriptor, resolveReviewedExternalBinding } from "@icm/devices";
-import { parseSpiceNumber } from "@icm/spice";
+import { parseSpiceNumber, PULSE_PARAMETER_NAMES, SIN_OPTIONAL_PARAMETER_NAMES, SIN_REQUIRED_PARAMETER_NAMES, } from "@icm/spice";
 import { analyzeDesignNetlistForAuthoring } from "./extract.js";
+const TOO_LARGE = "Circuit exceeds the comparison size limit";
+const NO_DEVICES = "No netlist devices to compare";
 function numericValue(raw) {
     const parsed = parseSpiceNumber(raw);
     if (!parsed)
@@ -41,7 +43,11 @@ function parameters(values) {
         // References inside behavioral expressions cannot be renamed as strings.
         if (/(?:\b[vi]\s*\(|@)/iu.test(rawValue))
             throw new Error("Behavioral references need manual comparison");
-        const number = numericValue(rawValue);
+        // A number in braces is that number: SPICE writes `{20u}` where
+        // Spectre, which has no braces, writes `20u`.
+        const braced = /^\{([^{}]*)\}$/u.exec(rawValue.trim())?.[1];
+        const number = numericValue(rawValue) ??
+            (braced === undefined ? null : numericValue(braced.trim()));
         return [
             name,
             number !== null ? ["number", number] : ["text", rawValue.trim()],
@@ -49,7 +55,100 @@ function parameters(values) {
     })
         .sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
 }
-/** Layout-free graph of the emitted devices, with paramless hierarchy expanded. */
+/** The fields of each independent source waveform the netlist prints. */
+const WAVEFORM_FIELDS = {
+    dc: [],
+    pulse: PULSE_PARAMETER_NAMES,
+    sin: [...SIN_REQUIRED_PARAMETER_NAMES, ...SIN_OPTIONAL_PARAMETER_NAMES],
+    pwl: ["pwlPoints"],
+};
+/**
+ * The parameters a device is compared by. An independent source keeps the
+ * fields of the waveforms it is not set to, as the editor remembers them
+ * for when it is switched back, but the netlist prints only its current
+ * waveform's: a source compares without the others' fields, and without
+ * an AC phase of 0, the default. Every other parameter prints, so it
+ * counts. A waveform the editor does not know keeps every field.
+ */
+function comparedParameters(instance) {
+    const unprinted = unprintedSourceFields(instance);
+    if (!unprinted)
+        return instance.parameters;
+    return instance.parameters.filter((item) => {
+        const name = item.name.toLowerCase();
+        return (!unprinted.has(name) &&
+            !(name === "acphase" && numericValue(item.rawValue) === "0"));
+    });
+}
+/**
+ * The fields, folded to lower case, of the waveforms an independent source
+ * is not set to, which the editor keeps and the netlist does not print;
+ * null for any other part, or a waveform the editor does not know.
+ */
+export function unprintedSourceFields(instance) {
+    if (instance.invocationKind !== "primitive" ||
+        (instance.deviceClass !== "voltage-source" &&
+            instance.deviceClass !== "current-source"))
+        return null;
+    const waveform = instance.parameters
+        .find((item) => item.name.toLowerCase() === "waveform")
+        ?.rawValue.trim()
+        .toLowerCase() ?? "dc";
+    const fields = WAVEFORM_FIELDS[waveform];
+    if (!fields)
+        return null;
+    const current = new Set(fields.map((name) => name.toLowerCase()));
+    return new Set(Object.values(WAVEFORM_FIELDS)
+        .flat()
+        .map((name) => name.toLowerCase())
+        .filter((name) => !current.has(name)));
+}
+/**
+ * The netlist an IR prints, each Cell's cards in no order, read as the
+ * graph reads them. Net names count here, so it only ever proves two
+ * graphs equal: a symmetric circuit whose cards come back in another order
+ * is that, where the search may run out of steps before it says so.
+ */
+function printedCards(ir) {
+    // Cells go by the names the netlist prints, not their Documents' ids: a
+    // Project read back from its netlist has other ids for the same Cells.
+    return JSON.stringify({
+        top: ir.cells.find((cell) => cell.id === ir.topCellId)?.name ?? null,
+        masters: (ir.externalMasters ?? [])
+            .map((master) => JSON.stringify([
+            master.name,
+            master.implementationKind ?? null,
+            master.formalParameters.map((parameter) => [
+                parameter.name,
+                parameter.defaultValue ?? null,
+            ]),
+        ]))
+            .sort(),
+        cells: ir.cells
+            .map((cell) => JSON.stringify([
+            cell.name,
+            cell.ports.map((port) => [port.name, port.netName]),
+            cell.nets
+                .filter((net) => net.scope === "global")
+                .map((net) => net.name)
+                .sort(),
+            cell.formalParameters ?? [],
+            cell.models ?? [],
+            cell.couplings ?? [],
+            cell.instances
+                .map((instance) => JSON.stringify([
+                instance.deviceClass,
+                instance.invocationKind,
+                instance.target ?? null,
+                parameters(comparedParameters(instance)),
+                instance.nodes.map((node) => [node.pinName, node.netName]),
+            ]))
+                .sort(),
+        ]))
+            .sort(),
+    });
+}
+/** Layout-free graph of the emitted devices, with hierarchy expanded. */
 export function electricalGraphFromIR(ir, sourceSymbols = new Map()) {
     try {
         const labels = [];
@@ -59,7 +158,7 @@ export function electricalGraphFromIR(ir, sourceSymbols = new Map()) {
         const parent = [];
         const vertex = (label, topology = topologyLabel(label)) => {
             if (labels.length >= 3000)
-                throw new Error("Circuit exceeds the comparison size limit");
+                throw new Error(TOO_LARGE);
             const id = labels.length;
             labels.push(label);
             topologyLabels.push(topology);
@@ -82,11 +181,31 @@ export function electricalGraphFromIR(ir, sourceSymbols = new Map()) {
         const globals = new Map();
         const cells = new Map(ir.cells.map((cell) => [cell.name, cell]));
         const externalMasters = new Map((ir.externalMasters ?? []).map((master) => [master.name, master]));
-        const expand = (cell, ports, ancestors, instancePath = [], referencePath = []) => {
+        const expand = (cell, ports, ancestors, instancePath = [], referencePath = [], context = []) => {
             if (ancestors.has(cell.id) || ancestors.size > 32)
                 throw new Error("Recursive hierarchy needs manual comparison");
-            if (cell.formalParameters?.length)
-                throw new Error("Parameterized hierarchy needs manual comparison");
+            // Parameters compare as their text, never evaluated (#1932): each
+            // device carries the defaults and passed values of the Cells it sits
+            // in, so the same text everywhere is the same circuit.
+            const scope = cell.formalParameters?.length
+                ? [
+                    ...context,
+                    JSON.stringify([
+                        "formals",
+                        cell.formalParameters.map((parameter) => [
+                            parameter.name,
+                            parameter.defaultValue === undefined
+                                ? null
+                                : parameters([
+                                    {
+                                        name: parameter.name,
+                                        rawValue: parameter.defaultValue,
+                                    },
+                                ]),
+                        ]),
+                    ]),
+                ]
+                : context;
             const path = new Set([...ancestors, cell.id]);
             const local = new Map();
             const globalNames = new Set(cell.nets
@@ -123,14 +242,17 @@ export function electricalGraphFromIR(ir, sourceSymbols = new Map()) {
                     ? cells.get(instance.target)
                     : undefined;
                 if (child) {
-                    if (instance.parameters.length)
-                        throw new Error("Parameterized hierarchy needs manual comparison");
-                    expand(child, child.ports.map((port) => {
-                        const node = instance.nodes.find((item) => item.pinName === port.name);
-                        if (!node)
-                            throw new Error("Incomplete hierarchy interface");
-                        return net(node.netName);
-                    }), path, [...instancePath, instance.id], [...referencePath, instance.reference]);
+                    // A call passes its nodes in its Cell's port order, as the card
+                    // prints them; a node keeps the Pin's own name where the port is
+                    // spelt for the dialect (Spectre's IN\+ for IN+).
+                    if (instance.nodes.length !== child.ports.length)
+                        throw new Error("Incomplete hierarchy interface");
+                    expand(child, instance.nodes.map((node) => net(node.netName)), path, [...instancePath, instance.id], [...referencePath, instance.reference], instance.parameters.length
+                        ? [
+                            ...scope,
+                            JSON.stringify(["call", parameters(instance.parameters)]),
+                        ]
+                        : scope);
                     continue;
                 }
                 const reviewed = instance.invocationKind === "subcircuit" &&
@@ -143,7 +265,10 @@ export function electricalGraphFromIR(ir, sourceSymbols = new Map()) {
                 const topologyClass = reviewed?.deviceClass ?? instance.deviceClass;
                 const topologyTarget = topologyClass === "mos" && descriptor?.mosBulkClass
                     ? descriptor.mosBulkClass
-                    : topologyClass === "bjt" && (symbol === "npn" || symbol === "pnp")
+                    : (topologyClass === "bjt" &&
+                        (symbol === "npn" || symbol === "pnp")) ||
+                        (topologyClass === "jfet" &&
+                            (symbol === "njfet" || symbol === "pjfet"))
                         ? symbol
                         : instance.target;
                 const device = vertex(JSON.stringify([
@@ -151,7 +276,7 @@ export function electricalGraphFromIR(ir, sourceSymbols = new Map()) {
                     instance.deviceClass,
                     instance.invocationKind,
                     instance.target,
-                    parameters(instance.parameters),
+                    parameters(comparedParameters(instance)),
                     instance.target
                         ? (externalMasters
                             .get(instance.target)
@@ -168,6 +293,7 @@ export function electricalGraphFromIR(ir, sourceSymbols = new Map()) {
                         ])
                             .sort() ?? [])
                         : [],
+                    ...(scope.length ? [scope] : []),
                 ]), topologyLabel(JSON.stringify([
                     "device",
                     topologyClass,
@@ -202,7 +328,7 @@ export function electricalGraphFromIR(ir, sourceSymbols = new Map()) {
             throw new Error("Missing top-level circuit");
         expand(top, null, new Set());
         if (!labels.some((label) => label.startsWith('["device"')))
-            throw new Error("No netlist devices to compare");
+            throw new Error(NO_DEVICES);
         const roots = labels.flatMap((_, id) => (root(id) === id ? [id] : []));
         const indices = new Map(roots.map((id, index) => [id, index]));
         const edges = roots.map(() => new Set());
@@ -225,17 +351,40 @@ export function electricalGraphFromIR(ir, sourceSymbols = new Map()) {
                 bucket: JSON.stringify(compactLabels
                     .map((label, index) => [label, edges[index].size])
                     .sort()),
+                cards: printedCards(ir),
             },
         };
     }
     catch (error) {
+        const reason = error instanceof Error
+            ? error.message
+            : "Cannot extract electrical structure";
         return {
             status: "uncheckable",
-            reason: error instanceof Error
-                ? error.message
-                : "Cannot extract electrical structure",
+            reason,
+            ...(reason === TOO_LARGE || reason === NO_DEVICES ? cardsOf(ir) : {}),
         };
     }
+}
+/** An IR's printed cards, or none where a card cannot be read as text. */
+function cardsOf(ir) {
+    try {
+        return { cards: printedCards(ir) };
+    }
+    catch {
+        return {};
+    }
+}
+/**
+ * Whether two results are the same circuit: "equal" to the comparison, or,
+ * past its size limit or with no devices, the same printed cards, which
+ * only ever prove it.
+ */
+export function sameElectricalCircuit(a, b) {
+    if (a.status === "ready" && b.status === "ready")
+        return compareElectricalGraphs(a.graph, b.graph) === "equal";
+    const cards = (result) => result.status === "ready" ? result.graph.cards : result.cards;
+    return cards(a) !== undefined && cards(a) === cards(b);
 }
 export function projectElectricalGraph(project) {
     const result = analyzeDesignNetlistForAuthoring(project, {
@@ -357,6 +506,10 @@ export function matchElectricalGraphs(a, b, maxSteps = 100_000, preference) {
             : { status: "different" };
 }
 export function compareElectricalGraphs(a, b, maxSteps = 100_000) {
+    // The same cards are the same circuit, which a search over a symmetric
+    // one may not settle within its steps.
+    if (a.cards !== undefined && a.cards === b.cards)
+        return "equal";
     return matchElectricalGraphs(a, b, maxSteps).status;
 }
 export function matchElectricalTopologies(a, b, maxSteps = 100_000, preference) {
@@ -401,9 +554,15 @@ function topologyLabel(label) {
                     : target.includes("npn")
                         ? "npn"
                         : `model:${target}`
-                : deviceClass === "hierarchical"
-                    ? value[3]
-                    : null;
+                : deviceClass === "jfet"
+                    ? target.includes("pjf")
+                        ? "p"
+                        : target.includes("njf")
+                            ? "n"
+                            : `model:${target}`
+                    : deviceClass === "hierarchical"
+                        ? value[3]
+                        : null;
         // Models and values are exact-duplicate evidence, but not topology. Keep
         // the emitted device class, invocation kind and recognizable transistor
         // polarity so differently sized/modelled NMOS stages remain close without

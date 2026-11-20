@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { HexColorSchema, MirrorSchema, PointSchema, RotationSchema, StableIdSchema, } from "./common.js";
 import { ObjectDocumentStyleSchema } from "./presentation.js";
+import { BodyFillSchema } from "./drawing-presentation.js";
 import { RichTextDocumentSchema } from "./rich-text.js";
 import { SourceSpanSchema } from "./source.js";
 /**
@@ -41,6 +42,7 @@ export const SignalFlowParametersSchema = z.strictObject({
 export const TerminalRefSchema = z.strictObject({
     instanceId: StableIdSchema,
     pinName: z.string().min(1),
+    memberId: StableIdSchema.optional(),
 });
 export const PlacementSchema = z.strictObject({
     position: PointSchema,
@@ -57,6 +59,7 @@ export const NetlistDeviceClassSchema = z.enum([
     "mos",
     "diode",
     "bjt",
+    "jfet",
     "voltage-source",
     "current-source",
     "vcvs",
@@ -175,11 +178,12 @@ const InstanceObjectSchema = z.strictObject({
     netlist: InstanceNetlistDataSchema.optional(),
     /**
      * Optional per-instance color override. When absent, the instance renders
-     * with document profile defaults (backward compatible). Current authoring
-     * writes `foreground`; historical `background` paint stays readable until
-     * the next appearance edit retires it.
+     * with document profile defaults. The body fill command replaces or clears
+     * the historical `background` paint.
      */
     styleOverride: InstanceStyleOverrideSchema.optional(),
+    /** Omitted for a transparent body. Legacy box color is read separately. */
+    bodyFill: BodyFillSchema.optional(),
     /** The Document style this Instance keeps from a copy's source drawing. */
     documentStyle: ObjectDocumentStyleSchema.optional(),
     /**

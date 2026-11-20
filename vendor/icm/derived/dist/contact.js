@@ -1,4 +1,4 @@
-import { deriveStableId, routeEnd } from "@icm/model";
+import { deriveStableId, routeEnd, routeElectricalConnections, } from "@icm/model";
 import { buildEndpointObjectLookup, endpointKey, isVisibleEndpoint, netEndpoints, resolveEndpointOutwardDirection, resolveEndpointPoint, } from "./endpoint.js";
 import { resolveDocumentRoutingGeometry, } from "./resolved-route-geometry.js";
 function pointKey(point) {
@@ -171,7 +171,10 @@ function netContacts(document, resolver, net, geometry, routesForNet, endpointCo
                     .map((segment) => segment.routeId)),
             ].flatMap((id) => {
                 const route = routeLookup.routesById.get(id);
-                return route?.netId === net.id ? [route] : [];
+                return route &&
+                    routeElectricalConnections(route).some((edge) => edge.netId === net.id)
+                    ? [route]
+                    : [];
             })
             : routesForNet;
         const incidents = contactIncidents(document, resolver, endpoints, point, geometry, nearbyRoutes, endpointConnections, endpointLookup);
@@ -220,9 +223,11 @@ export function deriveDocumentContactEvidence(document, resolver, routingGeometr
         (() => {
             const grouped = new Map();
             for (const route of document.routes) {
-                const routes = grouped.get(route.netId) ?? [];
-                routes.push(route);
-                grouped.set(route.netId, routes);
+                for (const netId of new Set(routeElectricalConnections(route).map((edge) => edge.netId))) {
+                    const routes = grouped.get(netId) ?? [];
+                    routes.push(route);
+                    grouped.set(netId, routes);
+                }
             }
             return grouped;
         })();

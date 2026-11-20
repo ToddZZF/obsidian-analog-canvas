@@ -1,8 +1,8 @@
-import { builtInModelContract, idealComparatorBodyContract, idealOpampBodyContract, isIdealComparatorBody, isIdealOpampBody, } from "@icm/devices";
+import { builtInModelContract, builtInModelDefaults, idealComparatorBodyContract, idealOpampBodyContract, isIdealComparatorBody, isIdealOpampBody, } from "@icm/devices";
 import { idealLogicModel } from "./ideal-logic-gate-models.js";
 import { chopperBehavioralDefinition, IDEAL_CHOPPER_TARGET, spiceChopperBody, } from "./ideal-switch-model.js";
 import { idealSignalModel } from "./ideal-signal-block-models.js";
-import { voltage, printSpiceBehavioralModel, } from "./behavioral-model.js";
+import { passive, voltage, printSpiceBehavioralModel, } from "./behavioral-model.js";
 /**
  * One of the ideal comparator's bodies, from one equation:
  * V(VOUT) = vlow + (high − vlow)·½(1 + tanh(V(VIP, VIN)/vtransition)) from
@@ -61,13 +61,67 @@ function idealOpampModel(target) {
     };
 }
 /**
+ * The crystal's Butterworth-Van Dyke equivalent between its two pins: the
+ * motional branch rm, lm, cm in series, and c0 across it. SPICE has no
+ * crystal card, so a crystal prints as a call of this body.
+ */
+function crystalModel(target) {
+    const model = builtInModelContract(target);
+    const [a, b] = model.ports.map((port) => port.name);
+    return {
+        name: target,
+        ports: [a, b],
+        comment: "Crystal: Butterworth-Van Dyke model, fs = 1/(2*pi*sqrt(lm*cm))",
+        parameters: Object.entries(builtInModelDefaults(target)).map(([name, defaultValue]) => ({ name, defaultValue })),
+        elements: [
+            passive("resistor", "Rm", a, "nr", "rm", true),
+            passive("inductor", "Lm", "nr", "nl", "lm", true),
+            passive("capacitor", "Cm", "nl", b, "cm", true),
+            passive("capacitor", "C0", a, b, "c0", true),
+        ],
+    };
+}
+/**
+ * The generated body an IR definition prints, under whatever name it is
+ * written: its own, or the reserved one it takes where an author's
+ * definition has its own (#1928).
+ */
+export function definitionBody(definition) {
+    return definition.body ?? definition.name;
+}
+/**
+ * The potentiometer's track: end 1 to the wiper r·pos, the wiper to end 2
+ * r·(1−pos). Each leg is at least 1 mΩ, so a wiper at either end stays a
+ * well-conditioned resistor rather than one a simulator shrinks to nothing.
+ */
+function potentiometerModel(target) {
+    const model = builtInModelContract(target);
+    const [end1, wiper, end2] = model.ports.map((port) => port.name);
+    return {
+        name: target,
+        ports: [end1, wiper, end2],
+        comment: "Potentiometer: end 1 to wiper r*pos, wiper to end 2 r*(1-pos)",
+        parameters: Object.entries(builtInModelDefaults(target)).map(([name, defaultValue]) => ({ name, defaultValue })),
+        elements: [
+            passive("resistor", "R1", end1, wiper, "max(r*pos,1m)", true),
+            passive("resistor", "R2", wiper, end2, "max(r*(1-pos),1m)", true),
+        ],
+    };
+}
+/**
  * One family dispatch; printers never own model equations or defaults.
  * `ports` prints the same body with its ports in another order (see
- * `withBodyPortOrder`); its elements name ports, never positions.
+ * `withBodyPortOrder`); its elements name ports, never positions. `name`
+ * writes it under another name, where an author's definition has its own
+ * (#1928).
  */
-export function generatedBehavioralDefinition(target, ports) {
+export function generatedBehavioralDefinition(target, ports, name) {
     const model = familyDefinition(target);
-    return ports ? { ...model, ports } : model;
+    return {
+        ...model,
+        ...(ports ? { ports } : {}),
+        ...(name ? { name } : {}),
+    };
 }
 function familyDefinition(target) {
     if (target === IDEAL_CHOPPER_TARGET)
@@ -81,14 +135,18 @@ function familyDefinition(target) {
         return idealLogicModel(target);
     if (model?.family === "signal")
         return idealSignalModel(target);
+    if (model?.family === "passive")
+        return model.implementation === "crystal"
+            ? crystalModel(target)
+            : potentiometerModel(target);
     throw new Error(`No generated behavioral model: ${target}`);
 }
-export function generatedBehavioralModel(target, ports) {
+export function generatedBehavioralModel(target, ports, name) {
     // SPICE switches the chopper's paths with its native S cards (#1641).
     if (target === IDEAL_CHOPPER_TARGET) {
         if (ports)
             throw new Error("The SPICE chopper body keeps its own ports");
-        return spiceChopperBody();
+        return spiceChopperBody(name);
     }
-    return printSpiceBehavioralModel(generatedBehavioralDefinition(target, ports));
+    return printSpiceBehavioralModel(generatedBehavioralDefinition(target, ports, name));
 }

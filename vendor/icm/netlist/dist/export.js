@@ -1,4 +1,5 @@
 import { directObjectLocator } from "@icm/derived";
+import { reviewedExternalBindingById } from "@icm/devices";
 import { analyzeDesignNetlist, } from "./extract.js";
 import { withBodyPortOrder } from "./body-port-order.js";
 import { printDesignNetlistWithLocations, shiftDesignNetlistLocations, printDesignNetlist, } from "./printers.js";
@@ -12,10 +13,12 @@ import { collectProjectModelSources, appendProjectModelSources, } from "./projec
  * The legitimate single-pin nodes are excluded by construction — a Cell port
  * carries its node outward to whoever instantiates the Cell, a global net is
  * shared with the rest of the design, an explicit NoConnect is the author
- * saying that this pin ends here on purpose, and a node somebody named (or
+ * saying that this pin ends here on purpose, a node somebody named (or
  * that a SPICE import named) is a declared signal rather than leftover
- * geometry. What remains is an unnamed node one pin reaches: a wire that was
- * drawn and never finished.
+ * geometry, and a terminal its device floats by design (the tap of a SKY130
+ * spiral drawn as a 2-pin inductor, set in Properties, never a pin to wire
+ * or mark) ends on its own node on purpose too. What remains is an unnamed
+ * node one pin reaches: a wire that was drawn and never finished.
  *
  * This is deliberately the export's own gate rather than an extraction error:
  * the analyzer also serves formal-interface derivation and simulation-source
@@ -32,7 +35,9 @@ function deadEndNodeDiagnostics(project, ir, analysed) {
         if (!document)
             continue;
         const contacts = new Map();
+        const floating = new Set();
         for (const instance of cell.instances) {
+            const binding = reviewedExternalBindingById(instance.reviewedExternalBindingId);
             for (const node of instance.nodes) {
                 const pins = contacts.get(node.netName);
                 const pin = `${instance.reference}.${node.pinName}`;
@@ -40,6 +45,10 @@ function deadEndNodeDiagnostics(project, ir, analysed) {
                     pins.push(pin);
                 else
                     contacts.set(node.netName, [pin]);
+                if (binding?.terminals.some((terminal) => terminal.targetName === node.pinName &&
+                    terminal.interaction === "property" &&
+                    terminal.role === "floating"))
+                    floating.add(pin);
             }
         }
         const ports = new Set(cell.ports.map((port) => port.netName));
@@ -50,7 +59,7 @@ function deadEndNodeDiagnostics(project, ir, analysed) {
             if (declared.has(net.id) || !unnamed.has(net.id))
                 continue;
             const pins = contacts.get(net.name);
-            if (!pins || pins.length !== 1)
+            if (!pins || pins.length !== 1 || floating.has(pins[0]))
                 continue;
             diagnostics.push({
                 code: NETLIST_DEAD_END_NET,
@@ -151,8 +160,13 @@ function applyPortCase(ir, portCase) {
  * a generated built-in model's fixed port order or pin mapping (#1393).
  * 15 refuses unimplemented external placeholders and unverified legacy
  * declarations whose original model bodies are absent from the Project.
+ * 16 exports a pulse, sine or AC source without a DC value (#2100): circuits
+ * that alone blocked, about 40 of them, extract.
+ * 17 no longer calls the tap of a SKY130 spiral drawn as a 2-pin inductor a
+ * dead end: its device floats it by design, so a circuit it alone blocked
+ * extracts.
  */
-export const NETLIST_MARK_RULE_VERSION = 15;
+export const NETLIST_MARK_RULE_VERSION = 17;
 export function designExtractsNetlist(project, options = {}) {
     const result = createDesignNetlistExport(project, {
         format: "spice",
@@ -192,7 +206,8 @@ export function createDesignNetlistExport(project, options = {}) {
         code: d.code,
         // An experiment may supply a legacy body. A copied design has no such
         // context and cannot claim completeness from its interface alone.
-        severity: d.code === "MODEL_LEGACY_IMPLEMENTATION_UNVERIFIED"
+        severity: d.code === "MODEL_LEGACY_IMPLEMENTATION_UNVERIFIED" &&
+            !options.callsWithoutBodies
             ? "error"
             : d.severity,
         message: d.path
@@ -216,10 +231,11 @@ export function createDesignNetlistExport(project, options = {}) {
     const printedIr = options.bodyPortOrder
         ? withBodyPortOrder(ir, options.bodyPortOrder)
         : ir;
+    const atTop = options.rootAsTopLevel ?? false;
     const printed = options.includeLocations
-        ? printDesignNetlistWithLocations(format, printedIr)
+        ? printDesignNetlistWithLocations(format, printedIr, atTop)
         : null;
-    const file = printed?.file ?? printDesignNetlist(format, printedIr);
+    const file = printed?.file ?? printDesignNetlist(format, printedIr, atTop);
     const originalLength = file.text.length;
     // Presentation export omits the strict printer's title. Keep that printer
     // unchanged for simulation/source offsets; a blank SPICE title below keeps

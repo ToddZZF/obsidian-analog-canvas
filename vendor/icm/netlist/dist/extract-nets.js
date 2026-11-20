@@ -1,8 +1,8 @@
 // Nets and their names: each Cell's net context, from its logical Nets and
 // their spellings to NoConnect nodes, and the node a pin is written on.
-import { deriveStableId, foldNetName, projectCellInterface } from "@icm/model";
-import { mosBulkKind, resolveMosBulkConnection, resolveCommittedDocumentLogicalNets, } from "@icm/derived";
-import { deviceDescriptor, bindsProjectCell, libraryGateTerminals, resolveReviewedExternalBinding, } from "@icm/devices";
+import { deriveStableId, foldNetName, projectCellInterface, projectScalarCellInterface, } from "@icm/model";
+import { mosBulkKind, resolveMosBulkConnection, resolveCommittedDocumentLogicalNets, supplyMarkerForSymbol, } from "@icm/derived";
+import { deviceDescriptor, bindsExternalByPartPins, bindsProjectCell, libraryGateTerminals, resolveReviewedExternalBinding, } from "@icm/devices";
 import { encodedNetNameCollisionKey, encodeNetName, } from "./net-name-codec.js";
 import { diagnostic, } from "./extract-common.js";
 const MAX_NETS_PER_CELL = 100_000;
@@ -10,7 +10,8 @@ export function encodeCandidate(name, scope, options) {
     return encodeNetName(name, scope, options.format, options.namingProfile);
 }
 /**
- * A visible Ground or VDD marker is already an explicit electrical statement.
+ * A visible Ground or supply marker (VDD Power, Named Ground) is already an
+ * explicit electrical statement.
  * Older drawings and copied markers can predate the persisted name-claim
  * ownership record, so recover that statement in the read-only export view.
  * Ordinary unnamed Nets still receive deterministic net0-style names below.
@@ -22,9 +23,8 @@ export function withNetlistPowerMarkerClaims(document, project) {
         : []));
     const additions = [];
     for (const instance of document.instances) {
-        const ground = instance.symbolId === "ground";
-        if ((!ground && instance.symbolId !== "vdd-port") ||
-            claimedMarkers.has(instance.id))
+        const marker = supplyMarkerForSymbol(instance.symbolId);
+        if (!marker || claimedMarkers.has(instance.id))
             continue;
         const pinName = deviceDescriptor(instance.symbolId, project)?.pinOrder[0];
         if (!pinName)
@@ -42,9 +42,9 @@ export function withNetlistPowerMarkerClaims(document, project) {
             id: deriveStableId("connectivity-evidence", "netlist-power-marker", document.id, instance.id),
             kind: "name-claim",
             netId: nets[0].id,
-            name: ground ? "0" : "VDD",
-            scope: "global",
-            powerDomain: ground ? "ground" : "vdd",
+            name: marker.name,
+            scope: marker.scope,
+            powerDomain: marker.domain,
             owner: { kind: "power-marker", objectId: instance.id },
         });
     }
@@ -97,7 +97,7 @@ export function buildNetContext(project, sourceDocument, documentsById, external
         }
     }
     const formalTerminalByLogicalId = new Map();
-    for (const port of projectCellInterface(document.netlist).ports) {
+    for (const port of projectScalarCellInterface(document.netlist).ports) {
         for (const netId of port.netIds) {
             const logicalNet = logicalNets.byBaseNetId.get(netId);
             const logicalId = logicalNet?.id ?? netId;
@@ -238,22 +238,26 @@ export function buildNetContext(project, sourceDocument, documentsById, external
                 const reviewed = externalDefinition && !externalDefinition.implementation
                     ? resolveReviewedExternalBinding(externalDefinition.name, externalDefinition.terminals.map((terminal) => terminal.name), instance.symbolId)
                     : undefined;
-                // A Library gate or flip-flop bound to a Cell keeps its own pins
-                // (#1450, #1689).
+                // A Library part bound to a Cell or to an external definition keeps
+                // its own pins (#1450, #1689, #1928); a Circuit Component that takes
+                // its symbol's id names its definition's terminals.
+                const partPins = (keeps) => keeps
+                    ? libraryGateTerminals(instance.symbolId).map((gateTerminal) => gateTerminal.pinName)
+                    : undefined;
                 const allowedPins = child?.netlist
-                    ? bindsProjectCell(instance.symbolId)
-                        ? libraryGateTerminals(instance.symbolId).map((gateTerminal) => gateTerminal.pinName)
-                        : projectCellInterface(child.netlist).ports.map((port) => port.name)
+                    ? (partPins(bindsProjectCell(instance.symbolId)) ??
+                        projectCellInterface(child.netlist).ports.map((port) => port.name))
                     : reviewed
                         ? reviewed.terminals.map((terminal) => terminal.pinName)
                         : externalDefinition
-                            ? externalDefinition.terminals.map((terminal) => terminal.name)
+                            ? (partPins(bindsExternalByPartPins(project, instance.symbolId)) ??
+                                externalDefinition.terminals.map((terminal) => terminal.name))
                             : deviceDescriptor(instance.symbolId, project)?.pinOrder;
                 if (allowedPins && !allowedPins.includes(terminal.pinName)) {
                     diagnostic(diagnostics, document.id, "UNKNOWN_TERMINAL_PIN", `Net ${net.id} references unknown pin ${terminal.instanceId}.${terminal.pinName}`, [net.id, terminal.instanceId]);
                 }
             }
-            const key = `${terminal.instanceId}\u0000${terminal.pinName}`;
+            const key = `${terminal.instanceId}\u0000${terminal.pinName}${terminal.memberId ? `\u0000${terminal.memberId}` : ""}`;
             const prior = netByTerminal.get(key);
             if (prior) {
                 diagnostic(diagnostics, document.id, "MULTIPLY_ASSIGNED_TERMINAL", `Terminal ${terminal.instanceId}.${terminal.pinName} belongs to multiple Nets`, [prior.id, net.id, terminal.instanceId]);
@@ -279,7 +283,9 @@ export function buildNetContext(project, sourceDocument, documentsById, external
             occupiedNames.set(encodedGenerated.collisionKey, noConnect.id);
             generated = encodedGenerated.token;
         }
-        const key = `${noConnect.endpoint.instanceId}\u0000${noConnect.endpoint.pinName}`;
+        // A bus member's mark leaves that member open, not the bus's others.
+        const { instanceId, pinName, memberId } = noConnect.endpoint;
+        const key = `${instanceId}\u0000${pinName}${memberId ? `\u0000${memberId}` : ""}`;
         noConnectNameByTerminal.set(key, generated);
         noConnectNets.push({ id: noConnect.id, name: generated, scope: "local" });
         // The author marked this pin unused; its node name is information, not
@@ -318,7 +324,7 @@ export function buildNetContext(project, sourceDocument, documentsById, external
         ],
     };
 }
-export function terminalNetName(document, instance, pinName, context, diagnostics) {
+export function terminalNetName(document, instance, pinName, context, diagnostics, memberId) {
     // A MOS body has one authority, and membership is not always it: a body
     // left alone on the Net its own policy binding named is residue from a
     // paste or a deleted marker, and writing that node would strand the body
@@ -327,9 +333,10 @@ export function terminalNetName(document, instance, pinName, context, diagnostic
     const bodyNet = pinName === "B" && mosBulkKind(instance)
         ? resolveMosBulkConnection(document, instance, context.logicalNets)?.net
         : undefined;
-    const net = bodyNet ?? context.netByTerminal.get(`${instance.id}\u0000${pinName}`);
+    const net = bodyNet ??
+        context.netByTerminal.get(`${instance.id}\u0000${pinName}${memberId ? `\u0000${memberId}` : ""}`);
     const name = net ? context.nameByNetId.get(net.id) : undefined;
-    const noConnectName = context.noConnectNameByTerminal.get(`${instance.id}\u0000${pinName}`);
+    const noConnectName = context.noConnectNameByTerminal.get(`${instance.id}\u0000${pinName}${memberId ? `\u0000${memberId}` : ""}`);
     if (noConnectName)
         return noConnectName;
     if (name)

@@ -1,22 +1,24 @@
 // The design netlist: the options it reads, the Cells a root reaches, and
 // the IR assembled from them with the definitions their calls need.
-import { deriveStableId, componentInterfaceIssues, freezeSnapshot, isFrozenSnapshot, } from "@icm/model";
+import { deriveStableId, componentInterfaceIssues, freezeSnapshot, isFrozenSnapshot, projectScalarCellInterface, } from "@icm/model";
 import { lowerTerminalCurrentControls } from "./controlled-current.js";
-import { deriveProjectNetNameProjection, portableCellIdentifier, findExternalMasterCollisions, directObjectLocator, drawnMagneticNetwork, resolveCommittedDocumentLogicalNets, } from "@icm/derived";
-import { ADDER_TARGET, IDEAL_COMPARATOR_BODIES, IDEAL_OPAMP_BODIES, OPAMP_TARGET, adderBodySigns, builtInModelContract, deviceDescriptor, callsIdealComparatorBody, callsIdealOpampBody, idealComparatorBodyPorts, idealComparatorBodyContract, idealOpampBodyContract, isIdealComparatorBody, isIdealOpampBody, instanceBuiltInSubcircuit, subcircuitDescriptor, } from "@icm/devices";
+import { deriveProjectNetNameProjection, portableCellIdentifier, findExternalMasterCollisions, libraryPartMaster, directObjectLocator, resolveCommittedDocumentLogicalNets, } from "@icm/derived";
+import { ADDER_TARGET, IDEAL_COMPARATOR_BODIES, IDEAL_OPAMP_BODIES, adderBodySigns, builtInModelContract, deviceDescriptor, drawnMagneticNetwork, callsIdealComparatorBody, callsIdealOpampBody, idealComparatorBodyPorts, idealComparatorBodyContract, idealOpampBodyContract, isIdealComparatorBody, isIdealOpampBody, instanceBuiltInSubcircuit, callOwner, subcircuitDescriptor, } from "@icm/devices";
 import { withImplicitMosSupplies } from "./implicit-mos-supplies.js";
-import { builtInBlockCallTarget, idealAnalogBlockCell, projectSubcircuitNames, } from "./ideal-analog-block-models.js";
+import { builtInBlockCallTarget, idealAnalogBlockCell, } from "./ideal-analog-block-models.js";
 import { compareText, diagnostic, } from "./extract-common.js";
 import { withNetlistPowerMarkerClaims } from "./extract-nets.js";
+import { sortsSupplyPorts, supplyPortRank } from "./extract-ground-pin.js";
 import { bubblePhasePins } from "./extract-switch.js";
 import { IDEAL_CHOPPER_TARGET } from "./ideal-switch-model.js";
 import { magneticSubcircuit } from "./extract-magnetic.js";
+import { authorSubcircuitNames, libraryCallCollision, outputSubcircuitNames, withRetargetBindings, writtenBodyName, } from "./library-part-calls.js";
 import { extractCell } from "./extract-cell.js";
 import { projectCouplingReferences } from "./extract-coupling.js";
-/** A target with a shared generated recipe: logic, multiplier, converters. */
+/** A target with a shared generated recipe: logic, multiplier, converters, crystal. */
 function isBehaviouralTarget(target) {
     const family = builtInModelContract(target)?.family;
-    return family === "logic" || family === "signal";
+    return family === "logic" || family === "signal" || family === "passive";
 }
 const MAX_CELLS = 1024;
 function attachDiagnosticLocators(project, diagnostics) {
@@ -44,7 +46,7 @@ function attachDiagnosticLocators(project, diagnostics) {
             item.primary = directObjectLocator(document.id, kind, objectId);
     }
 }
-function reachableDocuments(project, rootDocumentId, diagnostics) {
+function reachableDocuments(project, rootDocumentId, diagnostics, uncalled = false, leaveOut = []) {
     const byId = new Map(project.documents.map((document) => [document.id, document]));
     if (!byId.has(rootDocumentId)) {
         diagnostic(diagnostics, project.topDocumentId, "MISSING_ROOT_CELL", `Simulation root references unknown Document ${rootDocumentId}`);
@@ -80,6 +82,13 @@ function reachableDocuments(project, rootDocumentId, diagnostics) {
         ordered.push(document);
     }
     visit(rootDocumentId);
+    // The Cells the root does not reach come after it, each with the Cells it
+    // reaches. One that calls the root is the netlist's top in its place; the
+    // file names the root as the editor's (the RNL export's `$CANVAS_TOP`).
+    if (uncalled)
+        for (const document of project.documents)
+            if (!visited.has(document.id) && !leaveOut.includes(document.id))
+                visit(document.id);
     if (ordered.length > MAX_CELLS) {
         diagnostic(diagnostics, rootDocumentId, "CELL_LIMIT_EXCEEDED", `Reachable hierarchy has ${ordered.length} cells; maximum is ${MAX_CELLS}`);
     }
@@ -106,6 +115,7 @@ function projectSpiceReferences(cell) {
         inductor: "L",
         diode: "D",
         bjt: "Q",
+        jfet: "J",
         "voltage-source": "V",
         "current-source": "I",
         vcvs: "E",
@@ -150,6 +160,8 @@ function analyzeSnapshot(project, options, authoring) {
         rootAsTopLevel: options.rootAsTopLevel ?? false,
         groundPin: options.groundPin ?? "global",
         deckSources: options.deckSources ?? [],
+        uncalledCells: options.uncalledCells ?? false,
+        leaveOutCells: options.leaveOutCells ?? [],
         run: options.deckSources !== undefined,
     };
     // Mutable authoring callers may change a model without advancing a revision.
@@ -180,10 +192,10 @@ function analyzeDesign(project, resolvedOptions, authoring) {
     }
     if (interfaceDiagnostics.length)
         return { ir: null, diagnostics: interfaceDiagnostics };
-    const projection = withImplicitMosSupplies(project, resolvedOptions);
+    const projection = withImplicitMosSupplies(withRetargetBindings(project), resolvedOptions);
     project = projection.project;
     const diagnostics = [];
-    const documents = reachableDocuments(project, resolvedOptions.rootDocumentId, diagnostics);
+    const documents = reachableDocuments(project, resolvedOptions.rootDocumentId, diagnostics, resolvedOptions.uncalledCells, resolvedOptions.leaveOutCells);
     const nameProjection = deriveProjectNetNameProjection(resolvedOptions.rootDocumentId === project.topDocumentId
         ? project
         : { ...project, topDocumentId: resolvedOptions.rootDocumentId });
@@ -208,15 +220,12 @@ function analyzeDesign(project, resolvedOptions, authoring) {
             cellNames.set(folded, { documentId: document.id, authoredName });
         }
     }
-    // The names this export defines itself, which no generated body takes:
-    // its Cells and the Project's external definitions.
-    const projectNames = projectSubcircuitNames(project, cellNameByDocumentId.values());
     const cells = [];
     for (const collision of findExternalMasterCollisions(project, documents)) {
         diagnostic(diagnostics, collision.documentId, "MASTER_NAME_COLLISION", `External master ${collision.masterName} conflicts with local Cell ${collision.localName}; choose distinct exported master names`, [collision.instanceId]);
     }
     for (const document of documents) {
-        let cell = extractCell(project, document, documentsById, cellNameByDocumentId, projectNames, nameProjection.byDocumentId.get(document.id) ?? new Map(), projection.placedBodies.get(document.id), resolvedOptions, diagnostics);
+        let cell = extractCell(project, document, documentsById, cellNameByDocumentId, nameProjection.byDocumentId.get(document.id) ?? new Map(), projection.placedBodies.get(document.id), resolvedOptions, diagnostics);
         if (cell) {
             const lowered = lowerTerminalCurrentControls(cell);
             cell = lowered.cell;
@@ -237,69 +246,18 @@ function analyzeDesign(project, resolvedOptions, authoring) {
     }
     bubblePhasePins(cells, documentsById, resolvedOptions);
     // Each kind of drawn magnetic device calls one coupled-winding subcircuit,
-    // defined once in the file under the library's name. A Cell or external
-    // subcircuit already exporting that name would make the call ambiguous.
+    // defined once in the file under the library's name, which yields to an
+    // author's definition of that name like every generated body below. One
+    // bound to a Cell or external definition calls that instead (#1928).
     const magneticSubcircuits = new Map();
-    const externalNames = new Map(project.externalSubcircuitDefinitions.map((definition) => [
-        definition.name.toLowerCase(),
-        definition.name,
-    ]));
     for (const document of documents) {
         for (const instance of document.instances) {
             const definition = deviceDescriptor(instance.symbolId, project);
             const network = definition ? drawnMagneticNetwork(definition) : null;
-            if (!definition || !network)
+            if (!definition || !network || callOwner(project, instance) === "bound")
                 continue;
-            const name = network.subcircuit;
-            const cell = cellNames.get(name);
-            const external = externalNames.get(name);
-            if (cell || external) {
-                diagnostic(diagnostics, document.id, "MAGNETIC_SUBCIRCUIT_NAME_COLLISION", `${instance.reference ?? instance.id} calls the built-in ${name} subcircuit, but ${cell ? `Cell ${cell.authoredName}` : `external subcircuit ${external}`} also exports as ${name}; rename it`, [instance.id]);
-                continue;
-            }
-            if (!magneticSubcircuits.has(name))
-                magneticSubcircuits.set(name, magneticSubcircuit(network, definition));
-        }
-    }
-    // Each generated comparator or op-amp body reserves its name while such a
-    // block is used, whichever body its parameters choose: a Cell or an
-    // external subcircuit of that name would shadow it. The op-amp's own name
-    // is not one: a Project defining `opamp` replaces every body.
-    for (const reserved of [
-        {
-            names: IDEAL_COMPARATOR_BODIES,
-            calls: callsIdealComparatorBody,
-            code: "IDEAL_COMPARATOR_NAME_COLLISION",
-            block: "Ideal comparator",
-        },
-        {
-            names: IDEAL_OPAMP_BODIES.filter((name) => name !== OPAMP_TARGET),
-            calls: (descriptor, target) => callsIdealOpampBody(descriptor, target) &&
-                !projectNames.has(target.toLowerCase()),
-            code: "IDEAL_OPAMP_NAME_COLLISION",
-            block: "Ideal op-amp",
-        },
-    ]) {
-        const conflicts = reserved.names.flatMap((name) => {
-            const cell = cellNames.get(name);
-            const external = externalNames.get(name);
-            return cell || external
-                ? [
-                    `${cell ? `Cell ${cell.authoredName}` : `external subcircuit ${external}`} named ${name}`,
-                ]
-                : [];
-        });
-        if (!conflicts.length)
-            continue;
-        for (const document of documents) {
-            for (const instance of document.instances) {
-                const descriptor = subcircuitDescriptor(instance.symbolId, project);
-                if (!descriptor ||
-                    !reserved.calls(descriptor, builtInBlockCallTarget(instance, descriptor, projectNames)))
-                    continue;
-                for (const conflict of conflicts)
-                    diagnostic(diagnostics, document.id, reserved.code, `${reserved.block} ${instance.reference ?? instance.id} conflicts with ${conflict}`, [instance.id]);
-            }
+            if (!magneticSubcircuits.has(network.subcircuit))
+                magneticSubcircuits.set(network.subcircuit, magneticSubcircuit(network, definition));
         }
     }
     if (resolvedOptions.groundPin === "pin") {
@@ -311,14 +269,7 @@ function analyzeDesign(project, resolvedOptions, authoring) {
                 cell.id === resolvedOptions.rootDocumentId)
                 continue;
             const logical = resolveCommittedDocumentLogicalNets(withNetlistPowerMarkerClaims(documentsById.get(cell.id)));
-            const rank = (port) => {
-                const domain = logical.byBaseNetId.get(port.id)?.powerDomain;
-                if (domain === "vdd" || port.name.toUpperCase() === "VDD")
-                    return 0;
-                if (domain === "ground" || port.name.toUpperCase() === "VSS")
-                    return 1;
-                return 2;
-            };
+            const rank = (port) => supplyPortRank(logical, port);
             for (const port of cell.ports) {
                 if (rank(port) === 2)
                     continue;
@@ -326,7 +277,8 @@ function analyzeDesign(project, resolvedOptions, authoring) {
                 if (net)
                     net.scope = "local";
             }
-            cell.ports.sort((left, right) => rank(left) - rank(right));
+            if (sortsSupplyPorts(documentsById.get(cell.id)))
+                cell.ports.sort((left, right) => rank(left) - rank(right));
         }
         // Port order is positional in both SPICE and Spectre. Reorder internal
         // calls from the final child interface; external PDK pin order is untouched.
@@ -344,7 +296,15 @@ function analyzeDesign(project, resolvedOptions, authoring) {
                 const child = cellsById.get(binding.childDocumentId);
                 if (!child)
                     continue;
-                const order = new Map(child.ports.map((port, index) => [port.name, index]));
+                // A call names each node by the Pin's authored name (B<3>); the
+                // child's port carries the printed token (B_3_). Meet them by the
+                // port's Net, else a bus member that encodes differently sorts last
+                // and the call shifts its neighbours (#2005).
+                const authoredName = new Map(projectScalarCellInterface(documentsById.get(binding.childDocumentId)?.netlist).ports.map((port) => [port.netIds[0], port.name]));
+                const order = new Map(child.ports.map((port, index) => [
+                    authoredName.get(port.id) ?? port.name,
+                    index,
+                ]));
                 instance.nodes.sort((left, right) => (order.get(left.pinName) ?? Infinity) -
                     (order.get(right.pinName) ?? Infinity));
             }
@@ -355,6 +315,20 @@ function analyzeDesign(project, resolvedOptions, authoring) {
     // definition. Keep the export truthful: a ready netlist must either reach a
     // Cell, an explicitly declared external master, or one of the generated
     // built-in models below.
+    // Whose name each call reaches (callOwner): a Library part's, a magnetic
+    // device's or the chopper's never reaches the author's by name (#1928).
+    const sourceOf = (cellId, instanceId) => documentsById
+        .get(cellId)
+        ?.instances.find((candidate) => candidate.id === instanceId);
+    const ownerOf = (cellId, instanceId) => {
+        const source = sourceOf(cellId, instanceId);
+        return source ? callOwner(project, source) : "library";
+    };
+    const libraryCall = (cellId, instanceId) => ownerOf(cellId, instanceId) === "library";
+    // The author's names across the Project, which generated bodies yield, and
+    // in this output, which a call-only name refuses (#1928).
+    const owners = authorSubcircuitNames(project);
+    const outputOwners = outputSubcircuitNames(project, documents);
     const availableSubcircuits = new Set([
         ...cells.map((cell) => cell.name.toLowerCase()),
         ...project.externalSubcircuitDefinitions.map((definition) => definition.name.toLowerCase()),
@@ -368,11 +342,12 @@ function analyzeDesign(project, resolvedOptions, authoring) {
     ]);
     for (const cell of cells) {
         for (const instance of cell.instances) {
-            if (instance.invocationKind !== "subcircuit" || !instance.target)
+            if (instance.invocationKind !== "subcircuit" ||
+                !instance.target ||
+                ownerOf(cell.id, instance.id) === "bound")
                 continue;
-            const sourceInstance = documentsById
-                .get(cell.id)
-                ?.instances.find((candidate) => candidate.id === instance.id);
+            const generated = libraryCall(cell.id, instance.id);
+            const sourceInstance = sourceOf(cell.id, instance.id);
             const descriptor = sourceInstance
                 ? subcircuitDescriptor(sourceInstance.symbolId, project)
                 : undefined;
@@ -386,21 +361,38 @@ function analyzeDesign(project, resolvedOptions, authoring) {
             const callPorts = descriptor && callsIdealComparatorBody(descriptor, target)
                 ? idealComparatorBodyPorts(target, descriptor.ports)
                 : descriptor?.ports;
-            // A generated body has a fixed positional interface. A Project-local
-            // replacement is valid only against its own declared master, not the
-            // unrelated built-in body with the same target spelling.
+            // A generated body has a fixed positional interface. A User
+            // Component's own subcircuit answers only to its own declared master,
+            // not to the unrelated built-in body with the same target spelling.
             if (emittedPorts &&
                 descriptor &&
-                !projectNames.has(target) &&
+                generated &&
                 (instance.nodes.length !== emittedPorts.length ||
                     instance.nodes.some((node, index) => node.pinName !== emittedPorts[index]?.name) ||
                     callPorts?.some((port, index) => port.pinName !== emittedPorts[index]?.pinName ||
                         port.supply !== emittedPorts[index]?.supply)))
                 diagnostic(diagnostics, cell.id, "COMPONENT_MODEL_INTERFACE_MISMATCH", `${instance.reference} calls built-in ${instance.target} with a different ordered interface; restore its interface or declare a custom target`, [instance.id]);
             // A backend's call-only contract still exports: the call is written,
-            // and a warning says the reader's libraries must define it.
-            if (builtInModelContract(instance.target)?.backends[resolvedOptions.format] === "external" &&
-                !availableSubcircuits.has(target)) {
+            // and a warning says the reader's libraries must define it. Such a
+            // name, and a master a part was retargeted to that only a model source
+            // defines, is the reader's interface and cannot move: where the
+            // author's definition has it, the part refuses rather than reach that
+            // definition by position (#1928).
+            const callOnly = builtInModelContract(instance.target)?.backends[resolvedOptions.format] === "external";
+            const collision = generated && sourceInstance
+                ? callOnly
+                    ? libraryCallCollision({ reference: instance.reference, target: instance.target }, outputOwners.get(target), "call-only", resolvedOptions.format)
+                    : libraryPartMaster(project, sourceInstance)
+                        ? libraryCallCollision({ reference: instance.reference, target: instance.target }, owners.get(target), "undeclared", resolvedOptions.format)
+                        : undefined
+                : undefined;
+            if (collision) {
+                diagnostic(diagnostics, cell.id, "LIBRARY_PART_NAME_COLLISION", collision, [instance.id]);
+                continue;
+            }
+            // A Library part's call-only name that no definition in this output
+            // has is always left to the reader's libraries.
+            if (callOnly && (generated || !availableSubcircuits.has(target))) {
                 diagnostic(diagnostics, cell.id, "SPECTRE_MODEL_NOT_INCLUDED", `${instance.reference} calls ${instance.target}, which this Spectre export does not define: bind it to a cell from your libraries, a PDK standard cell or a Verilog-A model for example. A SPICE export includes an ideal ${instance.target}`, [instance.id], "warning");
                 continue;
             }
@@ -427,6 +419,47 @@ function analyzeDesign(project, resolvedOptions, authoring) {
                 ? `Comparator ${instance.reference} has no model: nothing defines the subcircuit comparator. Replace it from the Library (a placed comparator uses the built-in ideal comparator) or add an external definition named comparator before exporting`
                 : `Subcircuit target ${instance.target} used by ${instance.reference} has no emitted definition or external model; bind one before exporting`, [instance.id]);
         }
+    }
+    // Each generated body in use is printed once, under its own name or, where
+    // one of the author's definitions takes that, the reserved one (#1928).
+    const generatedTargets = new Set(cells.flatMap((cell) => cell.instances.flatMap((call) => call.invocationKind === "subcircuit" &&
+        call.target &&
+        libraryCall(cell.id, call.id)
+        ? [call.target]
+        : [])));
+    const idealCells = [...generatedTargets]
+        .sort(compareText)
+        .flatMap((target) => {
+        const model = idealAnalogBlockCell(target, resolvedOptions.format);
+        return model ? [model] : [];
+    });
+    const behaviouralBodies = [...generatedTargets]
+        .filter((target) => isBehaviouralTarget(target) &&
+        builtInModelContract(target)?.backends[resolvedOptions.format] ===
+            "included")
+        .sort(compareText);
+    const ownBodies = [
+        ...IDEAL_COMPARATOR_BODIES,
+        ...IDEAL_OPAMP_BODIES,
+        IDEAL_CHOPPER_TARGET,
+    ].filter((name) => generatedTargets.has(name));
+    const writtenNames = new Map();
+    for (const body of [
+        ...idealCells.map((model) => model.name),
+        ...ownBodies,
+        ...behaviouralBodies,
+        ...magneticSubcircuits.keys(),
+    ]) {
+        const written = writtenBodyName(body, owners);
+        if (written.ok) {
+            if (written.name !== body)
+                writtenNames.set(body, written.name);
+            continue;
+        }
+        for (const cell of cells)
+            for (const call of cell.instances)
+                if (call.target === body && libraryCall(cell.id, call.id))
+                    diagnostic(diagnostics, cell.id, "LIBRARY_PART_NAME_COLLISION", `${call.reference}'s ${written.message}`, [call.id]);
     }
     diagnostics.sort((left, right) => left.documentId.localeCompare(right.documentId) ||
         left.code.localeCompare(right.code) ||
@@ -471,11 +504,15 @@ function analyzeDesign(project, resolvedOptions, authoring) {
         const descriptor = instanceBuiltInSubcircuit(project, instance);
         if (!descriptor)
             continue;
-        const target = builtInBlockCallTarget(instance, descriptor, projectNames);
+        const target = builtInBlockCallTarget(instance, descriptor);
         if (callsIdealComparatorBody(descriptor, target))
             continue;
-        if (callsIdealOpampBody(descriptor, target) &&
-            !projectNames.has(target.toLowerCase()))
+        // A Library part's generated body is printed below, not called as an
+        // external master; a User Component's own subcircuit is one.
+        if (callOwner(project, instance) === "library" &&
+            (callsIdealOpampBody(descriptor, target) ||
+                idealCells.some((model) => model.name === target) ||
+                behaviouralBodies.includes(target)))
             continue;
         externalMasters.set(`builtin:${target.toLowerCase()}`, {
             id: descriptor.id,
@@ -488,56 +525,39 @@ function analyzeDesign(project, resolvedOptions, authoring) {
             formalParameters: [],
         });
     }
-    // A default Analog Block call gets one actual idealized E/G-source master.
-    // Authored Cells and explicit external master interfaces (projectNames)
-    // retain priority; an instance retargeted to another subcircuit never
-    // receives this model.
-    const idealCells = [
-        ...new Set(cells.flatMap((cell) => cell.instances
-            .filter((instance) => instance.invocationKind === "subcircuit" && instance.target)
-            .map((instance) => instance.target))),
-    ]
-        .sort(compareText)
-        .flatMap((target) => {
-        if (projectNames.has(target.toLowerCase()))
-            return [];
-        const model = idealAnalogBlockCell(target, resolvedOptions.format);
-        return model ? [model] : [];
-    });
-    for (const model of idealCells)
-        externalMasters.delete(`builtin:${model.name.toLowerCase()}`);
-    // Each generated body in use (logic, multiplier, converters) is printed
-    // once, unless an authored Cell or a declared external definition already
-    // owns its name.
-    const behaviouralBodies = [
-        ...new Set(cells.flatMap((cell) => cell.instances.flatMap((instance) => instance.invocationKind === "subcircuit" &&
-            instance.target &&
-            isBehaviouralTarget(instance.target) &&
-            builtInModelContract(instance.target)?.backends[resolvedOptions.format] === "included" &&
-            !projectNames.has(instance.target.toLowerCase())
-            ? [instance.target]
-            : []))),
-    ].sort(compareText);
-    for (const target of behaviouralBodies)
-        externalMasters.delete(`builtin:${target.toLowerCase()}`);
+    // Generated bodies and their calls take the names chosen above.
+    const written = (name) => writtenNames.get(name);
+    for (const cell of cells)
+        for (const call of cell.instances) {
+            const name = call.target && written(call.target);
+            if (name && libraryCall(cell.id, call.id))
+                call.target = name;
+        }
+    const behavioral = (name) => {
+        const as = written(name);
+        return as
+            ? { kind: "behavioral", name: as, body: name }
+            : { kind: "behavioral", name };
+    };
     return {
         ir: {
             topCellId: resolvedOptions.rootDocumentId,
-            cells: [...idealCells, ...cells],
+            cells: [
+                ...idealCells.map((model) => {
+                    const as = written(model.name);
+                    return as ? { ...model, name: as, body: model.name } : model;
+                }),
+                ...cells,
+            ],
             generatedDefinitions: [
-                ...[
-                    ...IDEAL_COMPARATOR_BODIES,
-                    ...IDEAL_OPAMP_BODIES,
-                    IDEAL_CHOPPER_TARGET,
-                ]
-                    .filter((name) => !projectNames.has(name.toLowerCase()) &&
-                    cells.some((cell) => cell.instances.some((instance) => instance.target === name)))
-                    .map((name) => ({ kind: "behavioral", name })),
-                ...behaviouralBodies.map((name) => ({
-                    kind: "behavioral",
-                    name,
+                ...ownBodies.map(behavioral),
+                ...behaviouralBodies.map(behavioral),
+                ...[...magneticSubcircuits.values()]
+                    .sort((left, right) => compareText(left.name, right.name))
+                    .map((network) => ({
+                    ...network,
+                    name: written(network.name) ?? network.name,
                 })),
-                ...[...magneticSubcircuits.values()].sort((left, right) => compareText(left.name, right.name)),
             ],
             globals,
             externalMasters: [...externalMasters.values()].sort((left, right) => compareText(left.name, right.name)),

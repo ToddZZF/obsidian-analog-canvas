@@ -1,3 +1,22 @@
+/** The variant that draws a symbol's optional supply pins (#1833). */
+export const SUPPLY_PINS_VARIANT_ID = "supply-pins";
+/** The roles of supply pins a drawing shows on request (#1833). */
+const OPTIONAL_SUPPLY_PIN_ROLES = new Set([
+    "positive-supply",
+    "negative-supply",
+]);
+/**
+ * A supply pin a symbol draws only on request: a supply role its default
+ * variant hides. It draws the supply port of its name; left unwired, shown or
+ * hidden, that supply takes its Net in Properties or Auto.
+ */
+export function isOptionalSupplyPin(symbol, pin) {
+    return (OPTIONAL_SUPPLY_PIN_ROLES.has(pin.role) &&
+        (symbol.variants
+            .find((variant) => variant.id === symbol.defaultVariantId)
+            ?.hiddenPinNames.includes(pin.name) ??
+            false));
+}
 export function componentInterfaceIssues(definition) {
     const issues = [];
     const pins = new Set(definition.symbol.pins.map((pin) => pin.name));
@@ -31,7 +50,16 @@ export function componentInterfaceIssues(definition) {
     if (!definition.subcircuit)
         return issues;
     const names = new Set();
-    const mapped = new Set();
+    // A Symbol pin named after a supply, and mapped by no port, draws that
+    // supply's ports (#1833); ports of one supply meet one Net, so they share
+    // it. A pin a port maps stays that port's, beside a supply of its name.
+    const named = new Set(definition.subcircuit.ports.flatMap((port) => port.pinName === undefined ? [] : [port.pinName]));
+    const mapped = new Set(definition.subcircuit.ports.flatMap((port) => port.pinName === undefined &&
+        port.supply &&
+        pins.has(port.supply) &&
+        !named.has(port.supply)
+        ? [port.supply]
+        : []));
     for (const [index, port] of definition.subcircuit.ports.entries()) {
         const name = port.name.toLowerCase();
         if (names.has(name))

@@ -1,3 +1,4 @@
+import { isOptionalSupplyPin, } from "./component-interface.js";
 import { ComponentDefinitionSchema } from "./schema/component-definition.js";
 import { deriveStableId } from "./ids.js";
 /** Raw authoring text may still name the owner from which this draft was copied. */
@@ -51,14 +52,19 @@ export class CircuitComponentMappingError extends Error {
         super(`${issue.path.join(".")}: ${issue.message}`);
     }
 }
-/** Initialize only a complete, exact same-name correspondence to the selected owner. */
+/**
+ * Initialize only a complete, exact same-name correspondence to the selected
+ * owner; an optional supply pin no terminal names stays unmapped.
+ */
 export function initializeCircuitComponent(component, definition) {
     if (component.circuitBinding)
         return component;
     const names = component.symbol.pins.map((pin) => pin.name);
-    if (names.length !== definition.terminals.length ||
-        new Set(names).size !== names.length ||
-        !definition.terminals.every((terminal) => names.includes(terminal.name)))
+    const terminals = new Set(definition.terminals.map((t) => t.name));
+    if (new Set(names).size !== names.length ||
+        terminals.size !== definition.terminals.length ||
+        !definition.terminals.every((terminal) => names.includes(terminal.name)) ||
+        !component.symbol.pins.every((pin) => terminals.has(pin.name) || isOptionalSupplyPin(component.symbol, pin)))
         return component;
     return ComponentDefinitionSchema.parse({
         ...component,
@@ -71,41 +77,60 @@ export function initializeCircuitComponent(component, definition) {
         },
     });
 }
-/** One correspondence authority for Project validation, Apply and symbol resolution. */
-export function circuitComponentIssues(component, definition) {
-    const binding = component.circuitBinding;
+/**
+ * The correspondence rule shared by source-backed `circuitBinding` and a
+ * Cell's custom block artwork: every owner terminal mapped exactly once, to
+ * one graphical pin or an explicit supply; every graphical pin but an
+ * optional supply pin mapped exactly once. Paths are relative to an object
+ * holding `symbol` and `terminals`; `noun` names the owner's terminals.
+ */
+function symbolTerminalMappingIssues(symbol, mappings, terminals, noun = "native terminal") {
     const issues = [];
     const report = (path, message) => issues.push({ path, message });
-    if (!binding || binding.definitionId !== definition.id) {
-        report(["circuitBinding", "definitionId"], "Select the native circuit owner for this artwork");
-        return issues;
-    }
-    const terminalIds = new Set(definition.terminals.map((t) => t.id));
-    const pins = new Set(component.symbol.pins.map((p) => p.name));
+    const Noun = noun[0].toUpperCase() + noun.slice(1);
+    const terminalIds = new Set(terminals.map((t) => t.id));
+    const pins = new Set(symbol.pins.map((p) => p.name));
     const mappedIds = new Set();
     const mappedPins = new Set();
-    for (const [index, mapping] of binding.terminals.entries()) {
-        const path = ["circuitBinding", "terminals", index];
+    for (const [index, mapping] of mappings.entries()) {
+        const path = ["terminals", index];
         if (!terminalIds.has(mapping.terminalId))
-            report([...path, "terminalId"], "Unknown native terminal; repair the Pin mapping");
+            report([...path, "terminalId"], `Unknown ${noun}; repair the Pin mapping`);
         if (mappedIds.has(mapping.terminalId))
-            report([...path, "terminalId"], "Native terminal is mapped more than once");
+            report([...path, "terminalId"], `${Noun} is mapped more than once`);
         mappedIds.add(mapping.terminalId);
         if (!("pinName" in mapping))
             continue;
         if (!pins.has(mapping.pinName))
             report([...path, "pinName"], `Unknown graphical pin ${mapping.pinName}`);
         if (mappedPins.has(mapping.pinName))
-            report([...path, "pinName"], `Graphical pin ${mapping.pinName} maps different native terminals`);
+            report([...path, "pinName"], `Graphical pin ${mapping.pinName} maps different ${noun}s`);
         mappedPins.add(mapping.pinName);
     }
-    for (const terminal of definition.terminals)
+    for (const terminal of terminals)
         if (!mappedIds.has(terminal.id))
-            report(["circuitBinding", "terminals"], `Map native terminal ${terminal.name} to a graphical pin or an explicit supply`);
-    for (const pin of pins)
-        if (!mappedPins.has(pin))
-            report(["symbol", "pins"], `Map graphical pin ${pin} to a native terminal`);
+            report(["terminals"], `Map ${noun} ${terminal.name} to a graphical pin or an explicit supply`);
+    // A supply pin the artwork draws only on request may stay unmapped: it
+    // then draws nothing, and the supply mapping, if any, is a property
+    // terminal as with artwork that has no such pin (#1833).
+    for (const pin of symbol.pins)
+        if (!mappedPins.has(pin.name) && !isOptionalSupplyPin(symbol, pin))
+            report(["symbol", "pins"], `Map graphical pin ${pin.name} to a ${noun}`);
     return issues;
+}
+/** One correspondence authority for Project validation, Apply and symbol resolution. */
+export function circuitComponentIssues(component, definition) {
+    const binding = component.circuitBinding;
+    if (!binding || binding.definitionId !== definition.id)
+        return [
+            {
+                path: ["circuitBinding", "definitionId"],
+                message: "Select the native circuit owner for this artwork",
+            },
+        ];
+    return symbolTerminalMappingIssues(component.symbol, binding.terminals, definition.terminals).map((issue) => issue.path[0] === "terminals"
+        ? { ...issue, path: ["circuitBinding", ...issue.path] }
+        : issue);
 }
 /** Drawing names are presentation; ordinary runtime endpoints use native names. */
 export function circuitComponentTerminals(component, definition) {
@@ -127,31 +152,55 @@ export function projectCircuitSymbol(component, definition) {
     const issue = circuitComponentIssues(component, definition)[0];
     if (issue)
         throw new CircuitComponentMappingError(issue);
-    const names = new Map(component.circuitBinding.terminals.flatMap((mapping) => "pinName" in mapping
+    return projectMappedSymbol(component.symbol, component.circuitBinding.terminals, definition.terminals);
+}
+/**
+ * Custom artwork as callers resolve it: each mapped graphical pin renamed to
+ * its owner terminal's formal name (the drawn name stays its display name),
+ * an unmapped optional supply pin dropped, a supply-mapped terminal an
+ * implicit property pin. The mapping must already be valid
+ * (symbolTerminalMappingIssues).
+ */
+function projectMappedSymbol(symbol, mappings, terminals) {
+    const terminalFor = new Map(mappings.flatMap((mapping) => "pinName" in mapping
         ? [
             [
                 mapping.pinName,
-                definition.terminals.find((t) => t.id === mapping.terminalId)
-                    .name,
+                terminals.find((t) => t.id === mapping.terminalId),
             ],
         ]
         : []));
-    const rename = (name) => names.get(name) ?? name;
+    const rename = (name) => terminalFor.get(name)?.name ?? name;
+    // An unmapped optional supply pin draws nothing (#1833). A mapped one is
+    // its native terminal's pin, no supply: unwired, it is unconnected.
+    const optional = new Set(symbol.pins
+        .filter((pin) => isOptionalSupplyPin(symbol, pin))
+        .map((pin) => pin.name));
+    const dropped = new Set([...optional].filter((name) => !terminalFor.has(name)));
     return {
-        ...component.symbol,
+        ...symbol,
         pins: [
-            ...component.symbol.pins.map((pin) => ({
-                ...pin,
-                name: rename(pin.name),
-                presentation: {
-                    ...pin.presentation,
-                    displayName: pin.presentation.displayName ?? pin.name,
-                },
-            })),
-            ...component.circuitBinding.terminals.flatMap((mapping) => "supply" in mapping
+            ...symbol.pins
+                .filter((pin) => !dropped.has(pin.name))
+                .map((pin) => {
+                const members = terminalFor.get(pin.name)?.signalMembers;
+                return {
+                    ...pin,
+                    name: rename(pin.name),
+                    ...(optional.has(pin.name) ? { role: "inout" } : {}),
+                    ...(members && members.length > 1
+                        ? { signalMembers: members.map(({ id, name }) => ({ id, name })) }
+                        : {}),
+                    presentation: {
+                        ...pin.presentation,
+                        displayName: pin.presentation.displayName ?? pin.name,
+                    },
+                };
+            }),
+            ...mappings.flatMap((mapping) => "supply" in mapping
                 ? [
                     {
-                        name: definition.terminals.find((t) => t.id === mapping.terminalId).name,
+                        name: terminals.find((t) => t.id === mapping.terminalId).name,
                         role: "inout",
                         at: { x: 0, y: 0 },
                         direction: "west",
@@ -160,9 +209,11 @@ export function projectCircuitSymbol(component, definition) {
                 ]
                 : []),
         ],
-        variants: component.symbol.variants.map((variant) => ({
+        variants: symbol.variants.map((variant) => ({
             ...variant,
-            hiddenPinNames: variant.hiddenPinNames.map(rename),
+            hiddenPinNames: variant.hiddenPinNames
+                .filter((name) => !dropped.has(name))
+                .map(rename),
             ...(variant.auxiliaryPins
                 ? {
                     auxiliaryPins: variant.auxiliaryPins.map((pin) => ({
@@ -172,5 +223,31 @@ export function projectCircuitSymbol(component, definition) {
                 }
                 : {}),
         })),
+    };
+}
+/**
+ * A Cell's custom block artwork against its Cell Pins (the projected
+ * interface's ports): the source-backed correspondence rule, worded for
+ * Cells. Paths are relative to the artwork.
+ */
+export function cellSymbolArtworkIssues(artwork, ports) {
+    return symbolTerminalMappingIssues(artwork.symbol, artwork.terminals, ports, "Cell Pin").map((issue) => issue.path.length === 1 && issue.path[0] === "terminals"
+        ? {
+            ...issue,
+            message: `${issue.message}: map it in Customize symbol, or reset the symbol to automatic`,
+        }
+        : issue);
+}
+/** A Cell's custom block as its callers draw it, or null while its map is invalid. */
+export function projectCellSymbolArtwork(artwork, ports, identity) {
+    if (cellSymbolArtworkIssues(artwork, ports).length)
+        return null;
+    const { hierarchicalBlock: _block, ...symbol } = projectMappedSymbol(artwork.symbol, artwork.terminals, ports);
+    return {
+        ...symbol,
+        id: identity.id,
+        name: identity.name,
+        // A block that draws no pin is still a Cell's (empty) interface.
+        ...(symbol.pins.length === 0 ? { hierarchicalBlock: true } : {}),
     };
 }

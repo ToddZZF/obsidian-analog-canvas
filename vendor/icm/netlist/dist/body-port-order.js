@@ -1,4 +1,4 @@
-import { generatedBehavioralDefinition } from "./generated-models.js";
+import { definitionBody, generatedBehavioralDefinition, } from "./generated-models.js";
 import { IDEAL_CHOPPER_TARGET } from "./ideal-switch-model.js";
 /**
  * The IR with bodies the netlist writes itself printed with their ports in
@@ -13,13 +13,16 @@ import { IDEAL_CHOPPER_TARGET } from "./ideal-switch-model.js";
  */
 export function withBodyPortOrder(ir, order) {
     const next = structuredClone(ir);
-    const callers = (name) => next.cells.flatMap((cell) => cell.instances.filter((instance) => instance.invocationKind === "subcircuit" && instance.target === name));
+    const callers = (name) => next.cells.flatMap((cell) => cell.instances
+        .filter((instance) => instance.invocationKind === "subcircuit" &&
+        instance.target === name)
+        .map((call) => ({ cellId: cell.id, call })));
     const reorder = (name, ports, setPorts) => {
-        const calls = callers(name);
+        const found = callers(name);
         const wanted = order({
             name,
             ports,
-            instanceIds: calls.map((call) => call.id),
+            calls: found.map(({ cellId, call }) => ({ cellId, instanceId: call.id })),
         });
         if (!wanted ||
             (wanted.length === ports.length &&
@@ -30,7 +33,7 @@ export function withBodyPortOrder(ir, order) {
             from.some((index) => index < 0) ||
             new Set(wanted).size !== wanted.length)
             throw new Error(`Port order ${wanted.join(" ")} is not a reordering of ${name}'s ports ${ports.join(" ")}`);
-        for (const call of calls) {
+        for (const { call } of found) {
             if (call.nodes.length !== ports.length)
                 throw new Error(`${call.reference} calls ${name} with ${call.nodes.length} nodes for ${ports.length} ports`);
             const nodes = call.nodes;
@@ -43,8 +46,8 @@ export function withBodyPortOrder(ir, order) {
             reorder(definition.name, definition.ports, (ports) => {
                 definition.ports = [...ports];
             });
-        else if (definition.name !== IDEAL_CHOPPER_TARGET)
-            reorder(definition.name, generatedBehavioralDefinition(definition.name).ports, (ports) => {
+        else if (definitionBody(definition) !== IDEAL_CHOPPER_TARGET)
+            reorder(definition.name, generatedBehavioralDefinition(definitionBody(definition)).ports, (ports) => {
                 definition.ports = [...ports];
             });
     }

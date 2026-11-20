@@ -1,7 +1,7 @@
 import { deriveStableId, } from "@icm/model";
-import { drawnSupplyNet, drawsSupply, mosBulkKind, portableCellIdentifier, resolveMosBulkConnection, resolveCommittedDocumentLogicalNets, } from "@icm/derived";
-import { gateCellBinding, IDEAL_COMPARATOR_TARGET, idealComparatorReadsSupply, isIdealComparatorBody, instanceBuiltInSubcircuit, isIdealOpampBody, resolveReviewedExternalBinding, } from "@icm/devices";
-import { builtInBlockCallTarget, idealAnalogBlockCell, projectSubcircuitNames, } from "./ideal-analog-block-models.js";
+import { drawnSupplyNet, drawsSupply, mosBulkKind, resolveMosBulkConnection, resolveCommittedDocumentLogicalNets, } from "@icm/derived";
+import { builtInModelContract, libraryPartBinding, IDEAL_COMPARATOR_TARGET, idealComparatorReadsSupply, isIdealComparatorBody, instanceBuiltInSubcircuit, isIdealOpampBody, isLibraryPart, resolveReviewedExternalBinding, } from "@icm/devices";
+import { builtInBlockCallTarget, idealAnalogBlockCell, } from "./ideal-analog-block-models.js";
 /**
  * The supplies a built-in body reads. The ideal amplifiers and the adder in
  * either format, and the multiplier and the numeric ideal comparator in
@@ -10,19 +10,16 @@ import { builtInBlockCallTarget, idealAnalogBlockCell, projectSubcircuitNames, }
  * nothing inside used. The ideal comparator whose high level is its own VDD
  * reads that supply alone. The ideal op-amp reads its supplies only once a
  * drawn or selected VDD powers it (ideal-opamp.ts), so an undrawn supply
- * takes no default. Every other body reads both. An authored Cell or
- * a declared external definition of the same name replaces the body, and may
- * well use both supplies.
+ * takes no default. The crystal has no supply ports. Every other body reads
+ * both.
  */
-export function bodySupplies(target, 
-/** The Project's own subcircuit names; see projectSubcircuitNames. */
-projectNames, format) {
-    if (projectNames.has(target.toLowerCase()))
-        return ["VDD", "VSS"];
+export function bodySupplies(target, format) {
     if (isIdealComparatorBody(target) &&
         (target !== IDEAL_COMPARATOR_TARGET || format === "spice"))
         return idealComparatorReadsSupply(target) ? ["VDD"] : [];
     if (isIdealOpampBody(target))
+        return [];
+    if (builtInModelContract(target)?.family === "passive")
         return [];
     return idealAnalogBlockCell(target, format) !== null ||
         (format === "spice" &&
@@ -38,9 +35,6 @@ projectNames, format) {
  * choose instead.
  */
 function blockSuppliesToDefault(source, options) {
-    const projectNames = projectSubcircuitNames(source, source.documents.flatMap((document) => document.netlist?.name
-        ? [portableCellIdentifier(document.netlist.name, document.id)]
-        : []));
     return source.documents.flatMap((document) => {
         let logical;
         const drawn = new Map();
@@ -54,7 +48,10 @@ function blockSuppliesToDefault(source, options) {
             const descriptor = instanceBuiltInSubcircuit(source, instance);
             if (!descriptor)
                 return [];
-            const reads = bodySupplies(builtInBlockCallTarget(instance, descriptor, projectNames), projectNames, options.format ?? "spice");
+            // A User Component's own subcircuit may read both supplies.
+            const reads = isLibraryPart(source, instance.symbolId)
+                ? bodySupplies(builtInBlockCallTarget(instance, descriptor), options.format ?? "spice")
+                : ["VDD", "VSS"];
             return descriptor.ports.flatMap((port) => {
                 const supply = port.supply;
                 if (!supply || !reads.includes(supply))
@@ -77,11 +74,15 @@ function blockSuppliesToDefault(source, options) {
 export function implicitSupplyNetId(documentId, supply) {
     return deriveStableId("netlist-default-supply", documentId, supply);
 }
-/** The rails of a gate bound to a standard cell, or to a Cell's VDD/VSS Pins. */
+/**
+ * The rails of a gate bound to a standard cell, or to the VDD/VSS Pins of a
+ * Cell or external definition (#1928).
+ */
 function boundGateRails(source, instance) {
     const binding = instance.netlist?.binding;
-    if (binding?.kind === "subcircuit")
-        return (gateCellBinding(source, instance)?.match.pins.flatMap((pin) => pin.supply ? [pin.supply] : []) ?? []);
+    const bound = libraryPartBinding(source, instance);
+    if (bound || binding?.kind === "subcircuit")
+        return (bound?.match.pins.flatMap((pin) => (pin.supply ? [pin.supply] : [])) ?? []);
     if (binding?.kind !== "external-subcircuit")
         return [];
     const definition = source.externalSubcircuitDefinitions.find((candidate) => candidate.id === binding.definitionId);

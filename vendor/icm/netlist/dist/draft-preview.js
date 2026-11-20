@@ -8,6 +8,7 @@ const MODEL_BEARING = new Set([
     "mos",
     "diode",
     "bjt",
+    "jfet",
     "switch",
     "hierarchical",
 ]);

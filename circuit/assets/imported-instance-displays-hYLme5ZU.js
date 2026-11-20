@@ -1,0 +1,1 @@
+import{On as e,vr as t,y as n}from"./dist-BgBFd_Qt.js";import{r}from"./default-instance-display-FPw2OHKy.js";function i(i){let a=structuredClone(i),o=n(a,e),s=0;for(let e of a.documents)s+=r(e,e.instances,o);return s===0?i:t.parse(a)}export{i as t};

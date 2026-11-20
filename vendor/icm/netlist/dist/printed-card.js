@@ -1,7 +1,7 @@
 import { parseNgspiceSourceParameters } from "./simulation-ngspice-source-parameters.js";
-import { normalizeIndependentSource } from "./source-waveform.js";
+import { normalizeIndependentSource, } from "./source-waveform.js";
 import { signedControlGain } from "./controlled-current.js";
-import { printedParameterConversion } from "./parameter-projection.js";
+import { printedParameterConversion, spectreNumber, } from "./parameter-projection.js";
 const plain = (text) => ({ text, fields: [] });
 function join(parts, separator = "") {
     const fields = [];
@@ -44,6 +44,82 @@ function sourceFieldsFromText(parameters) {
         ...parameters.filter((p) => !["dc", "waveform"].includes(p.name.toLowerCase())),
     ];
 }
+/**
+ * The name a Spectre card prints each field of an independent source under,
+ * by the waveform it is set to: the waveform's own fields and its dc, where
+ * a sine's offset takes that name. A PWL's points print as one `wave`, which
+ * no field owns. AC's fields print under every waveform.
+ */
+const SPECTRE_SOURCE_NAMES = {
+    dc: { dc: "dc" },
+    pulse: {
+        low: "val0",
+        high: "val1",
+        delay: "delay",
+        rise: "rise",
+        fall: "fall",
+        width: "width",
+        period: "period",
+        dc: "dc",
+    },
+    sin: {
+        offset: "dc",
+        amplitude: "ampl",
+        frequency: "freq",
+        delay: "delay",
+        damping: "damp",
+        phase: "sinephase",
+    },
+    pwl: { dc: "dc" },
+};
+const SPECTRE_AC_NAMES = { acMagnitude: "mag", acPhase: "phase" };
+/** Each waveform's printed names by field, folded to lower case, AC's among them. */
+const printedNames = (waveform) => new Map(Object.entries({
+    ...SPECTRE_SOURCE_NAMES[waveform],
+    ...SPECTRE_AC_NAMES,
+}).map(([field, printed]) => [field.toLowerCase(), printed]));
+const WAVEFORMS = Object.keys(SPECTRE_SOURCE_NAMES);
+/**
+ * The name a Spectre card prints an independent source's field under, the
+ * source set to `waveform`; null for a field of another waveform, which the
+ * card does not print; undefined for a parameter that is no waveform's field
+ * (an extra assignment, which prints under its own name).
+ */
+export function spectreSourceFieldName(field, waveform) {
+    const folded = field.toLowerCase();
+    const printed = printedNames(waveform).get(folded);
+    if (printed !== undefined)
+        return printed;
+    return WAVEFORMS.some((other) => printedNames(other).has(folded))
+        ? null
+        : undefined;
+}
+/**
+ * The field of an independent source a Spectre card's name stands for, the
+ * source set to `waveform` (as the editor keeps it, any case): its own
+ * waveform's first, then another's, `mag` and `phase` AC's under every
+ * waveform; undefined for a name no field prints under.
+ */
+export function spectreSourceField(printed, waveform) {
+    const folded = printed.toLowerCase();
+    const own = WAVEFORMS.find((item) => item === waveform);
+    for (const candidate of own ? [own, ...WAVEFORMS] : WAVEFORMS)
+        for (const [field, name] of Object.entries({
+            ...SPECTRE_SOURCE_NAMES[candidate],
+            ...SPECTRE_AC_NAMES,
+        }))
+            if (name === folded)
+                return field;
+    return undefined;
+}
+/**
+ * Whether a Spectre card prints an independent source from the SPICE text
+ * its dc keeps (AC, PULSE, SIN or PWL after its value), as plain text that
+ * no authored parameter owns.
+ */
+export function spectreSourceFromText(parameters) {
+    return sourceFieldsFromText(parameters) !== null;
+}
 /** Single card emission: field provenance travels with the existing tokens,
  * through assignments, compound waveform tokens and SPICE line wrapping.
  * It is never inferred from equal-looking node/model/parameter strings. */
@@ -54,10 +130,11 @@ export function printInstanceCard(instance, format, locations = false) {
     for (const p of instance.parameters)
         if (!parameters.has(p.name.toLowerCase()))
             parameters.set(p.name.toLowerCase(), p);
-    const owned = (text, kind, parameter) => {
-        const conversion = parameter
-            ? printedParameterConversion(instance, parameter)
-            : "identity";
+    const owned = (text, kind, parameter, converted) => {
+        const conversion = converted ??
+            (parameter
+                ? printedParameterConversion(instance, parameter)
+                : "identity");
         return {
             text,
             fields: locations && text.length
@@ -76,6 +153,18 @@ export function printInstanceCard(instance, format, locations = false) {
     };
     const parameterValue = (p, rendered) => {
         const text = rendered ?? p?.rawValue ?? (format === "spectre" ? "undefined" : "");
+        if (format === "spectre") {
+            // Spectre reads its own numbers: 100fF is written 100f. Every value
+            // the author owns reads back as Spectre means it, so an M typed here
+            // is mega whether or not the value was respelled.
+            const number = spectreNumber(text);
+            if (p &&
+                text === p.rawValue &&
+                printedParameterConversion(instance, p.name) === "identity")
+                return owned(number, "parameter", p.name, "spectre-number");
+            if (number !== text && !(p && text === p.rawValue))
+                return plain(number);
+        }
         return p && text === p.rawValue
             ? owned(text, "parameter", p.name)
             : plain(text);
@@ -100,7 +189,7 @@ export function printInstanceCard(instance, format, locations = false) {
         const value = (name, rendered) => {
             const p = sourceParameters.get(name.toLowerCase());
             return read
-                ? plain(rendered ?? p?.rawValue ?? "undefined")
+                ? plain(spectreNumber(rendered ?? p?.rawValue ?? "undefined"))
                 : parameterValue(p, rendered);
         };
         const assignment = (printedName, name, rendered) => join([plain(`${printedName}=`), value(name, rendered)]);
@@ -109,7 +198,7 @@ export function printInstanceCard(instance, format, locations = false) {
             ? []
             : format === "spice"
                 ? [plain("DC"), value("dc", source.dc)]
-                : [assignment("dc", "dc", source.dc)];
+                : [assignment(SPECTRE_SOURCE_NAMES.dc.dc, "dc", source.dc)];
         const ac = source.ac
             ? format === "spice"
                 ? [
@@ -118,8 +207,8 @@ export function printInstanceCard(instance, format, locations = false) {
                     value("acPhase", source.ac.phase),
                 ]
                 : [
-                    assignment("mag", "acMagnitude", source.ac.magnitude),
-                    assignment("phase", "acPhase", source.ac.phase),
+                    assignment(SPECTRE_AC_NAMES.acMagnitude, "acMagnitude", source.ac.magnitude),
+                    assignment(SPECTRE_AC_NAMES.acPhase, "acPhase", source.ac.phase),
                 ]
             : [];
         const extra = assignments([], source.extraParameters);
@@ -167,13 +256,13 @@ export function printInstanceCard(instance, format, locations = false) {
         if (t.kind === "pulse")
             return [
                 plain("type=pulse"),
-                assignment("val0", "low", t.low),
-                assignment("val1", "high", t.high),
-                assignment("delay", "delay", t.delay),
-                assignment("rise", "rise", t.rise),
-                assignment("fall", "fall", t.fall),
-                assignment("width", "width", t.width),
-                assignment("period", "period", t.period),
+                assignment(SPECTRE_SOURCE_NAMES.pulse.low, "low", t.low),
+                assignment(SPECTRE_SOURCE_NAMES.pulse.high, "high", t.high),
+                assignment(SPECTRE_SOURCE_NAMES.pulse.delay, "delay", t.delay),
+                assignment(SPECTRE_SOURCE_NAMES.pulse.rise, "rise", t.rise),
+                assignment(SPECTRE_SOURCE_NAMES.pulse.fall, "fall", t.fall),
+                assignment(SPECTRE_SOURCE_NAMES.pulse.width, "width", t.width),
+                assignment(SPECTRE_SOURCE_NAMES.pulse.period, "period", t.period),
                 ...dc,
                 ...ac,
                 ...extra,
@@ -181,19 +270,19 @@ export function printInstanceCard(instance, format, locations = false) {
         if (t.kind === "sin")
             return [
                 plain("type=sine"),
-                assignment("dc", "offset", t.offset),
-                assignment("ampl", "amplitude", t.amplitude),
-                assignment("freq", "frequency", t.frequency),
-                assignment("delay", "delay", t.delay),
-                assignment("damp", "damping", t.damping),
-                assignment("sinephase", "phase", t.phase),
+                assignment(SPECTRE_SOURCE_NAMES.sin.offset, "offset", t.offset),
+                assignment(SPECTRE_SOURCE_NAMES.sin.amplitude, "amplitude", t.amplitude),
+                assignment(SPECTRE_SOURCE_NAMES.sin.frequency, "frequency", t.frequency),
+                assignment(SPECTRE_SOURCE_NAMES.sin.delay, "delay", t.delay),
+                assignment(SPECTRE_SOURCE_NAMES.sin.damping, "damping", t.damping),
+                assignment(SPECTRE_SOURCE_NAMES.sin.phase, "phase", t.phase),
                 ...ac,
                 ...extra,
             ];
         if (t.kind === "pwl")
             return [
                 plain("type=pwl"),
-                plain(`wave=[${t.points.flatMap((p) => [p.time, p.value]).join(" ")}]`),
+                plain(`wave=[${t.points.flatMap((p) => [spectreNumber(p.time), spectreNumber(p.value)]).join(" ")}]`),
                 ...dc,
                 ...ac,
                 ...extra,
@@ -265,6 +354,7 @@ export function printInstanceCard(instance, format, locations = false) {
         case "mos":
         case "diode":
         case "bjt":
+        case "jfet":
         case "switch":
         case "hierarchical":
             master = owned(instance.target, "target");
@@ -284,7 +374,7 @@ export function printInstanceCard(instance, format, locations = false) {
             reference,
             ...nodes,
             ...(master?.fields.some((f) => f.kind === "target") ||
-                ["mos", "diode", "bjt", "switch", "hierarchical"].includes(instance.deviceClass)
+                ["mos", "diode", "bjt", "jfet", "switch", "hierarchical"].includes(instance.deviceClass)
                 ? [master]
                 : []),
             ...values,
