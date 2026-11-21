@@ -29,7 +29,14 @@ import path from 'node:path'
 import { createEmptyProject } from '@icm/model'
 import { serializeProject } from '@icm/project-protocol'
 import { CircuitServer } from './server'
-import { EDITOR_FOLDER, ensureEditor } from './fetch-editor'
+import {
+  CUSTOM_SOURCE,
+  DOWNLOAD_SOURCES,
+  EDITOR_FOLDER,
+  editorState,
+  ensureEditor,
+  type EditorState
+} from './fetch-editor'
 import { log, setLogDirectory } from './debug'
 import { t } from './i18n'
 import { renderEmbeds, registerCircuitEmbeds, isCircuitName, projectIdOf } from './embeds'
@@ -43,17 +50,27 @@ export interface AnalogCanvasSettings {
   autoSave: CircuitAutoSaveMode
   /** Whether the figures of drawings are shown in the editing view. */
   showInLivePreview: boolean
+  /** Which place the editor bundle is fetched from. */
+  downloadSource: string
+  /** The prefix of the address, when the source is one of the user's own. */
+  downloadPrefix: string
 }
 
 const DEFAULT_SETTINGS: AnalogCanvasSettings = {
   autoSave: 'immediately',
-  showInLivePreview: true
+  showInLivePreview: true,
+  downloadSource: 'github',
+  downloadPrefix: ''
 }
 
 export default class AnalogCanvasPlugin extends Plugin {
   settings: AnalogCanvasSettings = DEFAULT_SETTINGS
   /** The server that serves the circuit editor. */
   server: CircuitServer | null = null
+  /** How the editor bundle stands in the plugin folder. */
+  editorState: EditorState = 'missing'
+  /** Whether the editor bundle is being fetched at the moment. */
+  downloading = false
   /** The renamed drawings by the Projects they hold, so one can still be found after its name changed. */
   private renamedDrawings = new Map<string, TFile>()
 
@@ -66,17 +83,27 @@ export default class AnalogCanvasPlugin extends Plugin {
       log('the plugin was loaded')
     }
 
+    // The settings are registered before anything else: a plugin without the
+    // editor bundle is of no use, and the settings are where the bundle can
+    // be fetched by hand.
+    this.addSettingTab(new AnalogCanvasSettingTab(this.app, this))
+
     const root = this.circuitRoot()
     if (root === null) {
-      new Notice('Analog Canvas: The circuit editor was not found in the plugin folder.')
+      new Notice(t('editorMissingFolder'))
       log('the circuit editor was not found')
       return
     }
 
-    if (!await ensureEditor(root, this.manifest.version)) {
-      new Notice('Analog Canvas: The circuit editor is missing and could not be downloaded. See the README to install it by hand.')
-      log('the circuit editor could not be fetched')
-      return
+    this.editorState = editorState(root, this.manifest.version)
+    if (this.editorState === 'missing' || this.editorState === 'outdated') {
+      const fetched = await ensureEditor(root, this.manifest.version, this.editorPrefix())
+      this.editorState = editorState(root, this.manifest.version)
+      if (!fetched) {
+        new Notice(t('editorMissing'))
+        log('the circuit editor could not be fetched')
+        return
+      }
     }
 
     this.server = new CircuitServer(root)
@@ -129,8 +156,6 @@ export default class AnalogCanvasPlugin extends Plugin {
       }
       void this.rememberRenamed(moved)
     }))
-
-    this.addSettingTab(new AnalogCanvasSettingTab(this.app, this))
 
     this.addCommand({
       id: 'open-drawing',
@@ -200,6 +225,89 @@ export default class AnalogCanvasPlugin extends Plugin {
     }
 
     return path.join(directory, EDITOR_FOLDER)
+  }
+
+  /**
+   * What is put in front of the official address of the release.
+   *
+   * The official address needs no prefix; a mirror is one; and a source of
+   * the user's own is whatever was written down.
+   */
+  editorPrefix (): string {
+    const source = DOWNLOAD_SOURCES.find(candidate => candidate.id === this.settings.downloadSource)
+    if (source !== undefined) {
+      return source.prefix
+    }
+    return this.settings.downloadPrefix
+  }
+
+  /**
+   * Whether the editor bundle may be fetched by hand.
+   *
+   * A bundle that was installed by hand is used as it is and is never
+   * overwritten, so there is nothing to download in that case.
+   */
+  canDownloadEditor (): boolean {
+    return this.editorState === 'missing' || this.editorState === 'outdated'
+  }
+
+  /**
+   * Reads the state of the editor bundle from the folder again.
+   *
+   * The bundle may be put in place — or taken away — while the plugin
+   * runs, so the settings ask the folder rather than what was true when
+   * the plugin was loaded.
+   */
+  refreshEditorState (): void {
+    const root = this.circuitRoot()
+    if (root === null) {
+      return
+    }
+    this.editorState = editorState(root, this.manifest.version)
+  }
+
+  /**
+   * What the settings say about the editor bundle.
+   */
+  editorStatusText (): string {
+    switch (this.editorState) {
+      case 'ready':
+        return t('editorBundleReady')
+      case 'manual':
+        return t('editorBundleManual')
+      case 'outdated':
+        return t('editorBundleOutdated')
+      default:
+        return t('editorBundleMissing')
+    }
+  }
+
+  /**
+   * Fetches the editor bundle by hand.
+   *
+   * The plugin is of no use without the bundle, and a failed download at
+   * the start of the session cannot be retried by the plugin itself: the
+   * settings are where it is fetched, by the hand of whoever is there.
+   */
+  async downloadEditor (): Promise<void> {
+    if (this.downloading) {
+      return
+    }
+
+    const root = this.circuitRoot()
+    if (root === null) {
+      new Notice(t('editorMissingFolder'))
+      return
+    }
+
+    this.downloading = true
+    try {
+      const fetched = await ensureEditor(root, this.manifest.version, this.editorPrefix())
+      this.editorState = editorState(root, this.manifest.version)
+      new Notice(fetched ? t('editorDownloaded') : t('editorDownloadFailed'))
+    } finally {
+      this.downloading = false
+    }
   }
 
   /**
@@ -507,6 +615,61 @@ class AnalogCanvasSettingTab extends PluginSettingTab {
   display (): void {
     const { containerEl } = this
     containerEl.empty()
+
+    // The bundle may have been put in place, or taken away, since the
+    // plugin was loaded; the settings ask the folder itself.
+    this.plugin.refreshEditorState()
+
+    // The bundle comes first: when it is missing the plugin is of no use,
+    // and this is where it is fetched.
+    const bundle = new Setting(containerEl)
+      .setName(t('editorBundle'))
+      .setDesc(this.plugin.editorStatusText())
+    if (this.plugin.canDownloadEditor()) {
+      bundle.addButton(button => {
+        button
+          .setButtonText(this.plugin.downloading ? t('downloading') : t('downloadEditor'))
+          .setCta()
+          .setDisabled(this.plugin.downloading)
+          .onClick(async () => {
+            await this.plugin.downloadEditor()
+            this.display()
+          })
+      })
+    }
+
+    new Setting(containerEl)
+      .setName(t('downloadSource'))
+      .setDesc(t('downloadSourceDesc'))
+      .addDropdown(dropdown => {
+        for (const source of DOWNLOAD_SOURCES) {
+          dropdown.addOption(source.id, source.name)
+        }
+        dropdown.addOption(CUSTOM_SOURCE, t('customSource'))
+        dropdown
+          .setValue(this.plugin.settings.downloadSource)
+          .onChange(async (value: string) => {
+            this.plugin.settings.downloadSource = value
+            await this.plugin.saveSettings()
+            // The prefix is only asked for when the source is one's own.
+            this.display()
+          })
+      })
+
+    if (this.plugin.settings.downloadSource === CUSTOM_SOURCE) {
+      new Setting(containerEl)
+        .setName(t('customPrefix'))
+        .setDesc(t('customPrefixDesc'))
+        .addText(text => {
+          text
+            .setPlaceholder('https://gh-proxy.com/')
+            .setValue(this.plugin.settings.downloadPrefix)
+            .onChange(async (value: string) => {
+              this.plugin.settings.downloadPrefix = value
+              await this.plugin.saveSettings()
+            })
+        })
+    }
 
     new Setting(containerEl)
       .setName(t('saveAutomatically'))

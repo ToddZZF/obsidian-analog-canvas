@@ -15,6 +15,7 @@ import path from 'node:path'
 import { Notice, requestUrl } from 'obsidian'
 import { unzipSync } from 'fflate'
 import { log } from './debug'
+import { t } from './i18n'
 
 /** The repository the releases of the plugin live in. */
 const REPOSITORY = 'ToddZZF/obsidian-analog-canvas'
@@ -29,13 +30,82 @@ const ENTRY_POINT = 'obsidian.html'
 const FETCHED_VERSION = '.fetched-version'
 
 /**
+ * A place the editor bundle may be fetched from.
+ *
+ * A mirror is a proxy that stands in front of the official address: its
+ * prefix is put in front of the address of the release.
+ */
+export interface DownloadSource {
+  /** What the source is called in the settings. */
+  id: string
+  /** The name the settings show. */
+  name: string
+  /** What is put in front of the official address; empty for the official one. */
+  prefix: string
+}
+
+/**
+ * The sources the settings offer.
+ *
+ * The official address comes first: it is where the releases live, and a
+ * mirror is a stand-in for it, not a replacement.
+ */
+export const DOWNLOAD_SOURCES: readonly DownloadSource[] = [
+  { id: 'github', name: 'GitHub Releases', prefix: '' },
+  { id: 'gh-proxy', name: 'gh-proxy.com', prefix: 'https://gh-proxy.com/' },
+  { id: 'ghfast', name: 'ghfast.top', prefix: 'https://ghfast.top/' }
+]
+
+/**
+ * The id of the source the settings mean by "one of my own".
+ */
+export const CUSTOM_SOURCE = 'custom'
+
+/**
  * Where the editor bundle of a version of the plugin can be downloaded.
  *
  * @param   {string}  version  The version of the plugin
+ * @param   {string}  prefix   What to put in front of the official address
  * @returns {string}  The URL of the archive
  */
-export function editorArchiveUrl (version: string): string {
-  return `https://github.com/${REPOSITORY}/releases/download/${version}/${EDITOR_FOLDER}.zip`
+export function editorArchiveUrl (version: string, prefix = ''): string {
+  const front = prefix.trim()
+  const separator = front.length === 0 || front.endsWith('/') ? '' : '/'
+  return `${front}${separator}https://github.com/${REPOSITORY}/releases/download/${version}/${EDITOR_FOLDER}.zip`
+}
+
+/**
+ * How the editor bundle stands in the plugin folder.
+ *
+ * - `missing`: the folder holds no editor at all.
+ * - `manual`: the bundle was installed by hand; it is used as it is and is
+ *   never overwritten.
+ * - `outdated`: the bundle was fetched for an older version of the plugin.
+ * - `ready`: the bundle belongs to this version of the plugin.
+ */
+export type EditorState = 'missing' | 'manual' | 'outdated' | 'ready'
+
+/**
+ * How the editor bundle stands in the plugin folder.
+ *
+ * @param   {string}  root     The folder the bundle lives in
+ * @param   {string}  version  The version of the plugin
+ * @returns {EditorState}  What the folder holds
+ */
+export function editorState (root: string, version: string): EditorState {
+  if (!existsSync(path.join(root, ENTRY_POINT))) {
+    return 'missing'
+  }
+
+  try {
+    return readFileSync(path.join(root, FETCHED_VERSION), 'utf8').trim() === version
+      ? 'ready'
+      : 'outdated'
+  } catch {
+    // A marker that cannot be read is as good as no marker: the bundle was
+    // installed by hand and stays.
+    return 'manual'
+  }
 }
 
 /**
@@ -46,16 +116,18 @@ export function editorArchiveUrl (version: string): string {
  *
  * @param   {string}  root     The folder the bundle lives in
  * @param   {string}  version  The version of the plugin
+ * @param   {string}  prefix   What to put in front of the official address
  * @returns {Promise<boolean>} Whether the bundle is ready to serve
  */
-export async function ensureEditor (root: string, version: string): Promise<boolean> {
-  if (!needsFetch(root, version)) {
+export async function ensureEditor (root: string, version: string, prefix = ''): Promise<boolean> {
+  const state = editorState(root, version)
+  if (state === 'ready' || state === 'manual') {
     return true
   }
 
-  const url = editorArchiveUrl(version)
+  const url = editorArchiveUrl(version, prefix)
   log(`fetching the circuit editor from ${url}`)
-  const notice = new Notice('Analog Canvas: Downloading the circuit editor…', 0)
+  const notice = new Notice(t('downloading'), 0)
   try {
     const response = await requestUrl({ url })
     const archive = new Uint8Array(response.arrayBuffer)
@@ -67,31 +139,6 @@ export async function ensureEditor (root: string, version: string): Promise<bool
     return false
   } finally {
     notice.hide()
-  }
-}
-
-/**
- * Whether the bundle must be fetched before the editor can run.
- *
- * A folder without the entry point holds no editor. A folder without the
- * version marker was installed by hand and is trusted as it is; a marker
- * of another version marks a bundle that was fetched and is now outdated.
- *
- * @param   {string}  root     The folder the bundle lives in
- * @param   {string}  version  The version of the plugin
- * @returns {boolean}  Whether the bundle must be downloaded
- */
-function needsFetch (root: string, version: string): boolean {
-  if (!existsSync(path.join(root, ENTRY_POINT))) {
-    return true
-  }
-
-  try {
-    return readFileSync(path.join(root, FETCHED_VERSION), 'utf8').trim() !== version
-  } catch {
-    // A marker that cannot be read is as good as no marker: the bundle was
-    // installed by hand and stays.
-    return false
   }
 }
 

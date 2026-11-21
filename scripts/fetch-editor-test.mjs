@@ -10,7 +10,6 @@
  */
 
 import assert from 'node:assert/strict'
-import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -45,7 +44,7 @@ await build({
   logLevel: 'silent'
 })
 
-const { editorArchiveUrl, ensureEditor } = await import(pathToFileURL(bundle).href)
+const { editorArchiveUrl, editorState, ensureEditor } = await import(pathToFileURL(bundle).href)
 
 /** How often the download was asked for, and what it serves. */
 const downloads = { count: 0, lastUrl: null, archive: null }
@@ -59,13 +58,13 @@ globalThis.__fetchTestDownload = async (url) => {
   return { arrayBuffer: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }
 }
 
-/** A release-like archive: the zip CLI also writes the directory entries. */
-const source = path.join(work, 'zip-source')
-mkdirSync(path.join(source, 'circuit', 'assets'), { recursive: true })
-writeFileSync(path.join(source, 'circuit', 'obsidian.html'), '<html></html>')
-writeFileSync(path.join(source, 'circuit', 'assets', 'app.js'), 'export {}')
-execFileSync('zip', ['-qr', path.join(work, 'circuit.zip'), 'circuit'], { cwd: source })
-const good = new Uint8Array(readFileSync(path.join(work, 'circuit.zip')))
+/** A release-like archive: the directory entries are written as well. */
+const good = zipSync({
+  'circuit/': strToU8(''),
+  'circuit/obsidian.html': strToU8('<html></html>'),
+  'circuit/assets/': strToU8(''),
+  'circuit/assets/app.js': strToU8('export {}')
+})
 
 /** An archive that tries to write a file beside the plugin folder. */
 const escaping = zipSync({
@@ -176,6 +175,46 @@ await test('an archive that escapes the folder is rejected', async () => {
   assert.equal(await ensureEditor(root, version), false)
   assert.ok(!existsSync(path.join(plugin, 'evil.txt')))
   assert.equal(readFileSync(path.join(root, 'keep.txt'), 'utf8'), 'by hand')
+})
+
+await test('a mirror stands in front of the official address', () => {
+  const official = editorArchiveUrl(version)
+  assert.equal(editorArchiveUrl(version, 'https://gh-proxy.com/'), `https://gh-proxy.com/${official}`)
+  // A prefix without a slash of its own still makes an address.
+  assert.equal(editorArchiveUrl(version, 'https://ghfast.top'), `https://ghfast.top/${official}`)
+  // Blank spaces around a prefix are of no account.
+  assert.equal(editorArchiveUrl(version, '  https://gh-proxy.com/  '), `https://gh-proxy.com/${official}`)
+  // An empty prefix is the official address.
+  assert.equal(editorArchiveUrl(version, ''), official)
+})
+
+await test('the bundle is fetched from the mirror that was asked for', async () => {
+  const plugin = freshPlugin()
+  const root = path.join(plugin, 'circuit')
+  downloads.archive = good
+  assert.equal(await ensureEditor(root, version, 'https://gh-proxy.com/'), true)
+  assert.equal(downloads.lastUrl, `https://gh-proxy.com/${editorArchiveUrl(version)}`)
+})
+
+await test('the state of the bundle is told apart', async () => {
+  const plugin = freshPlugin()
+  const root = path.join(plugin, 'circuit')
+  downloads.archive = good
+
+  // No bundle at all.
+  assert.equal(editorState(root, version), 'missing')
+
+  // A bundle that was fetched for this version.
+  await ensureEditor(root, version)
+  assert.equal(editorState(root, version), 'ready')
+
+  // A bundle that was fetched for an older version.
+  writeFileSync(path.join(root, MARKER), '0.0.9\n')
+  assert.equal(editorState(root, version), 'outdated')
+
+  // A bundle that was installed by hand.
+  rmSync(path.join(root, MARKER))
+  assert.equal(editorState(root, version), 'manual')
 })
 
 rmSync(work, { recursive: true, force: true })
