@@ -7,7 +7,7 @@
  * application that owns the file.
  */
 
-import { ItemView, Notice, TFile, WorkspaceLeaf } from 'obsidian'
+import { ItemView, Notice, TFile, WorkspaceLeaf, type EventRef, type ViewStateResult } from 'obsidian'
 import {
   CIRCUIT_EDITOR_PAGE,
   onCircuitMessage,
@@ -90,7 +90,7 @@ export class CircuitView extends ItemView {
   /**
    * Takes over the state of the pane, and shows the drawing it names.
    */
-  async setState (state: unknown, result: unknown): Promise<void> {
+  async setState (state: unknown, result: ViewStateResult): Promise<void> {
     await super.setState(state, result)
     await this.loadFromState(state)
   }
@@ -163,8 +163,8 @@ export class CircuitView extends ItemView {
 
   async onClose (): Promise<void> {
     this.stopListening?.()
-    this.registerVaultListener?.()
-    this.registerRenameListener?.()
+    this.unlistenVault()
+    this.unlistenRename()
     if (this.saveTimer !== null) {
       clearTimeout(this.saveTimer)
       this.saveTimer = null
@@ -172,10 +172,32 @@ export class CircuitView extends ItemView {
     this.editorFrame = null
   }
 
+  /**
+   * Takes the listener of the vault down again.
+   */
+  private unlistenVault (): void {
+    if (this.registerVaultListener === null) {
+      return
+    }
+    this.plugin.app.vault.offref(this.registerVaultListener)
+    this.registerVaultListener = null
+  }
+
+  /**
+   * Takes the listener of the renames down again.
+   */
+  private unlistenRename (): void {
+    if (this.registerRenameListener === null) {
+      return
+    }
+    this.plugin.app.vault.offref(this.registerRenameListener)
+    this.registerRenameListener = null
+  }
+
   /** The listeners this view installed, so they can be taken down again. */
   private stopListening: (() => void) | null = null
-  private registerVaultListener: (() => void) | null = null
-  private registerRenameListener: (() => void) | null = null
+  private registerVaultListener: EventRef | null = null
+  private registerRenameListener: EventRef | null = null
 
   /**
    * Shows a drawing in this pane.

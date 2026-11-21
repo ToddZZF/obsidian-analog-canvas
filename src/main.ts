@@ -12,9 +12,9 @@
  */
 
 import {
-  AbstractInputSuggest,
   App,
   FileSystemAdapter,
+  FuzzySuggestModal,
   Menu,
   Notice,
   Plugin,
@@ -425,6 +425,7 @@ export default class AnalogCanvasPlugin extends Plugin {
     const picker = new DrawingSuggest(this.app, drawings, (file) => {
       void this.openDrawing(file)
     })
+    picker.setPlaceholder(t('pickDrawing'))
     picker.open()
   }
 
@@ -447,6 +448,7 @@ export default class AnalogCanvasPlugin extends Plugin {
     const picker = new DrawingSuggest(this.app, drawings, (file) => {
       editor.replaceSelection(`![[${file.name}]]`)
     })
+    picker.setPlaceholder(t('pickDrawing'))
     picker.open()
   }
 }
@@ -463,9 +465,10 @@ function newProjectId (): string {
  * Asks for a drawing.
  *
  * Obsidian's own file suggester only knows the files it can open, so the
- * drawings are offered here.
+ * drawings are offered here. The suggester matches what is typed against the
+ * path of the drawing, the way Obsidian's own quick switcher does.
  */
-class DrawingSuggest extends AbstractInputSuggest<TFile> {
+class DrawingSuggest extends FuzzySuggestModal<string> {
   constructor (
     app: App,
     private readonly drawings: TFile[],
@@ -474,17 +477,25 @@ class DrawingSuggest extends AbstractInputSuggest<TFile> {
     super(app)
   }
 
-  getSuggestions (query: string): TFile[] {
-    const needle = query.toLowerCase()
-    return this.drawings.filter(file => file.path.toLowerCase().includes(needle))
+  /**
+   * The paths of the drawings: what is typed is matched against them.
+   */
+  getItems (): string[] {
+    return this.drawings.map(drawing => drawing.path)
   }
 
-  renderSuggestion (file: TFile, el: HTMLElement): void {
-    el.setText(file.path)
+  /**
+   * The text of a drawing: its path, which is both matched and shown.
+   */
+  getItemText (item: string): string {
+    return item
   }
 
-  onChooseSuggestion (file: TFile, _evt: MouseEvent | KeyboardEvent): void {
-    this.onPick(file)
+  onChooseItem (item: string, _evt: MouseEvent | KeyboardEvent): void {
+    const file = this.drawings.find(drawing => drawing.path === item)
+    if (file !== undefined) {
+      this.onPick(file)
+    }
   }
 }
 
@@ -498,23 +509,24 @@ class AnalogCanvasSettingTab extends PluginSettingTab {
     containerEl.empty()
 
     new Setting(containerEl)
-      .setName('Save automatically')
-      .setDesc('How eagerly a drawing is written to the vault.')
+      .setName(t('saveAutomatically'))
+      .setDesc(t('saveAutomaticallyDesc'))
       .addDropdown(dropdown => {
         dropdown
-          .addOption('off', 'Never')
-          .addOption('immediately', 'Right away')
-          .addOption('delayed', 'After a moment')
+          .addOption('off', t('autoSaveNever'))
+          .addOption('immediately', t('autoSaveRightAway'))
+          .addOption('delayed', t('autoSaveAfterAMoment'))
           .setValue(this.plugin.settings.autoSave)
-          .onChange(async (value: CircuitAutoSaveMode) => {
-            this.plugin.settings.autoSave = value
+          .onChange(async (value: string) => {
+            // The dropdown offers the three modes and nothing else.
+            this.plugin.settings.autoSave = value as CircuitAutoSaveMode
             await this.plugin.saveSettings()
           })
       })
 
     new Setting(containerEl)
-      .setName('Show drawings while editing')
-      .setDesc('Draw the embedded drawings in the editing view, not only in the reading view.')
+      .setName(t('showWhileEditing'))
+      .setDesc(t('showWhileEditingDesc'))
       .addToggle(toggle => {
         toggle
           .setValue(this.plugin.settings.showInLivePreview)

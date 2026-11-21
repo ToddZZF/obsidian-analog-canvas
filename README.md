@@ -33,7 +33,7 @@
 
 ## 安装
 
-**社区插件商店**：直接安装即可。商店的安装器只装 `main.js`、`manifest.json`、`styles.css` 三个文件，编辑器包会在首次加载时从 GitHub Releases 下载 `circuit.zip`（约 6 MB，仅此一处网络访问）解压到插件目录；插件升级后首次加载时也会自动换上配套的编辑器包。
+**社区插件商店**：直接安装即可。商店的安装器只装 `main.js`、`manifest.json`、`styles.css` 三个文件，编辑器包会在首次加载时从 GitHub Releases 下载 `circuit.zip`（仅此一处网络访问）解压到插件目录；插件升级后首次加载时也会自动换上配套的编辑器包。
 
 **手动安装**：把这几项复制到库的 `.obsidian/plugins/analog-canvas/` 目录：
 
